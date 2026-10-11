@@ -1,0 +1,10 @@
+.gradle/
+build/
+!src/**/build/
+.idea/
+*.iml
+*.iws
+*.ipr
+.DS_Store
+local.properties
+.kotlin/
