@@ -1,0 +1,202 @@
+CREATE TABLE member_profile (
+    accountId TEXT PRIMARY KEY NOT NULL,
+    email TEXT NOT NULL,
+    firstName TEXT NOT NULL,
+    lastName TEXT NOT NULL,
+    documentType TEXT NOT NULL,
+    documentNumber TEXT NOT NULL,
+    phone TEXT,
+    status TEXT NOT NULL,
+    lastSyncedAt TEXT NOT NULL
+);
+
+CREATE TABLE membership_summary (
+    id TEXT PRIMARY KEY NOT NULL,
+    accountId TEXT NOT NULL,
+    planName TEXT NOT NULL,
+    startDate TEXT NOT NULL,
+    endDate TEXT NOT NULL,
+    status TEXT NOT NULL,
+    daysRemaining INTEGER NOT NULL,
+    lastSyncedAt TEXT NOT NULL
+);
+
+CREATE TABLE payment_history (
+    id TEXT PRIMARY KEY NOT NULL,
+    accountId TEXT NOT NULL,
+    membershipId TEXT,
+    amountCents INTEGER NOT NULL,
+    paymentMethod TEXT NOT NULL,
+    externalReference TEXT,
+    paidAt TEXT NOT NULL,
+    notes TEXT,
+    lastSyncedAt TEXT NOT NULL
+);
+
+CREATE TABLE catalog_product (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    category TEXT NOT NULL,
+    priceCents INTEGER NOT NULL,
+    isPromotion INTEGER NOT NULL DEFAULT 0,
+    promotionDiscountPercent INTEGER,
+    imageUrl TEXT,
+    lastSyncedAt TEXT NOT NULL
+);
+
+CREATE TABLE faq_item (
+    id TEXT PRIMARY KEY NOT NULL,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    category TEXT NOT NULL,
+    orderIndex INTEGER NOT NULL
+);
+
+CREATE TABLE inbox_item (
+    id TEXT PRIMARY KEY NOT NULL,
+    accountId TEXT NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    category TEXT NOT NULL,
+    createdAt TEXT NOT NULL,
+    isRead INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE favorite_item (
+    id TEXT PRIMARY KEY NOT NULL,
+    accountId TEXT NOT NULL,
+    productId TEXT NOT NULL,
+    productName TEXT NOT NULL,
+    productCategory TEXT NOT NULL,
+    productPriceCents INTEGER NOT NULL,
+    personalNote TEXT NOT NULL,
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL,
+    syncStatus TEXT NOT NULL
+);
+
+CREATE TABLE sync_queue (
+    id TEXT PRIMARY KEY NOT NULL,
+    accountId TEXT NOT NULL,
+    entityType TEXT NOT NULL,
+    entityId TEXT NOT NULL,
+    operation TEXT NOT NULL,
+    payloadJson TEXT NOT NULL,
+    baseVersion INTEGER NOT NULL DEFAULT 1,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    createdAt TEXT NOT NULL,
+    lastError TEXT
+);
+
+-- Queries para member_profile
+selectProfileByAccountId:
+SELECT * FROM member_profile WHERE accountId = ? LIMIT 1;
+
+insertOrReplaceProfile:
+INSERT OR REPLACE INTO member_profile(accountId, email, firstName, lastName, documentType, documentNumber, phone, status, lastSyncedAt)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+deleteProfileByAccountId:
+DELETE FROM member_profile WHERE accountId = ?;
+
+-- Queries para membership_summary
+selectMembershipByAccountId:
+SELECT * FROM membership_summary WHERE accountId = ? ORDER BY endDate DESC LIMIT 1;
+
+insertOrReplaceMembership:
+INSERT OR REPLACE INTO membership_summary(id, accountId, planName, startDate, endDate, status, daysRemaining, lastSyncedAt)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+deleteMembershipByAccountId:
+DELETE FROM membership_summary WHERE accountId = ?;
+
+-- Queries para payment_history
+selectPaymentsByAccountId:
+SELECT * FROM payment_history WHERE accountId = ? ORDER BY paidAt DESC;
+
+insertOrReplacePayment:
+INSERT OR REPLACE INTO payment_history(id, accountId, membershipId, amountCents, paymentMethod, externalReference, paidAt, notes, lastSyncedAt)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+deletePaymentsByAccountId:
+DELETE FROM payment_history WHERE accountId = ?;
+
+-- Queries para catalog_product
+selectAllProducts:
+SELECT * FROM catalog_product ORDER BY category ASC, name ASC;
+
+selectProductById:
+SELECT * FROM catalog_product WHERE id = ? LIMIT 1;
+
+insertOrReplaceProduct:
+INSERT OR REPLACE INTO catalog_product(id, name, description, category, priceCents, isPromotion, promotionDiscountPercent, imageUrl, lastSyncedAt)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+clearProducts:
+DELETE FROM catalog_product;
+
+-- Queries para faq_item
+selectAllFaqs:
+SELECT * FROM faq_item ORDER BY orderIndex ASC;
+
+insertOrReplaceFaq:
+INSERT OR REPLACE INTO faq_item(id, question, answer, category, orderIndex)
+VALUES (?, ?, ?, ?, ?);
+
+clearFaqs:
+DELETE FROM faq_item;
+
+-- Queries para inbox_item
+selectInboxByAccountId:
+SELECT * FROM inbox_item WHERE accountId = ? ORDER BY createdAt DESC;
+
+insertOrReplaceInboxItem:
+INSERT OR REPLACE INTO inbox_item(id, accountId, title, message, category, createdAt, isRead)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+markInboxAsRead:
+UPDATE inbox_item SET isRead = 1 WHERE id = ? AND accountId = ?;
+
+deleteInboxByAccountId:
+DELETE FROM inbox_item WHERE accountId = ?;
+
+-- Queries para favorite_item
+selectFavoritesByAccountId:
+SELECT * FROM favorite_item WHERE accountId = ? AND syncStatus != 'PENDING_DELETE' ORDER BY updatedAt DESC;
+
+selectFavoriteById:
+SELECT * FROM favorite_item WHERE id = ? AND accountId = ? LIMIT 1;
+
+selectFavoriteByProduct:
+SELECT * FROM favorite_item WHERE accountId = ? AND productId = ? AND syncStatus != 'PENDING_DELETE' LIMIT 1;
+
+insertOrReplaceFavorite:
+INSERT OR REPLACE INTO favorite_item(id, accountId, productId, productName, productCategory, productPriceCents, personalNote, createdAt, updatedAt, syncStatus)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+markFavoritePendingDelete:
+UPDATE favorite_item SET syncStatus = 'PENDING_DELETE', updatedAt = ? WHERE id = ? AND accountId = ?;
+
+deleteFavoritePhysical:
+DELETE FROM favorite_item WHERE id = ? AND accountId = ?;
+
+deleteFavoritesByAccountId:
+DELETE FROM favorite_item WHERE accountId = ?;
+
+-- Queries para sync_queue
+selectPendingOperations:
+SELECT * FROM sync_queue WHERE accountId = ? ORDER BY createdAt ASC;
+
+insertSyncOperation:
+INSERT INTO sync_queue(id, accountId, entityType, entityId, operation, payloadJson, baseVersion, attempts, createdAt, lastError)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateSyncOperationAttempt:
+UPDATE sync_queue SET attempts = ?, lastError = ? WHERE id = ?;
+
+deleteSyncOperation:
+DELETE FROM sync_queue WHERE id = ?;
+
+deleteSyncQueueByAccountId:
+DELETE FROM sync_queue WHERE accountId = ?;
