@@ -48,7 +48,7 @@ class MemberRepositoryImpl(
         val result = memberApi.getProfile(accountId)
         return result.map { dto ->
             val now = Clock.System.now().toString()
-            val domain = dto.toDomain(now)
+            val domain = (dto as com.gymvip.mobile.data.remote.dto.MemberProfileDto).toDomain(now)
             database.gymVipDatabaseQueries.insertOrReplaceProfile(
                 accountId = domain.accountId,
                 email = domain.email,
@@ -68,7 +68,7 @@ class MemberRepositoryImpl(
         val result = memberApi.getMembership(accountId)
         return result.map { dto ->
             val now = Clock.System.now().toString()
-            val domain = dto.toDomain(accountId, now)
+            val domain = (dto as com.gymvip.mobile.data.remote.dto.MembershipSummaryDto).toDomain(accountId, now)
             database.gymVipDatabaseQueries.insertOrReplaceMembership(
                 id = domain.id,
                 accountId = accountId,
@@ -87,7 +87,7 @@ class MemberRepositoryImpl(
         val result = memberApi.getPayments(accountId)
         return result.map { list ->
             val now = Clock.System.now().toString()
-            val domainList = list.map { it.toDomain(accountId, now) }
+            val domainList = list.map { (it as com.gymvip.mobile.data.remote.dto.PaymentSummaryDto).toDomain(accountId, now) }
             database.gymVipDatabaseQueries.transaction {
                 database.gymVipDatabaseQueries.deletePaymentsByAccountId(accountId)
                 domainList.forEach { payment ->

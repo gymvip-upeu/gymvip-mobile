@@ -14,12 +14,16 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 
+/**
+ * Cliente Ktor para endpoints de favoritos del socio.
+ * Conciliado formalmente con MemberAppController (/api/v1/member-app/favorites).
+ */
 class FavoriteApi(
     private val client: HttpClient,
     private val baseUrl: String = GymVipHttpClient.baseUrl
 ) {
     suspend fun getFavorites(): Result<List<FavoriteResponseDto>> = runCatching {
-        val response = client.get("$baseUrl/api/v1/me/favorites")
+        val response = client.get("$baseUrl/api/v1/member-app/favorites")
         if (response.status == HttpStatusCode.OK) {
             response.body<List<FavoriteResponseDto>>()
         } else {
@@ -28,7 +32,7 @@ class FavoriteApi(
     }
 
     suspend fun getFavoriteById(id: String): Result<FavoriteResponseDto> = runCatching {
-        val response = client.get("$baseUrl/api/v1/me/favorites/$id")
+        val response = client.get("$baseUrl/api/v1/member-app/favorites/$id")
         if (response.status == HttpStatusCode.OK) {
             response.body<FavoriteResponseDto>()
         } else {
@@ -37,9 +41,15 @@ class FavoriteApi(
     }
 
     suspend fun addFavorite(request: FavoriteRequestDto): Result<FavoriteResponseDto> = runCatching {
-        val response = client.post("$baseUrl/api/v1/me/favorites") {
+        // Enviar notas y títulos compatibles con el backend
+        val bodyPayload = if (request.notes.isBlank() && request.personalNote.isNotBlank()) {
+            request.copy(notes = request.personalNote)
+        } else {
+            request
+        }
+        val response = client.post("$baseUrl/api/v1/member-app/favorites") {
             contentType(ContentType.Application.Json)
-            setBody(request)
+            setBody(bodyPayload)
         }
         if (response.status == HttpStatusCode.Created || response.status == HttpStatusCode.OK) {
             response.body<FavoriteResponseDto>()
@@ -49,9 +59,14 @@ class FavoriteApi(
     }
 
     suspend fun updateNote(id: String, request: FavoriteUpdateNoteDto): Result<FavoriteResponseDto> = runCatching {
-        val response = client.put("$baseUrl/api/v1/me/favorites/$id") {
+        val bodyPayload = if (request.notes.isBlank() && request.personalNote.isNotBlank()) {
+            request.copy(notes = request.personalNote)
+        } else {
+            request
+        }
+        val response = client.put("$baseUrl/api/v1/member-app/favorites/$id") {
             contentType(ContentType.Application.Json)
-            setBody(request)
+            setBody(bodyPayload)
         }
         if (response.status == HttpStatusCode.OK) {
             response.body<FavoriteResponseDto>()
@@ -61,7 +76,7 @@ class FavoriteApi(
     }
 
     suspend fun deleteFavorite(id: String): Result<Unit> = runCatching {
-        val response = client.delete("$baseUrl/api/v1/me/favorites/$id")
+        val response = client.delete("$baseUrl/api/v1/member-app/favorites/$id")
         if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.NoContent) {
             throw GymVipHttpClient.parseResponseError(response)
         }

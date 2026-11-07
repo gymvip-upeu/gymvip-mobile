@@ -11,11 +11,15 @@ data class LoginRequestDto(
 @Serializable
 data class LoginResponseDto(
     val token: String,
-    val accountId: String,
+    val id: String? = null,
+    val accountId: String? = null,
     val email: String,
     val roles: List<String> = emptyList(),
     val expiresAt: String? = null
-)
+) {
+    val resolvedAccountId: String
+        get() = accountId ?: id ?: ""
+}
 
 @Serializable
 data class ActivationRequestDto(

@@ -63,18 +63,19 @@ class AuthRepositoryImpl(
 
         return loginResult.fold(
             onSuccess = { dto ->
+                val accountId = dto.resolvedAccountId
                 secureTokenStore.saveTokens(
                     accessToken = dto.token,
                     refreshToken = null,
-                    accountId = dto.accountId
+                    accountId = accountId
                 )
 
                 // Intentar obtener perfil completo del socio o guardar perfil básico
                 val now = Clock.System.now().toString()
-                val profileResult = memberApi.getProfile(dto.accountId)
+                val profileResult = memberApi.getProfile(accountId)
 
                 val profile = profileResult.getOrNull()?.toDomain(now) ?: MemberProfile(
-                    accountId = dto.accountId,
+                    accountId = accountId,
                     email = dto.email,
                     firstName = "Socio",
                     lastName = "VIP",
