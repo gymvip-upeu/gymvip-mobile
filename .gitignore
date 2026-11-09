@@ -8,3 +8,20 @@ build/
 .DS_Store
 local.properties
 .kotlin/
+
+# JVM / Compose Desktop distribución y artefactos locales
+composeApp/build/compose/
+composeApp/build/distributions/
+composeApp/build/run/
+composeApp/build/classes/kotlin/desktop/
+composeApp/build/classes/kotlin/jvm/
+*.hprof
+hs_err_pid*
+replay_pid*
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+gymvip.db*
+/out/
+

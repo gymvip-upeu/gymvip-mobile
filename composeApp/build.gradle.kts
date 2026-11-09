@@ -15,6 +15,12 @@ kotlin {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
         }
     }
+
+    jvm("desktop") {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+        }
+    }
     
     listOf(
         iosArm64(),
@@ -63,6 +69,15 @@ kotlin {
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
             implementation(libs.sqldelight.native.driver)
+        }
+
+        val desktopMain by getting {
+            dependencies {
+                implementation(compose.desktop.currentOs)
+                implementation(libs.ktor.client.okhttp)
+                implementation(libs.sqldelight.sqlite.driver)
+                implementation(libs.kotlinx.coroutines.swing)
+            }
         }
 
         commonTest.dependencies {
@@ -116,3 +131,15 @@ sqldelight {
         }
     }
 }
+
+compose.desktop {
+    application {
+        mainClass = "com.gymvip.mobile.MainKt"
+        nativeDistributions {
+            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            packageName = "com.gymvip.mobile"
+            packageVersion = "1.0.0"
+        }
+    }
+}
+
