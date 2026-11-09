@@ -1,5 +1,6 @@
 package com.gymvip.mobile.data.local
 
+import platform.Foundation.NSUserDefaults
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -8,7 +9,6 @@ actual class PlatformSecureTokenStore : SecureTokenStore {
     private var accessToken: String? = null
     private var refreshToken: String? = null
     private var accountId: String? = null
-    private var rememberedIdentifier: String? = null
 
     override suspend fun saveTokens(accessToken: String, refreshToken: String?, accountId: String) {
         mutex.withLock {
@@ -33,12 +33,22 @@ actual class PlatformSecureTokenStore : SecureTokenStore {
     }
 
     override suspend fun saveRememberedIdentifier(identifier: String) {
-        mutex.withLock { rememberedIdentifier = identifier }
+        mutex.withLock {
+            NSUserDefaults.standardUserDefaults.setObject(identifier, forKey = REMEMBERED_IDENTIFIER_KEY)
+        }
     }
 
-    override suspend fun getRememberedIdentifier(): String? = mutex.withLock { rememberedIdentifier }
+    override suspend fun getRememberedIdentifier(): String? = mutex.withLock {
+        NSUserDefaults.standardUserDefaults.stringForKey(REMEMBERED_IDENTIFIER_KEY)
+    }
 
     override suspend fun clearRememberedIdentifier() {
-        mutex.withLock { rememberedIdentifier = null }
+        mutex.withLock {
+            NSUserDefaults.standardUserDefaults.removeObjectForKey(REMEMBERED_IDENTIFIER_KEY)
+        }
+    }
+
+    private companion object {
+        const val REMEMBERED_IDENTIFIER_KEY = "gymvip.remembered_identifier"
     }
 }
