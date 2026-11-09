@@ -1,5 +1,11 @@
 package com.gymvip.mobile.data.remote.dto
 
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
+
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -37,3 +43,18 @@ data class ErrorResponseDto(
     val path: String? = null,
     val correlationId: String? = null
 )
+
+
+@Serializable
+data class CurrentUserDto(
+    val email: String = "",
+    val roles: List<JsonElement> = emptyList()
+) {
+    fun normalizedRoles(): List<String> = roles.mapNotNull { role ->
+        when (role) {
+            is JsonPrimitive -> role.contentOrNull
+            is JsonObject -> role["authority"]?.jsonPrimitive?.contentOrNull
+            else -> null
+        }
+    }.map { it.trim().uppercase() }.filter(String::isNotBlank).distinct()
+}
