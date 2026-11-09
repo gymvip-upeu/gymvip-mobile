@@ -15,7 +15,8 @@ data class MemberProfile(
     val documentNumber: String,
     val phone: String?,
     val status: AccountStatus,
-    val lastSyncedAt: String
+    val lastSyncedAt: String,
+    val roles: List<String> = emptyList()
 ) {
     val fullName: String get() = "$firstName $lastName"
 }
