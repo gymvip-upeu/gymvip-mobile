@@ -34,7 +34,10 @@ import com.gymvip.mobile.presentation.theme.SuccessGreen
 import com.gymvip.mobile.presentation.viewmodel.ProfileViewModel
 
 @Composable
-fun ProfileScreen(viewModel: ProfileViewModel) {
+fun ProfileScreen(
+    viewModel: ProfileViewModel,
+    userRoles: List<String> = emptyList()
+) {
     val state by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
 
@@ -46,6 +49,18 @@ fun ProfileScreen(viewModel: ProfileViewModel) {
             .padding(16.dp)
     ) {
         val profile = state.profile
+        val roles = userRoles.ifEmpty { profile?.roles.orEmpty() }
+        val accountType = when {
+            roles.any { it.contains("ADMIN", ignoreCase = true) } -> "Administrador"
+            roles.any { it.contains("RECEPCION", ignoreCase = true) } -> "Personal de recepción"
+            roles.any { it.contains("CLIENT", ignoreCase = true) || it.contains("SOCIO", ignoreCase = true) || it.contains("MEMBER", ignoreCase = true) } -> "Socio / miembro"
+            else -> "Socio / miembro"
+        }
+        val accountStatus = when (profile?.status?.name) {
+            "BLOQUEADO" -> "CUENTA BLOQUEADA"
+            "INACTIVO" -> "CUENTA INACTIVA"
+            else -> "CUENTA ACTIVA"
+        }
 
         // Header con Avatar VIP
         Card(
@@ -93,11 +108,18 @@ fun ProfileScreen(viewModel: ProfileViewModel) {
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        text = "CUENTA ACTIVA",
-                        color = SuccessGreen,
+                        text = accountStatus,
+                        color = if (accountStatus == "CUENTA ACTIVA") SuccessGreen else DangerRed,
                         style = MaterialTheme.typography.labelSmall
                     )
                 }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "Tipo de cuenta: $accountType",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = GoldPrimary
+                )
             }
         }
 
