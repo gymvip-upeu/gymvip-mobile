@@ -6,6 +6,7 @@ import com.gymvip.mobile.data.remote.dto.LoginResponseDto
 import com.gymvip.mobile.domain.error.AppError
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -23,6 +24,15 @@ class AuthApi(
         }
         if (response.status == HttpStatusCode.OK) {
             response.body<LoginResponseDto>()
+        } else {
+            throw GymVipHttpClient.parseResponseError(response)
+        }
+    }
+
+    suspend fun getCurrentUser(): Result<CurrentUserDto> = runCatching {
+        val response = client.get("$baseUrl/api/v1/auth/me")
+        if (response.status == HttpStatusCode.OK) {
+            response.body<CurrentUserDto>()
         } else {
             throw GymVipHttpClient.parseResponseError(response)
         }
