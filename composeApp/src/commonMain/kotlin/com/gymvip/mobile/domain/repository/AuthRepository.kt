@@ -21,4 +21,8 @@ interface AuthRepository {
     suspend fun getRememberedIdentifier(): String?
     suspend fun saveRememberedIdentifier(identifier: String)
     suspend fun clearRememberedIdentifier()
+    suspend fun getRememberedPassword(): String? = null
+    suspend fun saveRememberedPassword(password: String) {}
+    suspend fun clearRememberedPassword() {}
+    suspend fun supportsSecureCredentialStorage(): Boolean = false
 }
