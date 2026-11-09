@@ -1,5 +1,6 @@
 package com.gymvip.mobile.data.remote.api
 
+import com.gymvip.mobile.data.remote.dto.CurrentUserDto
 import com.gymvip.mobile.data.remote.dto.ActivationRequestDto
 import com.gymvip.mobile.data.remote.dto.LoginRequestDto
 import com.gymvip.mobile.data.remote.dto.LoginResponseDto
