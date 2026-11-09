@@ -18,6 +18,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -25,6 +27,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,6 +53,14 @@ fun LoginScreen(
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var rememberCredentials by remember { mutableStateOf(false) }
+
+    LaunchedEffect(state.rememberedIdentifier) {
+        if (!state.rememberedIdentifier.isNullOrBlank() && email.isBlank()) {
+            email = state.rememberedIdentifier ?: ""
+            rememberCredentials = true
+        }
+    }
 
     val scrollState = rememberScrollState()
 
@@ -124,6 +135,31 @@ fun LoginScreen(
                 )
             )
 
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = rememberCredentials,
+                    onCheckedChange = { rememberCredentials = it },
+                    colors = CheckboxDefaults.colors(checkedColor = GoldPrimary)
+                )
+                Text(
+                    text = "Recordar credenciales en este dispositivo",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Text(
+                text = "Su identificador se protege en el almacenamiento seguro de la plataforma (Keystore/Keychain). La contraseña nunca se almacena en memoria plana.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 4.dp)
+            )
+
             if (state.errorMessage != null) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
@@ -133,10 +169,10 @@ fun LoginScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             Button(
-                onClick = { viewModel.login(email, password) },
+                onClick = { viewModel.login(email, password, rememberCredentials) },
                 enabled = !state.isLoading,
                 modifier = Modifier
                     .fillMaxWidth()

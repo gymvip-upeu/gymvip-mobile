@@ -19,7 +19,9 @@ import kotlinx.coroutines.launch
 data class AuthUiState(
     val isLoading: Boolean = false,
     val isAuthenticated: Boolean = false,
+    val isCachedOffline: Boolean = false,
     val authenticatedProfile: MemberProfile? = null,
+    val rememberedIdentifier: String? = null,
     val errorMessage: String? = null,
     val successMessage: String? = null
 )
@@ -34,6 +36,13 @@ class AuthViewModel(
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
     init {
+        scope.launch {
+            val remembered = authRepository.getRememberedIdentifier()
+            if (!remembered.isNullOrBlank()) {
+                _uiState.value = _uiState.value.copy(rememberedIdentifier = remembered)
+            }
+        }
+
         authRepository.getAuthState().onEach { state ->
             when (state) {
                 is AuthState.Loading -> {
@@ -43,6 +52,7 @@ class AuthViewModel(
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         isAuthenticated = true,
+                        isCachedOffline = state.isCachedOffline,
                         authenticatedProfile = state.profile,
                         errorMessage = null
                     )
@@ -51,6 +61,7 @@ class AuthViewModel(
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         isAuthenticated = false,
+                        isCachedOffline = false,
                         authenticatedProfile = null
                     )
                 }
@@ -73,16 +84,27 @@ class AuthViewModel(
         }
     }
 
-    fun login(email: String, pass: String) {
+    fun login(email: String, pass: String, rememberCredentials: Boolean = false) {
         scope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             val result = loginUseCase(email, pass)
-            result.onFailure { error ->
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    errorMessage = error.message ?: "Error al autenticar"
-                )
-            }
+            result.fold(
+                onSuccess = {
+                    if (rememberCredentials) {
+                        authRepository.saveRememberedIdentifier(email)
+                        _uiState.value = _uiState.value.copy(rememberedIdentifier = email)
+                    } else {
+                        authRepository.clearRememberedIdentifier()
+                        _uiState.value = _uiState.value.copy(rememberedIdentifier = null)
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        errorMessage = error.message ?: "Error al autenticar"
+                    )
+                }
+            )
         }
     }
 

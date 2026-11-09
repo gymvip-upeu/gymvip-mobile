@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 sealed class AuthState {
     data object Idle : AuthState()
     data object Loading : AuthState()
-    data class Authenticated(val profile: MemberProfile) : AuthState()
+    data class Authenticated(val profile: MemberProfile, val isCachedOffline: Boolean = false) : AuthState()
     data object Unauthenticated : AuthState()
     data class Error(val message: String) : AuthState()
 }
@@ -18,4 +18,7 @@ interface AuthRepository {
     suspend fun activateAccount(token: String, newPassword: String): Result<Unit>
     suspend fun getStoredAccountId(): String?
     suspend fun checkExistingSession(): Boolean
+    suspend fun getRememberedIdentifier(): String?
+    suspend fun saveRememberedIdentifier(identifier: String)
+    suspend fun clearRememberedIdentifier()
 }

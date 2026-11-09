@@ -6,6 +6,9 @@ interface SecureTokenStore {
     suspend fun getRefreshToken(): String?
     suspend fun getAccountId(): String?
     suspend fun clear()
+    suspend fun saveRememberedIdentifier(identifier: String)
+    suspend fun getRememberedIdentifier(): String?
+    suspend fun clearRememberedIdentifier()
 }
 
 expect class PlatformSecureTokenStore : SecureTokenStore

@@ -200,3 +200,46 @@ DELETE FROM sync_queue WHERE id = ?;
 
 deleteSyncQueueByAccountId:
 DELETE FROM sync_queue WHERE accountId = ?;
+
+countPendingOperations:
+SELECT count(*) FROM sync_queue WHERE accountId = ?;
+
+-- Queries para gym_service (HU-33)
+CREATE TABLE gym_service (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    schedule TEXT NOT NULL,
+    location TEXT NOT NULL,
+    isIncluded INTEGER NOT NULL DEFAULT 1
+);
+
+selectAllGymServices:
+SELECT * FROM gym_service ORDER BY name ASC;
+
+insertOrReplaceGymService:
+INSERT OR REPLACE INTO gym_service(id, name, description, schedule, location, isIncluded)
+VALUES (?, ?, ?, ?, ?, ?);
+
+clearGymServices:
+DELETE FROM gym_service;
+
+-- Queries para member_consent (HU-05)
+CREATE TABLE member_consent (
+    accountId TEXT PRIMARY KEY NOT NULL,
+    termsAccepted INTEGER NOT NULL DEFAULT 0,
+    privacyAcknowledged INTEGER NOT NULL DEFAULT 0,
+    whatsappConsent INTEGER NOT NULL DEFAULT 0,
+    documentVersion TEXT NOT NULL DEFAULT 'v1.0',
+    acceptedAt TEXT
+);
+
+selectConsentByAccountId:
+SELECT * FROM member_consent WHERE accountId = ? LIMIT 1;
+
+insertOrReplaceConsent:
+INSERT OR REPLACE INTO member_consent(accountId, termsAccepted, privacyAcknowledged, whatsappConsent, documentVersion, acceptedAt)
+VALUES (?, ?, ?, ?, ?, ?);
+
+deleteConsentByAccountId:
+DELETE FROM member_consent WHERE accountId = ?;

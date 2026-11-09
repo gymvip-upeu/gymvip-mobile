@@ -157,4 +157,77 @@ class MemberApi(
             throw GymVipHttpClient.parseResponseError(response)
         }
     }
+
+    /**
+     * Consulta preguntas frecuentes oficiales (GET /api/v1/member-app/faqs, HU-28).
+     */
+    suspend fun getFaqs(): Result<List<FaqDto>> = runCatching {
+        val response = client.get("$baseUrl/api/v1/member-app/faqs")
+        if (response.status == HttpStatusCode.OK) {
+            response.body<List<FaqDto>>()
+        } else {
+            throw GymVipHttpClient.parseResponseError(response)
+        }
+    }
+
+    /**
+     * Consulta catálogo de servicios e instalaciones publicadas (GET /api/v1/member-app/services, HU-33).
+     */
+    suspend fun getServices(): Result<List<GymServiceDto>> = runCatching {
+        val response = client.get("$baseUrl/api/v1/member-app/services")
+        if (response.status == HttpStatusCode.OK) {
+            response.body<List<GymServiceDto>>()
+        } else {
+            throw GymVipHttpClient.parseResponseError(response)
+        }
+    }
+
+    /**
+     * Consulta bandeja de notificaciones y avisos del socio (GET /api/v1/member-app/inbox, HU-15, HU-34).
+     */
+    suspend fun getInbox(): Result<List<InboxItemDto>> = runCatching {
+        val response = client.get("$baseUrl/api/v1/member-app/inbox")
+        if (response.status == HttpStatusCode.OK) {
+            response.body<List<InboxItemDto>>()
+        } else {
+            throw GymVipHttpClient.parseResponseError(response)
+        }
+    }
+
+    /**
+     * Marca un aviso como leído (POST /api/v1/member-app/inbox/{id}/read, HU-34).
+     */
+    suspend fun markInboxAsRead(itemId: String): Result<Unit> = runCatching {
+        val response = client.post("$baseUrl/api/v1/member-app/inbox/$itemId/read")
+        if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.NoContent) {
+            throw GymVipHttpClient.parseResponseError(response)
+        }
+    }
+
+    /**
+     * Consulta el estado de consentimientos legales del socio (GET /api/v1/member-app/consents, HU-05).
+     */
+    suspend fun getConsents(): Result<ConsentStatusDto> = runCatching {
+        val response = client.get("$baseUrl/api/v1/member-app/consents")
+        if (response.status == HttpStatusCode.OK) {
+            response.body<ConsentStatusDto>()
+        } else {
+            throw GymVipHttpClient.parseResponseError(response)
+        }
+    }
+
+    /**
+     * Registra aceptación de términos, privacidad y consentimiento de comunicaciones (POST /api/v1/member-app/consents, HU-05, HU-15).
+     */
+    suspend fun submitConsents(request: ConsentSubmitRequestDto): Result<ConsentStatusDto> = runCatching {
+        val response = client.post("$baseUrl/api/v1/member-app/consents") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (response.status == HttpStatusCode.OK) {
+            response.body<ConsentStatusDto>()
+        } else {
+            throw GymVipHttpClient.parseResponseError(response)
+        }
+    }
 }

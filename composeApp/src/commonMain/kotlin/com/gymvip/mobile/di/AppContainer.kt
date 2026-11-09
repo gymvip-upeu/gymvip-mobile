@@ -3,37 +3,13 @@ package com.gymvip.mobile.di
 import com.gymvip.mobile.data.local.DatabaseDriverFactory
 import com.gymvip.mobile.data.local.GymVipDatabase
 import com.gymvip.mobile.data.local.SecureTokenStore
-import com.gymvip.mobile.data.remote.api.AuthApi
-import com.gymvip.mobile.data.remote.api.CatalogApi
-import com.gymvip.mobile.data.remote.api.FavoriteApi
-import com.gymvip.mobile.data.remote.api.GymVipHttpClient
-import com.gymvip.mobile.data.remote.api.MemberApi
-import com.gymvip.mobile.data.repository.AuthRepositoryImpl
-import com.gymvip.mobile.data.repository.CatalogRepositoryImpl
-import com.gymvip.mobile.data.repository.ConfigRepositoryImpl
-import com.gymvip.mobile.data.repository.FaqRepositoryImpl
-import com.gymvip.mobile.data.repository.FavoriteRepositoryImpl
-import com.gymvip.mobile.data.repository.InboxRepositoryImpl
-import com.gymvip.mobile.data.repository.MemberRepositoryImpl
-import com.gymvip.mobile.data.sync.SyncQueueManager
-import com.gymvip.mobile.domain.repository.AuthRepository
-import com.gymvip.mobile.domain.repository.CatalogRepository
-import com.gymvip.mobile.domain.repository.ConfigRepository
-import com.gymvip.mobile.domain.repository.FaqRepository
-import com.gymvip.mobile.domain.repository.FavoriteRepository
-import com.gymvip.mobile.domain.repository.InboxRepository
-import com.gymvip.mobile.domain.repository.MemberRepository
-import com.gymvip.mobile.domain.usecase.ActivateAccountUseCase
-import com.gymvip.mobile.domain.usecase.GetCatalogUseCase
-import com.gymvip.mobile.domain.usecase.GetFaqsUseCase
-import com.gymvip.mobile.domain.usecase.GetInboxUseCase
-import com.gymvip.mobile.domain.usecase.GetMembershipSummaryUseCase
-import com.gymvip.mobile.domain.usecase.GetPaymentHistoryUseCase
-import com.gymvip.mobile.domain.usecase.LoginUseCase
-import com.gymvip.mobile.domain.usecase.ManageFavoritesUseCase
-import com.gymvip.mobile.domain.usecase.SyncFavoritesUseCase
+import com.gymvip.mobile.domain.repository.*
+import com.gymvip.mobile.domain.usecase.*
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.get
+import org.koin.core.context.GlobalContext
 
-object AppContainer {
+object AppContainer : KoinComponent {
 
     private var initialized = false
 
@@ -59,6 +35,12 @@ object AppContainer {
         private set
 
     lateinit var inboxRepository: InboxRepository
+        private set
+
+    lateinit var gymServiceRepository: GymServiceRepository
+        private set
+
+    lateinit var legalConsentRepository: LegalConsentRepository
         private set
 
     lateinit var configRepository: ConfigRepository
@@ -98,36 +80,32 @@ object AppContainer {
     ) {
         if (initialized) return
 
-        val driver = driverFactory.createDriver()
-        database = GymVipDatabase(driver)
-        secureTokenStore = tokenStore
+        if (GlobalContext.getOrNull() == null) {
+            initKoin(driverFactory, tokenStore)
+        }
 
-        val httpClient = GymVipHttpClient.create(tokenStore = secureTokenStore)
+        database = get<GymVipDatabase>()
+        secureTokenStore = get<SecureTokenStore>()
 
-        val authApi = AuthApi(httpClient)
-        val memberApi = MemberApi(httpClient)
-        val catalogApi = CatalogApi(httpClient)
-        val favoriteApi = FavoriteApi(httpClient)
+        authRepository = get<AuthRepository>()
+        memberRepository = get<MemberRepository>()
+        catalogRepository = get<CatalogRepository>()
+        favoriteRepository = get<FavoriteRepository>()
+        faqRepository = get<FaqRepository>()
+        inboxRepository = get<InboxRepository>()
+        gymServiceRepository = get<GymServiceRepository>()
+        legalConsentRepository = get<LegalConsentRepository>()
+        configRepository = get<ConfigRepository>()
 
-        val syncQueueManager = SyncQueueManager(database, favoriteApi)
-
-        authRepository = AuthRepositoryImpl(authApi, memberApi, secureTokenStore, database)
-        memberRepository = MemberRepositoryImpl(memberApi, database)
-        catalogRepository = CatalogRepositoryImpl(catalogApi, database)
-        favoriteRepository = FavoriteRepositoryImpl(favoriteApi, catalogRepository, database, syncQueueManager)
-        faqRepository = FaqRepositoryImpl(database)
-        inboxRepository = InboxRepositoryImpl(database)
-        configRepository = ConfigRepositoryImpl()
-
-        loginUseCase = LoginUseCase(authRepository)
-        activateAccountUseCase = ActivateAccountUseCase(authRepository)
-        getMembershipSummaryUseCase = GetMembershipSummaryUseCase(memberRepository)
-        getPaymentHistoryUseCase = GetPaymentHistoryUseCase(memberRepository)
-        getCatalogUseCase = GetCatalogUseCase(catalogRepository)
-        manageFavoritesUseCase = ManageFavoritesUseCase(favoriteRepository)
-        syncFavoritesUseCase = SyncFavoritesUseCase(favoriteRepository)
-        getFaqsUseCase = GetFaqsUseCase(faqRepository)
-        getInboxUseCase = GetInboxUseCase(inboxRepository)
+        loginUseCase = get<LoginUseCase>()
+        activateAccountUseCase = get<ActivateAccountUseCase>()
+        getMembershipSummaryUseCase = get<GetMembershipSummaryUseCase>()
+        getPaymentHistoryUseCase = get<GetPaymentHistoryUseCase>()
+        getCatalogUseCase = get<GetCatalogUseCase>()
+        manageFavoritesUseCase = get<ManageFavoritesUseCase>()
+        syncFavoritesUseCase = get<SyncFavoritesUseCase>()
+        getFaqsUseCase = get<GetFaqsUseCase>()
+        getInboxUseCase = get<GetInboxUseCase>()
 
         initialized = true
     }

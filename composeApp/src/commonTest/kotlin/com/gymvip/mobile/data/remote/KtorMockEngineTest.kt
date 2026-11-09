@@ -3,6 +3,8 @@ package com.gymvip.mobile.data.remote
 import com.gymvip.mobile.data.remote.api.AuthApi
 import com.gymvip.mobile.data.remote.api.FavoriteApi
 import com.gymvip.mobile.data.remote.api.GymVipHttpClient
+import com.gymvip.mobile.data.remote.api.MemberApi
+import com.gymvip.mobile.data.remote.dto.ConsentSubmitRequestDto
 import com.gymvip.mobile.data.remote.dto.FavoriteRequestDto
 import com.gymvip.mobile.data.remote.dto.FavoriteUpdateNoteDto
 import com.gymvip.mobile.data.remote.dto.LoginRequestDto
@@ -132,5 +134,115 @@ class KtorMockEngineTest {
         val result = api.deleteFavorite("fav_serv_123")
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is AppError.Server)
+    }
+
+    @Test
+    fun testGetFaqsSuccess200() = runTest {
+        val mockEngine = MockEngine { request ->
+            respond(
+                content = """[{"id":"faq-1","question":"¿Horario?","answer":"6am a 10pm","category":"General","orderIndex":1}]""",
+                status = HttpStatusCode.OK,
+                headers = jsonHeaders
+            )
+        }
+        val client = GymVipHttpClient.create(engine = mockEngine, enableLogging = false)
+        val api = MemberApi(client, baseUrl = "https://mock.gymvip.pe")
+
+        val result = api.getFaqs()
+        assertTrue(result.isSuccess)
+        val list = result.getOrThrow()
+        assertEquals(1, list.size)
+        assertEquals("faq-1", list[0].id)
+    }
+
+    @Test
+    fun testGetServicesSuccess200() = runTest {
+        val mockEngine = MockEngine { request ->
+            respond(
+                content = """[{"id":"serv-1","name":"Musculación","description":"Pesas","schedule":"6am-10pm","location":"Piso 1","isIncluded":true}]""",
+                status = HttpStatusCode.OK,
+                headers = jsonHeaders
+            )
+        }
+        val client = GymVipHttpClient.create(engine = mockEngine, enableLogging = false)
+        val api = MemberApi(client, baseUrl = "https://mock.gymvip.pe")
+
+        val result = api.getServices()
+        assertTrue(result.isSuccess)
+        val list = result.getOrThrow()
+        assertEquals("serv-1", list[0].id)
+        assertTrue(list[0].isIncluded)
+    }
+
+    @Test
+    fun testConsentsGetAndSubmit200() = runTest {
+        val mockEngine = MockEngine { request ->
+            respond(
+                content = """{"termsAccepted":true,"privacyAcknowledged":true,"whatsappConsent":true,"documentVersion":"v1.0","acceptedAt":"2026-11-09T10:00:00Z"}""",
+                status = HttpStatusCode.OK,
+                headers = jsonHeaders
+            )
+        }
+        val client = GymVipHttpClient.create(engine = mockEngine, enableLogging = false)
+        val api = MemberApi(client, baseUrl = "https://mock.gymvip.pe")
+
+        val getRes = api.getConsents()
+        assertTrue(getRes.isSuccess)
+        assertTrue(getRes.getOrThrow().termsAccepted)
+
+        val submitRes = api.submitConsents(ConsentSubmitRequestDto(true, true, true, "v1.0"))
+        assertTrue(submitRes.isSuccess)
+        assertTrue(submitRes.getOrThrow().whatsappConsent)
+    }
+
+    @Test
+    fun testInboxGetAndMarkRead() = runTest {
+        val mockEngine = MockEngine { request ->
+            if (request.url.encodedPath.contains("/read")) {
+                respond(content = "", status = HttpStatusCode.OK, headers = jsonHeaders)
+            } else {
+                respond(
+                    content = """[{"id":"msg-1","title":"Bienvenido","message":"Hola","category":"COMUNICADO","createdAt":"2026-11-09T08:00:00Z","isRead":false}]""",
+                    status = HttpStatusCode.OK,
+                    headers = jsonHeaders
+                )
+            }
+        }
+        val client = GymVipHttpClient.create(engine = mockEngine, enableLogging = false)
+        val api = MemberApi(client, baseUrl = "https://mock.gymvip.pe")
+
+        val inbox = api.getInbox()
+        assertTrue(inbox.isSuccess)
+        assertEquals(1, inbox.getOrThrow().size)
+
+        val mark = api.markInboxAsRead("msg-1")
+        assertTrue(mark.isSuccess)
+    }
+
+    @Test
+    fun testDynamicQrSuccess200() = runTest {
+        val mockEngine = MockEngine { request ->
+            respond(
+                content = """{
+                    "token":"gymvip://access/v1?cid=123&code=VIP-01&nonce=abc&exp=1800000000",
+                    "memberCode":"VIP-01",
+                    "memberName":"Valeria Mendoza",
+                    "expiresAtUtc":"2026-11-09T12:01:00Z",
+                    "ttlSeconds":60,
+                    "disclaimer":"No es autorización de ingreso."
+                }""",
+                status = HttpStatusCode.OK,
+                headers = jsonHeaders
+            )
+        }
+        val client = GymVipHttpClient.create(engine = mockEngine, enableLogging = false)
+        val api = MemberApi(client, baseUrl = "https://mock.gymvip.pe")
+
+        val qrRes = api.getDynamicQr()
+        assertTrue(qrRes.isSuccess)
+        val qr = qrRes.getOrThrow()
+        assertEquals("VIP-01", qr.memberCode)
+        assertEquals(60, qr.ttlSeconds)
+        assertTrue(qr.token.startsWith("gymvip://access/v1"))
     }
 }

@@ -31,6 +31,8 @@ fun VipDrawerContent(
     memberName: String,
     memberEmail: String,
     onNavigateFaq: () -> Unit,
+    onNavigateServices: () -> Unit,
+    onNavigateTermsAndPrivacy: () -> Unit,
     onNavigatePreferences: () -> Unit,
     onSyncNow: () -> Unit,
     onLogout: () -> Unit
@@ -81,10 +83,24 @@ fun VipDrawerContent(
 
             // Ítems del menú secundario
             DrawerMenuItem(
+                icon = "🏋️",
+                title = "Servicios e Instalaciones",
+                subtitle = "Áreas y equipamiento VIP",
+                onClick = onNavigateServices
+            )
+
+            DrawerMenuItem(
                 icon = "❓",
                 title = "Ayuda y Preguntas Frecuentes",
                 subtitle = "Horarios, normas y soporte",
                 onClick = onNavigateFaq
+            )
+
+            DrawerMenuItem(
+                icon = "📜",
+                title = "Términos y Privacidad",
+                subtitle = "Consentimientos y datos",
+                onClick = onNavigateTermsAndPrivacy
             )
 
             DrawerMenuItem(

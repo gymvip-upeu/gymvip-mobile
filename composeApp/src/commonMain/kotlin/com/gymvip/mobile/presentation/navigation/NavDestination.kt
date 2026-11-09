@@ -15,4 +15,6 @@ sealed class NavDestination {
     data class Main(val selectedTab: MainTab = MainTab.HOME) : NavDestination()
     data object Faq : NavDestination()
     data object Preferences : NavDestination()
+    data object Services : NavDestination()
+    data object TermsAndPrivacy : NavDestination()
 }

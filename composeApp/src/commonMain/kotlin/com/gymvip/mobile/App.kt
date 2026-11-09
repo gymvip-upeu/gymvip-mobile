@@ -30,9 +30,11 @@ import com.gymvip.mobile.presentation.screen.catalog.CatalogScreen
 import com.gymvip.mobile.presentation.screen.faq.FaqScreen
 import com.gymvip.mobile.presentation.screen.home.HomeScreen
 import com.gymvip.mobile.presentation.screen.inbox.InboxScreen
+import com.gymvip.mobile.presentation.screen.legal.TermsAndPrivacyScreen
 import com.gymvip.mobile.presentation.screen.membership.MembershipScreen
 import com.gymvip.mobile.presentation.screen.preferences.PreferencesScreen
 import com.gymvip.mobile.presentation.screen.profile.ProfileScreen
+import com.gymvip.mobile.presentation.screen.services.ServicesScreen
 import com.gymvip.mobile.presentation.screen.splash.SplashScreen
 import com.gymvip.mobile.presentation.theme.GymVipTheme
 import com.gymvip.mobile.presentation.viewmodel.AuthViewModel
@@ -113,6 +115,22 @@ fun App() {
                 )
             }
 
+            is NavDestination.Services -> {
+                ServicesScreen(
+                    repository = AppContainer.gymServiceRepository,
+                    onBack = { currentDestination = NavDestination.Main(currentTab) }
+                )
+            }
+
+            is NavDestination.TermsAndPrivacy -> {
+                val accountId = authState.authenticatedProfile?.accountId ?: "unknown_account"
+                TermsAndPrivacyScreen(
+                    repository = AppContainer.legalConsentRepository,
+                    accountId = accountId,
+                    onBackOrAccepted = { currentDestination = NavDestination.Main(currentTab) }
+                )
+            }
+
             is NavDestination.Preferences -> {
                 PreferencesScreen(
                     viewModel = preferencesViewModel,
@@ -178,6 +196,18 @@ fun App() {
                                 coroutineScope.launch {
                                     drawerState.close()
                                     currentDestination = NavDestination.Faq
+                                }
+                            },
+                            onNavigateServices = {
+                                coroutineScope.launch {
+                                    drawerState.close()
+                                    currentDestination = NavDestination.Services
+                                }
+                            },
+                            onNavigateTermsAndPrivacy = {
+                                coroutineScope.launch {
+                                    drawerState.close()
+                                    currentDestination = NavDestination.TermsAndPrivacy
                                 }
                             },
                             onNavigatePreferences = {

@@ -8,6 +8,7 @@ actual class PlatformSecureTokenStore : SecureTokenStore {
     private var accessToken: String? = null
     private var refreshToken: String? = null
     private var accountId: String? = null
+    private var rememberedIdentifier: String? = null
 
     override suspend fun saveTokens(accessToken: String, refreshToken: String?, accountId: String) {
         mutex.withLock {
@@ -29,5 +30,15 @@ actual class PlatformSecureTokenStore : SecureTokenStore {
             refreshToken = null
             accountId = null
         }
+    }
+
+    override suspend fun saveRememberedIdentifier(identifier: String) {
+        mutex.withLock { rememberedIdentifier = identifier }
+    }
+
+    override suspend fun getRememberedIdentifier(): String? = mutex.withLock { rememberedIdentifier }
+
+    override suspend fun clearRememberedIdentifier() {
+        mutex.withLock { rememberedIdentifier = null }
     }
 }

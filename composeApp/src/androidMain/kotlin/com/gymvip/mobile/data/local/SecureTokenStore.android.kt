@@ -46,12 +46,29 @@ actual class PlatformSecureTokenStore(private val context: Context) : SecureToke
     }
 
     override suspend fun clear() {
-        prefs.edit().clear().apply()
+        prefs.edit()
+            .remove(KEY_ACCESS_TOKEN)
+            .remove(KEY_REFRESH_TOKEN)
+            .remove(KEY_ACCOUNT_ID)
+            .apply()
+    }
+
+    override suspend fun saveRememberedIdentifier(identifier: String) {
+        prefs.edit().putString(KEY_REMEMBERED_IDENTIFIER, identifier).apply()
+    }
+
+    override suspend fun getRememberedIdentifier(): String? {
+        return prefs.getString(KEY_REMEMBERED_IDENTIFIER, null)
+    }
+
+    override suspend fun clearRememberedIdentifier() {
+        prefs.edit().remove(KEY_REMEMBERED_IDENTIFIER).apply()
     }
 
     companion object {
         private const val KEY_ACCESS_TOKEN = "jwt_access_token"
         private const val KEY_REFRESH_TOKEN = "jwt_refresh_token"
         private const val KEY_ACCOUNT_ID = "auth_account_id"
+        private const val KEY_REMEMBERED_IDENTIFIER = "remembered_identifier"
     }
 }

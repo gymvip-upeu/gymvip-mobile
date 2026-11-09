@@ -245,3 +245,50 @@ data class PasswordChangeResponseDto(
     val changed: Boolean = false,
     val requiresLogin: Boolean = true
 )
+
+@Serializable
+data class FaqDto(
+    val id: String,
+    val question: String,
+    val answer: String,
+    val category: String,
+    val orderIndex: Int = 0
+)
+
+@Serializable
+data class InboxItemDto(
+    val id: String,
+    val accountId: String? = null,
+    val title: String,
+    val message: String,
+    val category: String = "COMUNICADO",
+    val createdAt: String,
+    val isRead: Boolean = false
+)
+
+@Serializable
+data class GymServiceDto(
+    val id: String,
+    val name: String,
+    val description: String,
+    val schedule: String,
+    val location: String,
+    val isIncluded: Boolean = true
+)
+
+@Serializable
+data class ConsentStatusDto(
+    val termsAccepted: Boolean = false,
+    val privacyAcknowledged: Boolean = false,
+    val whatsappConsent: Boolean = false,
+    val documentVersion: String = "v1.0",
+    val acceptedAt: String? = null
+)
+
+@Serializable
+data class ConsentSubmitRequestDto(
+    val termsAccepted: Boolean,
+    val privacyAcknowledged: Boolean,
+    val whatsappConsent: Boolean = false,
+    val documentVersion: String = "v1.0"
+)

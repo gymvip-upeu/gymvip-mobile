@@ -33,25 +33,45 @@ class AuthRepositoryImpl(
 
         if (!token.isNullOrBlank() && !accountId.isNullOrBlank()) {
             val localProfile = database.gymVipDatabaseQueries.selectProfileByAccountId(accountId).executeAsOneOrNull()
-            if (localProfile != null) {
-                _authState.value = AuthState.Authenticated(localProfile.toDomain())
-                return true
-            } else {
-                // Perfil básico inicial si aún no sincronizó
-                val fallbackProfile = MemberProfile(
-                    accountId = accountId,
-                    email = "",
-                    firstName = "Socio",
-                    lastName = "VIP",
-                    documentType = "DNI",
-                    documentNumber = "",
-                    phone = null,
-                    status = AccountStatus.ACTIVO,
-                    lastSyncedAt = Clock.System.now().toString()
+
+            // Intentar revalidación con backend si es posible
+            val remoteResult = memberApi.getProfile(accountId)
+            if (remoteResult.isSuccess) {
+                val now = Clock.System.now().toString()
+                val profile = remoteResult.getOrThrow().toDomain(now)
+                database.gymVipDatabaseQueries.insertOrReplaceProfile(
+                    accountId = profile.accountId,
+                    email = profile.email,
+                    firstName = profile.firstName,
+                    lastName = profile.lastName,
+                    documentType = profile.documentType,
+                    documentNumber = profile.documentNumber,
+                    phone = profile.phone,
+                    status = profile.status.name,
+                    lastSyncedAt = profile.lastSyncedAt
                 )
-                _authState.value = AuthState.Authenticated(fallbackProfile)
+                _authState.value = AuthState.Authenticated(profile, isCachedOffline = false)
                 return true
             }
+
+            // Si falló por 401 o 403 (sesión expirada o revocada), limpiar tokens y requerir login
+            val err = remoteResult.exceptionOrNull()
+            if (err is AppError.Unauthorized || err is AppError.Forbidden) {
+                secureTokenStore.clear()
+                _authState.value = AuthState.Unauthenticated
+                return false
+            }
+
+            // Si hay desconexión pero existe perfil local previamente sincronizado:
+            if (localProfile != null) {
+                _authState.value = AuthState.Authenticated(localProfile.toDomain(), isCachedOffline = true)
+                return true
+            }
+
+            // Sin perfil local y sin validación del servidor: no inventar perfil ACTIVO arbitrario
+            secureTokenStore.clear()
+            _authState.value = AuthState.Unauthenticated
+            return false
         }
         _authState.value = AuthState.Unauthenticated
         return false
@@ -121,9 +141,8 @@ class AuthRepositoryImpl(
                 database.gymVipDatabaseQueries.deleteProfileByAccountId(accountId)
                 database.gymVipDatabaseQueries.deleteMembershipByAccountId(accountId)
                 database.gymVipDatabaseQueries.deletePaymentsByAccountId(accountId)
-                database.gymVipDatabaseQueries.deleteFavoritesByAccountId(accountId)
-                database.gymVipDatabaseQueries.deleteInboxByAccountId(accountId)
-                database.gymVipDatabaseQueries.deleteSyncQueueByAccountId(accountId)
+                // Se retienen favoritos y sync_queue aislados por accountId para no perder operaciones
+                // pendientes del socio silenciosamente tras desconexión o logout
             }
         }
 
@@ -138,5 +157,17 @@ class AuthRepositoryImpl(
 
     override suspend fun getStoredAccountId(): String? {
         return secureTokenStore.getAccountId()
+    }
+
+    override suspend fun getRememberedIdentifier(): String? {
+        return secureTokenStore.getRememberedIdentifier()
+    }
+
+    override suspend fun saveRememberedIdentifier(identifier: String) {
+        secureTokenStore.saveRememberedIdentifier(identifier)
+    }
+
+    override suspend fun clearRememberedIdentifier() {
+        secureTokenStore.clearRememberedIdentifier()
     }
 }
