@@ -107,19 +107,14 @@ fun PreferencesScreen(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "GYM VIP Mobile KMP",
+                    text = "GYM VIP",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Versión: 1.0.0 (Kotlin Multiplatform + Compose Multiplatform)",
+                    text = "Versión de la aplicación: 1.0.0",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "Base de datos local: SQLite (SQLDelight offline-first)",
-                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
