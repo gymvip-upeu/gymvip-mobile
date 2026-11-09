@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.QrCodeScanner
+import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Icon
@@ -46,6 +47,7 @@ fun VipDrawerContent(
     onNavigateServices: () -> Unit,
     onNavigateTermsAndPrivacy: () -> Unit,
     onNavigatePreferences: () -> Unit,
+    onNavigatePermissions: () -> Unit = {},
     onNavigateAdminScanner: () -> Unit = {},
     onSyncNow: () -> Unit,
     onLogout: () -> Unit
@@ -126,6 +128,13 @@ fun VipDrawerContent(
                 title = "Preferencias de Tema",
                 subtitle = "Modo Claro, Oscuro o Sistema",
                 onClick = onNavigatePreferences
+            )
+
+            DrawerMenuItem(
+                icon = Icons.Outlined.Security,
+                title = "Permisos de la Aplicación",
+                subtitle = "Cámara, notificaciones y red",
+                onClick = onNavigatePermissions
             )
 
             if (isAdminOrReception) {

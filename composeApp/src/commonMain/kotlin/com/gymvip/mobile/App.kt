@@ -34,6 +34,7 @@ import com.gymvip.mobile.presentation.screen.home.HomeScreen
 import com.gymvip.mobile.presentation.screen.inbox.InboxScreen
 import com.gymvip.mobile.presentation.screen.legal.TermsAndPrivacyScreen
 import com.gymvip.mobile.presentation.screen.membership.MembershipScreen
+import com.gymvip.mobile.presentation.screen.permissions.AppPermissionsScreen
 import com.gymvip.mobile.presentation.screen.preferences.PreferencesScreen
 import com.gymvip.mobile.presentation.screen.profile.ProfileScreen
 import com.gymvip.mobile.presentation.screen.services.ServicesScreen
@@ -195,6 +196,12 @@ fun App() {
                 )
             }
 
+            is NavDestination.Permissions -> {
+                AppPermissionsScreen(
+                    onBack = { currentDestination = NavDestination.Main(currentTab) }
+                )
+            }
+
             is NavDestination.Main -> {
                 val accountId = authState.authenticatedProfile?.accountId ?: "unknown_account"
 
@@ -283,6 +290,12 @@ fun App() {
                                 coroutineScope.launch {
                                     drawerState.close()
                                     currentDestination = NavDestination.Preferences
+                                }
+                            },
+                            onNavigatePermissions = {
+                                coroutineScope.launch {
+                                    drawerState.close()
+                                    currentDestination = NavDestination.Permissions
                                 }
                             },
                             onNavigateAdminScanner = {

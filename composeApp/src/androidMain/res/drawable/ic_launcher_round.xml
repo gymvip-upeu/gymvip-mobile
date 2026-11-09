@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Fondo circular negro carbón -->
+    <path
+        android:fillColor="#121212"
+        android:pathData="M54,54m-54,0a54,54 0,1 1,108 0a54,54 0,1 1,-108 0" />
+
+    <!-- Aro exterior dorado GYM VIP -->
+    <path
+        android:strokeColor="#D4AF37"
+        android:strokeWidth="2.5"
+        android:pathData="M54,54m-34,0a34,34 0,1 1,68 0a34,34 0,1 1,-68 0" />
+
+    <!-- Aro interno fino de acento -->
+    <path
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="1.0"
+        android:strokeAlpha="0.7"
+        android:pathData="M54,54m-30,0a30,30 0,1 1,60 0a30,30 0,1 1,-60 0" />
+
+    <!-- Letra G dorada con trazo premium -->
+    <path
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="3.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M47,43 C44,40.5 40,39.5 36.5,42 C32,45.5 32,60.5 36.5,64 C40,66.8 45,66 48,62.5 L48,54 L41.5,54" />
+
+    <!-- Letra V dorada simétrica -->
+    <path
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="3.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M55,42.5 L64.5,65 L74,42.5" />
+
+    <!-- Estrella VIP de prestigio inferior -->
+    <path
+        android:fillColor="#D4AF37"
+        android:pathData="M54,72.5 L55.3,75 L58,75 L55.9,76.5 L56.7,79 L54,77.4 L51.3,79 L52.1,76.5 L50,75 L52.7,75 Z" />
+</vector>
+

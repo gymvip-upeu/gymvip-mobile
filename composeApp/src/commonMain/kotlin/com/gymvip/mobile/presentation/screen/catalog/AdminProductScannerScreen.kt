@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Inventory2
@@ -50,6 +51,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.data.remote.dto.AdminSupplementDto
 import com.gymvip.mobile.domain.repository.CatalogRepository
+import com.gymvip.mobile.presentation.permission.rememberNativePermissionRequester
 import com.gymvip.mobile.presentation.theme.DangerRed
 import com.gymvip.mobile.presentation.theme.GoldOnPrimary
 import com.gymvip.mobile.presentation.theme.GoldPrimary
@@ -66,6 +68,12 @@ fun AdminProductScannerScreen(
     val isAuthorized = userRoles.any {
         it.contains("ADMIN", ignoreCase = true) || it.contains("RECEPCION", ignoreCase = true)
     }
+
+    var cameraGranted by remember { mutableStateOf(false) }
+    val permissionRequester = rememberNativePermissionRequester { results ->
+        cameraGranted = results["android.Manifest.permission.CAMERA"] ?: true
+    }
+    cameraGranted = permissionRequester.isCameraGranted()
 
     var scannedCodeInput by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
@@ -235,6 +243,29 @@ fun AdminProductScannerScreen(
                             Spacer(modifier = Modifier.width(6.dp))
                             Text("Buscar Producto", fontWeight = FontWeight.SemiBold)
                         }
+                    }
+                }
+
+                if (!cameraGranted) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedButton(
+                        onClick = { permissionRequester.requestAppPermissions() },
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth().height(38.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.CameraAlt,
+                            contentDescription = "Cámara",
+                            tint = GoldPrimary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Habilitar / Conceder permiso de Cámara",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = GoldPrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
 
