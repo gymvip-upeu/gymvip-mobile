@@ -33,12 +33,15 @@ class AuthRepositoryImpl(
 
         if (!token.isNullOrBlank() && !accountId.isNullOrBlank()) {
             val localProfile = database.gymVipDatabaseQueries.selectProfileByAccountId(accountId).executeAsOneOrNull()
+            val serverRoles = authApi.getCurrentUser().getOrNull()?.normalizedRoles().orEmpty()
+            val accountRoles = serverRoles.ifEmpty { secureTokenStore.getAccountRoles() }
+            if (serverRoles.isNotEmpty()) secureTokenStore.saveAccountRoles(serverRoles)
 
             // Intentar revalidación con backend si es posible
             val remoteResult = memberApi.getProfile(accountId)
             if (remoteResult.isSuccess) {
                 val now = Clock.System.now().toString()
-                val profile = remoteResult.getOrThrow().toDomain(now)
+                val profile = remoteResult.getOrThrow().toDomain(now).copy(roles = accountRoles)
                 database.gymVipDatabaseQueries.insertOrReplaceProfile(
                     accountId = profile.accountId,
                     email = profile.email,
@@ -64,7 +67,7 @@ class AuthRepositoryImpl(
 
             // Si hay desconexión pero existe perfil local previamente sincronizado:
             if (localProfile != null) {
-                _authState.value = AuthState.Authenticated(localProfile.toDomain(), isCachedOffline = true)
+                _authState.value = AuthState.Authenticated(localProfile.toDomain().copy(roles = accountRoles), isCachedOffline = true)
                 return true
             }
 
@@ -89,12 +92,14 @@ class AuthRepositoryImpl(
                     refreshToken = null,
                     accountId = accountId
                 )
+                val accountRoles = dto.roles.map { it.trim().uppercase() }.filter(String::isNotBlank).distinct()
+                secureTokenStore.saveAccountRoles(accountRoles)
 
                 // Intentar obtener perfil completo del socio o guardar perfil básico
                 val now = Clock.System.now().toString()
                 val profileResult = memberApi.getProfile(accountId)
 
-                val profile = profileResult.getOrNull()?.toDomain(now) ?: MemberProfile(
+                val profile = profileResult.getOrNull()?.toDomain(now)?.copy(roles = accountRoles) ?: MemberProfile(
                     accountId = accountId,
                     email = dto.email,
                     firstName = "Socio",
@@ -103,7 +108,8 @@ class AuthRepositoryImpl(
                     documentNumber = "",
                     phone = null,
                     status = AccountStatus.ACTIVO,
-                    lastSyncedAt = now
+                    lastSyncedAt = now,
+                    roles = accountRoles
                 )
 
                 database.gymVipDatabaseQueries.insertOrReplaceProfile(
@@ -129,19 +135,23 @@ class AuthRepositoryImpl(
 
                 if (isDemoIdentifier && password.isNotBlank()) {
                     val now = Clock.System.now().toString()
-                    val demoAccountId = "demo-valeria-02481"
+                    val isDemoAdmin = email.trim().equals("admin@vipcenterfit.pe", ignoreCase = true)
+                    val demoAccountId = if (isDemoAdmin) "demo-admin-gymvip" else "demo-valeria-02481"
+                    val demoRoles = if (isDemoAdmin) listOf("ROLE_ADMIN") else listOf("ROLE_CLIENT")
                     secureTokenStore.saveTokens("demo_bearer_token_$now", null, demoAccountId)
+                    secureTokenStore.saveAccountRoles(demoRoles)
 
                     val demoProfile = MemberProfile(
                         accountId = demoAccountId,
                         email = if (email.contains("@")) email.trim() else "valeria@vipcenterfit.pe",
-                        firstName = "Valeria",
-                        lastName = "Martínez",
+                        firstName = if (isDemoAdmin) "Administrador" else "Valeria",
+                        lastName = if (isDemoAdmin) "GYM VIP" else "Martínez",
                         documentType = "DNI",
-                        documentNumber = "72948102",
-                        phone = "+51987654321",
+                        documentNumber = if (isDemoAdmin) "" else "72948102",
+                        phone = if (isDemoAdmin) null else "+51987654321",
                         status = AccountStatus.ACTIVO,
-                        lastSyncedAt = now
+                        lastSyncedAt = now,
+                        roles = demoRoles
                     )
 
                     database.gymVipDatabaseQueries.insertOrReplaceProfile(
@@ -156,16 +166,18 @@ class AuthRepositoryImpl(
                         lastSyncedAt = demoProfile.lastSyncedAt
                     )
 
-                    database.gymVipDatabaseQueries.insertOrReplaceMembership(
-                        id = "mem-valeria-02481",
-                        accountId = demoAccountId,
-                        planName = "VIP Mensual",
-                        startDate = "2026-10-30",
-                        endDate = "2026-11-28",
-                        status = "VIGENTE",
-                        daysRemaining = 28L,
-                        lastSyncedAt = now
-                    )
+                    if (!isDemoAdmin) {
+                        database.gymVipDatabaseQueries.insertOrReplaceMembership(
+                            id = "mem-valeria-02481",
+                            accountId = demoAccountId,
+                            planName = "VIP Mensual",
+                            startDate = "2026-10-30",
+                            endDate = "2026-11-28",
+                            status = "VIGENTE",
+                            daysRemaining = 28L,
+                            lastSyncedAt = now
+                        )
+                    }
 
                     _authState.value = AuthState.Authenticated(demoProfile, isCachedOffline = true)
                     Result.success(demoProfile)
@@ -218,5 +230,21 @@ class AuthRepositoryImpl(
 
     override suspend fun clearRememberedIdentifier() {
         secureTokenStore.clearRememberedIdentifier()
+    }
+
+    override suspend fun getRememberedPassword(): String? {
+        return secureTokenStore.getRememberedPassword()
+    }
+
+    override suspend fun saveRememberedPassword(password: String) {
+        secureTokenStore.saveRememberedPassword(password)
+    }
+
+    override suspend fun clearRememberedPassword() {
+        secureTokenStore.clearRememberedPassword()
+    }
+
+    override suspend fun supportsSecureCredentialStorage(): Boolean {
+        return secureTokenStore.supportsSecureCredentialStorage
     }
 }
