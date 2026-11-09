@@ -22,6 +22,8 @@ data class AuthUiState(
     val isCachedOffline: Boolean = false,
     val authenticatedProfile: MemberProfile? = null,
     val rememberedIdentifier: String? = null,
+    val rememberedPassword: String? = null,
+    val secureCredentialStorageAvailable: Boolean = false,
     val errorMessage: String? = null,
     val successMessage: String? = null
 )
@@ -37,10 +39,18 @@ class AuthViewModel(
 
     init {
         scope.launch {
-            val remembered = authRepository.getRememberedIdentifier()
-            if (!remembered.isNullOrBlank()) {
-                _uiState.value = _uiState.value.copy(rememberedIdentifier = remembered)
+            val rememberedIdentifier = authRepository.getRememberedIdentifier()
+            val secureStorageAvailable = authRepository.supportsSecureCredentialStorage()
+            val rememberedPassword = if (secureStorageAvailable) {
+                authRepository.getRememberedPassword()
+            } else {
+                null
             }
+            _uiState.value = _uiState.value.copy(
+                rememberedIdentifier = rememberedIdentifier,
+                rememberedPassword = rememberedPassword,
+                secureCredentialStorageAvailable = secureStorageAvailable
+            )
         }
 
         authRepository.getAuthState().onEach { state ->
@@ -86,16 +96,32 @@ class AuthViewModel(
 
     fun login(email: String, pass: String, rememberCredentials: Boolean = false) {
         scope.launch {
+            if (!rememberCredentials) {
+                authRepository.clearRememberedIdentifier()
+                authRepository.clearRememberedPassword()
+                _uiState.value = _uiState.value.copy(
+                    rememberedIdentifier = null,
+                    rememberedPassword = null
+                )
+            }
+
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             val result = loginUseCase(email, pass)
             result.fold(
                 onSuccess = {
                     if (rememberCredentials) {
-                        authRepository.saveRememberedIdentifier(email)
-                        _uiState.value = _uiState.value.copy(rememberedIdentifier = email)
-                    } else {
-                        authRepository.clearRememberedIdentifier()
-                        _uiState.value = _uiState.value.copy(rememberedIdentifier = null)
+                        authRepository.saveRememberedIdentifier(email.trim())
+                        val canStorePasswordSecurely = authRepository.supportsSecureCredentialStorage()
+                        if (canStorePasswordSecurely) {
+                            authRepository.saveRememberedPassword(pass)
+                        } else {
+                            authRepository.clearRememberedPassword()
+                        }
+                        _uiState.value = _uiState.value.copy(
+                            rememberedIdentifier = email.trim(),
+                            rememberedPassword = if (canStorePasswordSecurely) pass else null,
+                            secureCredentialStorageAvailable = canStorePasswordSecurely
+                        )
                     }
                 },
                 onFailure = { error ->
