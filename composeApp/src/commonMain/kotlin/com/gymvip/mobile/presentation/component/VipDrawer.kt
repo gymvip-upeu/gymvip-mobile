@@ -15,6 +15,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Divider
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.FitnessCenter
+import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.Logout
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.Text
@@ -23,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.presentation.theme.GoldPrimary
 
@@ -30,6 +39,7 @@ import com.gymvip.mobile.presentation.theme.GoldPrimary
 fun VipDrawerContent(
     memberName: String,
     memberEmail: String,
+    accountType: String,
     onNavigateFaq: () -> Unit,
     onNavigateServices: () -> Unit,
     onNavigateTermsAndPrivacy: () -> Unit,
@@ -74,6 +84,11 @@ fun VipDrawerContent(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Text(
+                        text = accountType,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = GoldPrimary
+                    )
                 }
             }
 
@@ -83,35 +98,35 @@ fun VipDrawerContent(
 
             // Ítems del menú secundario
             DrawerMenuItem(
-                icon = "🏋️",
+                icon = Icons.Outlined.FitnessCenter,
                 title = "Servicios e Instalaciones",
                 subtitle = "Áreas y equipamiento VIP",
                 onClick = onNavigateServices
             )
 
             DrawerMenuItem(
-                icon = "❓",
+                icon = Icons.Outlined.HelpOutline,
                 title = "Ayuda y Preguntas Frecuentes",
                 subtitle = "Horarios, normas y soporte",
                 onClick = onNavigateFaq
             )
 
             DrawerMenuItem(
-                icon = "📜",
+                icon = Icons.Outlined.Description,
                 title = "Términos y Privacidad",
                 subtitle = "Consentimientos y datos",
                 onClick = onNavigateTermsAndPrivacy
             )
 
             DrawerMenuItem(
-                icon = "⚙️",
+                icon = Icons.Outlined.Settings,
                 title = "Preferencias de Tema",
                 subtitle = "Modo Claro, Oscuro o Sistema",
                 onClick = onNavigatePreferences
             )
 
             DrawerMenuItem(
-                icon = "🔄",
+                icon = Icons.Outlined.Sync,
                 title = "Sincronizar Datos",
                 subtitle = "Reconciliar pendientes offline",
                 onClick = onSyncNow
@@ -123,7 +138,7 @@ fun VipDrawerContent(
 
             // Botón de Cerrar Sesión seguro
             DrawerMenuItem(
-                icon = "🚪",
+                icon = Icons.Outlined.Logout,
                 title = "Cerrar Sesión",
                 subtitle = "Eliminar credenciales locales",
                 onClick = onLogout,
@@ -135,7 +150,7 @@ fun VipDrawerContent(
 
 @Composable
 private fun DrawerMenuItem(
-    icon: String,
+    icon: ImageVector,
     title: String,
     subtitle: String,
     onClick: () -> Unit,
@@ -150,7 +165,12 @@ private fun DrawerMenuItem(
             .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = icon, style = MaterialTheme.typography.titleLarge)
+        Icon(
+            imageVector = icon,
+            contentDescription = title,
+            tint = if (isDanger) MaterialTheme.colorScheme.error else GoldPrimary,
+            modifier = Modifier.size(24.dp)
+        )
         Spacer(modifier = Modifier.width(12.dp))
         Column {
             Text(
