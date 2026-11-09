@@ -18,5 +18,6 @@ sealed class NavDestination {
     data object Faq : NavDestination()
     data object Preferences : NavDestination()
     data object Services : NavDestination()
+    data object AdminScanner : NavDestination()
     data class TermsAndPrivacy(val requiresAcceptance: Boolean = false) : NavDestination()
 }

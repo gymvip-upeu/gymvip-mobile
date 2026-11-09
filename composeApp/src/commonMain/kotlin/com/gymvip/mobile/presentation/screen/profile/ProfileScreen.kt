@@ -27,8 +27,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.presentation.theme.DangerRed
+import com.gymvip.mobile.presentation.theme.GoldOnPrimary
 import com.gymvip.mobile.presentation.theme.GoldPrimary
 import com.gymvip.mobile.presentation.theme.SuccessGreen
 import com.gymvip.mobile.presentation.viewmodel.ProfileViewModel
@@ -36,7 +38,8 @@ import com.gymvip.mobile.presentation.viewmodel.ProfileViewModel
 @Composable
 fun ProfileScreen(
     viewModel: ProfileViewModel,
-    userRoles: List<String> = emptyList()
+    userRoles: List<String> = emptyList(),
+    onNavigateAdminScanner: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
@@ -147,6 +150,24 @@ fun ProfileScreen(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
+
+        val isAdminOrReception = roles.any { it.contains("ADMIN", ignoreCase = true) || it.contains("RECEPCION", ignoreCase = true) }
+        if (isAdminOrReception) {
+            Button(
+                onClick = onNavigateAdminScanner,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = GoldPrimary,
+                    contentColor = GoldOnPrimary
+                ),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+            ) {
+                Text(text = "📷 Abrir Escáner de Productos (Admin)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(14.dp))
+        }
 
         // Botón de Cerrar Sesión seguro
         Button(

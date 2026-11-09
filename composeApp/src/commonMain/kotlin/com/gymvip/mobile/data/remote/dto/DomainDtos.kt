@@ -292,3 +292,26 @@ data class ConsentSubmitRequestDto(
     val whatsappConsent: Boolean = false,
     val documentVersion: String = "v1.0"
 )
+
+@Serializable
+data class AdminSupplementDto(
+    val id: String,
+    val name: String,
+    val brand: String? = null,
+    val category: String? = null,
+    val flavor: String? = null,
+    val weightKg: Double? = null,
+    val price: Double? = null,
+    val stock: Int? = null,
+    val isAvailable: Boolean = true,
+    val imageUrl: String? = null,
+    val description: String? = null,
+    val barcode: String? = null,
+    val createdAt: String? = null,
+    val updatedAt: String? = null
+)
+
+@Serializable
+data class BarcodeUpdateRequestDto(
+    val barcode: String
+)

@@ -27,6 +27,7 @@ import com.gymvip.mobile.presentation.navigation.NavDestination
 import com.gymvip.mobile.presentation.screen.auth.ActivationScreen
 import com.gymvip.mobile.presentation.screen.auth.LoginScreen
 import com.gymvip.mobile.presentation.screen.auth.PasswordRecoveryScreen
+import com.gymvip.mobile.presentation.screen.catalog.AdminProductScannerScreen
 import com.gymvip.mobile.presentation.screen.catalog.CatalogScreen
 import com.gymvip.mobile.presentation.screen.faq.FaqScreen
 import com.gymvip.mobile.presentation.screen.home.HomeScreen
@@ -142,7 +143,17 @@ fun App() {
 
             is NavDestination.PasswordRecovery -> {
                 PasswordRecoveryScreen(
+                    viewModel = authViewModel,
                     onBackToLogin = { currentDestination = NavDestination.Login }
+                )
+            }
+
+            is NavDestination.AdminScanner -> {
+                val userRoles = authState.authenticatedProfile?.roles.orEmpty()
+                AdminProductScannerScreen(
+                    catalogRepository = AppContainer.catalogRepository,
+                    userRoles = userRoles,
+                    onBack = { currentDestination = NavDestination.Main(currentTab) }
                 )
             }
 
@@ -233,6 +244,9 @@ fun App() {
                 }
 
                 val userRoles = authState.authenticatedProfile?.roles.orEmpty()
+                val isAdminOrReception = userRoles.any {
+                    it.contains("ADMIN", ignoreCase = true) || it.contains("RECEPCION", ignoreCase = true)
+                }
                 val accountType = when {
                     userRoles.any { it.contains("ADMIN", ignoreCase = true) } -> "Administrador"
                     userRoles.any { it.contains("RECEPCION", ignoreCase = true) } -> "Recepción"
@@ -246,6 +260,7 @@ fun App() {
                             memberName = authState.authenticatedProfile?.fullName ?: "Socio VIP",
                             memberEmail = authState.authenticatedProfile?.email ?: "",
                             accountType = accountType,
+                            isAdminOrReception = isAdminOrReception,
                             onNavigateFaq = {
                                 coroutineScope.launch {
                                     drawerState.close()
@@ -261,13 +276,19 @@ fun App() {
                             onNavigateTermsAndPrivacy = {
                                 coroutineScope.launch {
                                     drawerState.close()
-                                    currentDestination = NavDestination.TermsAndPrivacy
+                                    currentDestination = NavDestination.TermsAndPrivacy()
                                 }
                             },
                             onNavigatePreferences = {
                                 coroutineScope.launch {
                                     drawerState.close()
                                     currentDestination = NavDestination.Preferences
+                                }
+                            },
+                            onNavigateAdminScanner = {
+                                coroutineScope.launch {
+                                    drawerState.close()
+                                    currentDestination = NavDestination.AdminScanner
                                 }
                             },
                             onSyncNow = {
@@ -340,7 +361,8 @@ fun App() {
                                 MainTab.INBOX -> InboxScreen(viewModel = inboxViewModel)
                                 MainTab.PROFILE -> ProfileScreen(
                                     viewModel = profileViewModel,
-                                    userRoles = userRoles
+                                    userRoles = userRoles,
+                                    onNavigateAdminScanner = { currentDestination = NavDestination.AdminScanner }
                                 )
                             }
                         }

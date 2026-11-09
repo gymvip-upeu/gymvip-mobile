@@ -1,6 +1,7 @@
 package com.gymvip.mobile.data.remote
 
 import com.gymvip.mobile.data.remote.api.AuthApi
+import com.gymvip.mobile.data.remote.api.CatalogApi
 import com.gymvip.mobile.data.remote.api.FavoriteApi
 import com.gymvip.mobile.data.remote.api.GymVipHttpClient
 import com.gymvip.mobile.data.remote.api.MemberApi
@@ -8,6 +9,8 @@ import com.gymvip.mobile.data.remote.dto.ConsentSubmitRequestDto
 import com.gymvip.mobile.data.remote.dto.FavoriteRequestDto
 import com.gymvip.mobile.data.remote.dto.FavoriteUpdateNoteDto
 import com.gymvip.mobile.data.remote.dto.LoginRequestDto
+import com.gymvip.mobile.data.remote.dto.PasswordResetConfirmRequestDto
+import com.gymvip.mobile.data.remote.dto.PasswordResetRequestDto
 import com.gymvip.mobile.domain.error.AppError
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -244,5 +247,112 @@ class KtorMockEngineTest {
         assertEquals("VIP-01", qr.memberCode)
         assertEquals(60, qr.ttlSeconds)
         assertTrue(qr.token.startsWith("gymvip://access/v1"))
+    }
+
+    @Test
+    fun testPasswordResetRequest200() = runTest {
+        val mockEngine = MockEngine { request ->
+            respond(
+                content = """{"message":"Si el correo está registrado en GYM VIP, se ha enviado un enlace/código de recuperación válido por 15 minutos."}""",
+                status = HttpStatusCode.OK,
+                headers = jsonHeaders
+            )
+        }
+        val client = GymVipHttpClient.create(engine = mockEngine, enableLogging = false)
+        val api = AuthApi(client, baseUrl = "https://mock.gymvip.pe")
+
+        val result = api.requestPasswordReset(PasswordResetRequestDto("valeria@vipcenterfit.pe"))
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().message.contains("15 minutos"))
+    }
+
+    @Test
+    fun testPasswordResetConfirm200() = runTest {
+        val mockEngine = MockEngine { request ->
+            respond(
+                content = """{"message":"Contraseña actualizada exitosamente. Todas las sesiones activas han sido invalidadas."}""",
+                status = HttpStatusCode.OK,
+                headers = jsonHeaders
+            )
+        }
+        val client = GymVipHttpClient.create(engine = mockEngine, enableLogging = false)
+        val api = AuthApi(client, baseUrl = "https://mock.gymvip.pe")
+
+        val result = api.confirmPasswordReset(PasswordResetConfirmRequestDto("tok_abc_123", "NewSecretPass123!"))
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().message.contains("actualizada exitosamente"))
+    }
+
+    @Test
+    fun testPasswordResetConfirmExpired400() = runTest {
+        val mockEngine = MockEngine { request ->
+            respond(
+                content = """{"status":400,"code":"TOKEN_EXPIRED","message":"El token de recuperación ha expirado"}""",
+                status = HttpStatusCode.BadRequest,
+                headers = jsonHeaders
+            )
+        }
+        val client = GymVipHttpClient.create(engine = mockEngine, enableLogging = false)
+        val api = AuthApi(client, baseUrl = "https://mock.gymvip.pe")
+
+        val result = api.confirmPasswordReset(PasswordResetConfirmRequestDto("expired_token", "NewSecretPass123!"))
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is AppError.Validation)
+    }
+
+    @Test
+    fun testScanSupplementSuccess200() = runTest {
+        val mockEngine = MockEngine { request ->
+            respond(
+                content = """{
+                    "id":"supp-01",
+                    "name":"Proteína Whey 2kg",
+                    "brand":"Optimum",
+                    "category":"PROTEINA",
+                    "price":249.90,
+                    "stock":10,
+                    "isAvailable":true,
+                    "barcode":"7751234567890"
+                }""",
+                status = HttpStatusCode.OK,
+                headers = jsonHeaders
+            )
+        }
+        val client = GymVipHttpClient.create(engine = mockEngine, enableLogging = false)
+        val api = CatalogApi(client, baseUrl = "https://mock.gymvip.pe")
+
+        val result = api.scanSupplement("7751234567890")
+        assertTrue(result.isSuccess)
+        val supp = result.getOrThrow()
+        assertEquals("supp-01", supp.id)
+        assertEquals("7751234567890", supp.barcode)
+        assertEquals(249.90, supp.price)
+    }
+
+    @Test
+    fun testUpdateSupplementBarcodeSuccess200() = runTest {
+        val mockEngine = MockEngine { request ->
+            respond(
+                content = """{
+                    "id":"supp-01",
+                    "name":"Proteína Whey 2kg",
+                    "brand":"Optimum",
+                    "category":"PROTEINA",
+                    "price":249.90,
+                    "stock":10,
+                    "isAvailable":true,
+                    "barcode":"7759998887776"
+                }""",
+                status = HttpStatusCode.OK,
+                headers = jsonHeaders
+            )
+        }
+        val client = GymVipHttpClient.create(engine = mockEngine, enableLogging = false)
+        val api = CatalogApi(client, baseUrl = "https://mock.gymvip.pe")
+
+        val result = api.updateSupplementBarcode("supp-01", "7759998887776")
+        assertTrue(result.isSuccess)
+        val supp = result.getOrThrow()
+        assertEquals("7759998887776", supp.barcode)
     }
 }

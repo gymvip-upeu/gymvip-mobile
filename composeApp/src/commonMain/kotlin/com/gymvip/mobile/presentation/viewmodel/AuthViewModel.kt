@@ -155,6 +155,89 @@ class AuthViewModel(
         }
     }
 
+    fun requestPasswordReset(email: String, onComplete: (Result<String>) -> Unit = {}) {
+        val trimmed = email.trim()
+        if (!trimmed.contains("@") || trimmed.endsWith("@")) {
+            val err = "Ingresa un correo electrónico válido"
+            _uiState.value = _uiState.value.copy(errorMessage = err)
+            onComplete(Result.failure(IllegalArgumentException(err)))
+            return
+        }
+
+        scope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null, successMessage = null)
+            val result = authRepository.requestPasswordReset(trimmed)
+            result.fold(
+                onSuccess = { msg ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        successMessage = msg,
+                        errorMessage = null
+                    )
+                    onComplete(Result.success(msg))
+                },
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        errorMessage = error.message ?: "Error al solicitar restablecimiento"
+                    )
+                    onComplete(Result.failure(error))
+                }
+            )
+        }
+    }
+
+    fun confirmPasswordReset(
+        token: String,
+        newPass: String,
+        confirmPass: String,
+        onComplete: (Result<String>) -> Unit = {}
+    ) {
+        val trimmedToken = token.trim()
+        if (trimmedToken.isBlank()) {
+            val err = "Ingresa el código o token de recuperación"
+            _uiState.value = _uiState.value.copy(errorMessage = err)
+            onComplete(Result.failure(IllegalArgumentException(err)))
+            return
+        }
+        if (newPass.length < 8) {
+            val err = "La nueva contraseña debe tener al menos 8 caracteres"
+            _uiState.value = _uiState.value.copy(errorMessage = err)
+            onComplete(Result.failure(IllegalArgumentException(err)))
+            return
+        }
+        if (newPass != confirmPass) {
+            val err = "Las contraseñas no coinciden"
+            _uiState.value = _uiState.value.copy(errorMessage = err)
+            onComplete(Result.failure(IllegalArgumentException(err)))
+            return
+        }
+
+        scope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null, successMessage = null)
+            val result = authRepository.confirmPasswordReset(trimmedToken, newPass)
+            result.fold(
+                onSuccess = { msg ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        successMessage = msg,
+                        errorMessage = null,
+                        rememberedIdentifier = null,
+                        rememberedPassword = null
+                    )
+                    onComplete(Result.success(msg))
+                },
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        errorMessage = error.message ?: "Error al actualizar contraseña"
+                    )
+                    onComplete(Result.failure(error))
+                }
+            )
+        }
+    }
+
     fun clearMessages() {
         _uiState.value = _uiState.value.copy(errorMessage = null, successMessage = null)
     }

@@ -34,6 +34,27 @@ data class ActivationRequestDto(
 )
 
 @Serializable
+data class PasswordResetRequestDto(
+    val email: String
+)
+
+@Serializable
+data class PasswordResetResponseDto(
+    val message: String
+)
+
+@Serializable
+data class PasswordResetConfirmRequestDto(
+    val token: String,
+    val newPassword: String
+)
+
+@Serializable
+data class PasswordResetConfirmResponseDto(
+    val message: String
+)
+
+@Serializable
 data class ErrorResponseDto(
     val timestamp: String? = null,
     val status: Int? = null,

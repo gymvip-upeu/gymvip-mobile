@@ -20,6 +20,7 @@ import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Logout
+import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Icon
@@ -40,10 +41,12 @@ fun VipDrawerContent(
     memberName: String,
     memberEmail: String,
     accountType: String,
+    isAdminOrReception: Boolean = false,
     onNavigateFaq: () -> Unit,
     onNavigateServices: () -> Unit,
     onNavigateTermsAndPrivacy: () -> Unit,
     onNavigatePreferences: () -> Unit,
+    onNavigateAdminScanner: () -> Unit = {},
     onSyncNow: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -124,6 +127,15 @@ fun VipDrawerContent(
                 subtitle = "Modo Claro, Oscuro o Sistema",
                 onClick = onNavigatePreferences
             )
+
+            if (isAdminOrReception) {
+                DrawerMenuItem(
+                    icon = Icons.Outlined.QrCodeScanner,
+                    title = "Escáner de Productos",
+                    subtitle = "Consultar y vincular código de barras",
+                    onClick = onNavigateAdminScanner
+                )
+            }
 
             DrawerMenuItem(
                 icon = Icons.Outlined.Sync,

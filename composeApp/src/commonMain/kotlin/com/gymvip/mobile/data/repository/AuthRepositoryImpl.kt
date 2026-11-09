@@ -7,6 +7,8 @@ import com.gymvip.mobile.data.remote.api.AuthApi
 import com.gymvip.mobile.data.remote.api.MemberApi
 import com.gymvip.mobile.data.remote.dto.ActivationRequestDto
 import com.gymvip.mobile.data.remote.dto.LoginRequestDto
+import com.gymvip.mobile.data.remote.dto.PasswordResetConfirmRequestDto
+import com.gymvip.mobile.data.remote.dto.PasswordResetRequestDto
 import com.gymvip.mobile.domain.error.AppError
 import com.gymvip.mobile.domain.model.AccountStatus
 import com.gymvip.mobile.domain.model.MemberProfile
@@ -214,6 +216,25 @@ class AuthRepositoryImpl(
 
     override suspend fun activateAccount(token: String, newPassword: String): Result<Unit> {
         return authApi.activateAccount(ActivationRequestDto(token, newPassword))
+    }
+
+    override suspend fun requestPasswordReset(email: String): Result<String> {
+        val reqResult = authApi.requestPasswordReset(PasswordResetRequestDto(email = email.trim()))
+        return reqResult.map { it.message }
+    }
+
+    override suspend fun confirmPasswordReset(token: String, newPassword: String): Result<String> {
+        val confirmResult = authApi.confirmPasswordReset(
+            PasswordResetConfirmRequestDto(
+                token = token.trim(),
+                newPassword = newPassword
+            )
+        )
+        return confirmResult.map { resp ->
+            clearRememberedPassword()
+            clearRememberedIdentifier()
+            resp.message
+        }
     }
 
     override suspend fun getStoredAccountId(): String? {
