@@ -6,6 +6,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,17 +58,29 @@ fun VipTopAppBar(
         },
         navigationIcon = {
             IconButton(onClick = onOpenDrawer, modifier = Modifier.size(48.dp)) {
-                Text(text = "☰", style = MaterialTheme.typography.titleLarge, color = GoldPrimary)
+                Icon(
+                    imageVector = Icons.Outlined.Menu,
+                    contentDescription = "Abrir menú",
+                    tint = GoldPrimary
+                )
             }
         },
         actions = {
             if (onSyncClick != null) {
                 IconButton(onClick = onSyncClick, modifier = Modifier.size(48.dp)) {
-                    Text(
-                        text = if (isSyncing) "⏳" else "🔄",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = GoldPrimary
-                    )
+                    if (isSyncing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = GoldPrimary,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Outlined.Sync,
+                            contentDescription = "Sincronizar datos",
+                            tint = GoldPrimary
+                        )
+                    }
                 }
             }
         },
