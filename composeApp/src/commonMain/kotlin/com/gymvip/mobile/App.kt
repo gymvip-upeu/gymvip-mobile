@@ -26,6 +26,7 @@ import com.gymvip.mobile.presentation.navigation.MainTab
 import com.gymvip.mobile.presentation.navigation.NavDestination
 import com.gymvip.mobile.presentation.screen.auth.ActivationScreen
 import com.gymvip.mobile.presentation.screen.auth.LoginScreen
+import com.gymvip.mobile.presentation.screen.auth.PasswordRecoveryScreen
 import com.gymvip.mobile.presentation.screen.catalog.CatalogScreen
 import com.gymvip.mobile.presentation.screen.faq.FaqScreen
 import com.gymvip.mobile.presentation.screen.home.HomeScreen
@@ -35,6 +36,7 @@ import com.gymvip.mobile.presentation.screen.membership.MembershipScreen
 import com.gymvip.mobile.presentation.screen.preferences.PreferencesScreen
 import com.gymvip.mobile.presentation.screen.profile.ProfileScreen
 import com.gymvip.mobile.presentation.screen.services.ServicesScreen
+import com.gymvip.mobile.presentation.screen.splash.OnboardingScreen
 import com.gymvip.mobile.presentation.screen.splash.SplashScreen
 import com.gymvip.mobile.presentation.theme.GymVipTheme
 import com.gymvip.mobile.presentation.viewmodel.AuthViewModel
@@ -73,14 +75,43 @@ fun App() {
 
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
-        // Manejo de eventos de autenticación
-        LaunchedEffect(authState.isAuthenticated) {
+        // Una sesión autenticada no entra al contenido hasta aceptar términos y privacidad.
+        LaunchedEffect(authState.isAuthenticated, authState.authenticatedProfile?.accountId) {
             if (authState.isAuthenticated) {
-                if (currentDestination is NavDestination.Login || currentDestination is NavDestination.Activation || currentDestination is NavDestination.Splash) {
-                    currentDestination = NavDestination.Main(currentTab)
+                val accountId = authState.authenticatedProfile?.accountId
+                if (accountId.isNullOrBlank()) {
+                    currentDestination = NavDestination.Login
+                    return@LaunchedEffect
                 }
-            } else if (currentDestination !is NavDestination.Splash) {
-                currentDestination = NavDestination.Login
+
+                val consent = AppContainer.legalConsentRepository.fetchConsent(accountId).getOrNull()
+                val hasRequiredConsent = consent?.let {
+                    it.termsAccepted && it.privacyAcknowledged && it.documentVersion == "v1.0"
+                } ?: false
+
+                if (!hasRequiredConsent) {
+                    currentDestination = NavDestination.TermsAndPrivacy(requiresAcceptance = true)
+                } else {
+                    when (val destination = currentDestination) {
+                        is NavDestination.Splash,
+                        is NavDestination.Onboarding,
+                        is NavDestination.Login,
+                        is NavDestination.Activation,
+                        is NavDestination.PasswordRecovery -> currentDestination = NavDestination.Main(currentTab)
+                        is NavDestination.TermsAndPrivacy -> {
+                            if (destination.requiresAcceptance) currentDestination = NavDestination.Main(currentTab)
+                        }
+                        else -> Unit
+                    }
+                }
+            } else if (
+                currentDestination !is NavDestination.Splash &&
+                currentDestination !is NavDestination.Onboarding &&
+                currentDestination !is NavDestination.Login &&
+                currentDestination !is NavDestination.PasswordRecovery &&
+                currentDestination !is NavDestination.Activation
+            ) {
+                currentDestination = NavDestination.Onboarding
             }
         }
 
@@ -88,16 +119,30 @@ fun App() {
             is NavDestination.Splash -> {
                 SplashScreen(
                     onResolved = { isActive ->
-                        currentDestination = if (isActive) NavDestination.Main(MainTab.HOME) else NavDestination.Login
+                        if (!isActive) currentDestination = NavDestination.Onboarding
                     },
                     isSessionActive = authState.isAuthenticated
+                )
+            }
+
+            is NavDestination.Onboarding -> {
+                OnboardingScreen(
+                    onLogin = { currentDestination = NavDestination.Login },
+                    onActivate = { currentDestination = NavDestination.Activation }
                 )
             }
 
             is NavDestination.Login -> {
                 LoginScreen(
                     viewModel = authViewModel,
-                    onNavigateToActivation = { currentDestination = NavDestination.Activation }
+                    onNavigateToActivation = { currentDestination = NavDestination.Activation },
+                    onNavigateToRecovery = { currentDestination = NavDestination.PasswordRecovery }
+                )
+            }
+
+            is NavDestination.PasswordRecovery -> {
+                PasswordRecoveryScreen(
+                    onBackToLogin = { currentDestination = NavDestination.Login }
                 )
             }
 
@@ -127,6 +172,7 @@ fun App() {
                 TermsAndPrivacyScreen(
                     repository = AppContainer.legalConsentRepository,
                     accountId = accountId,
+                    requiredAcceptance = dest.requiresAcceptance,
                     onBackOrAccepted = { currentDestination = NavDestination.Main(currentTab) }
                 )
             }
@@ -186,12 +232,20 @@ fun App() {
                     )
                 }
 
+                val userRoles = authState.authenticatedProfile?.roles.orEmpty()
+                val accountType = when {
+                    userRoles.any { it.contains("ADMIN", ignoreCase = true) } -> "Administrador"
+                    userRoles.any { it.contains("RECEPCION", ignoreCase = true) } -> "Recepción"
+                    else -> "Socio / miembro"
+                }
+
                 ModalNavigationDrawer(
                     drawerState = drawerState,
                     drawerContent = {
                         VipDrawerContent(
                             memberName = authState.authenticatedProfile?.fullName ?: "Socio VIP",
                             memberEmail = authState.authenticatedProfile?.email ?: "",
+                            accountType = accountType,
                             onNavigateFaq = {
                                 coroutineScope.launch {
                                     drawerState.close()
@@ -284,7 +338,10 @@ fun App() {
                                     favoritesViewModel = favoritesViewModel
                                 )
                                 MainTab.INBOX -> InboxScreen(viewModel = inboxViewModel)
-                                MainTab.PROFILE -> ProfileScreen(viewModel = profileViewModel)
+                                MainTab.PROFILE -> ProfileScreen(
+                                    viewModel = profileViewModel,
+                                    userRoles = userRoles
+                                )
                             }
                         }
                     }
