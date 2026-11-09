@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 fun TermsAndPrivacyScreen(
     repository: LegalConsentRepository,
     accountId: String,
+    requiredAcceptance: Boolean = false,
     onBackOrAccepted: () -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -67,8 +68,17 @@ fun TermsAndPrivacyScreen(
                     color = MaterialTheme.colorScheme.onBackground
                 )
             }
-            TextButton(onClick = onBackOrAccepted) {
-                Text(text = "Cerrar", color = GoldPrimary)
+            if (requiredAcceptance) {
+                Text(
+                    text = "Obligatorio",
+                    color = GoldPrimary,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            } else {
+                TextButton(onClick = onBackOrAccepted) {
+                    Text(text = "Cerrar", color = GoldPrimary)
+                }
             }
         }
 
@@ -130,8 +140,8 @@ fun TermsAndPrivacyScreen(
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = "Sus datos personales (nombre, documento, historial de pagos y registros de asistencia) se almacenan en servidores " +
-                            "seguros conforme a la Ley de Protección de Datos Personales. La aplicación emplea cifrado Keystore/Keychain para credenciales y " +
-                            "nunca almacena contraseñas en texto plano. Los datos locales en caché se sincronizan exclusivamente con su cuenta.",
+                            "seguros conforme a la Ley de Protección de Datos Personales. En Android, las credenciales recordadas se guardan cifradas " +
+                            "con el almacenamiento seguro del sistema; la contraseña no se guarda en texto plano. Los datos locales en caché se sincronizan exclusivamente con su cuenta.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -234,7 +244,11 @@ fun TermsAndPrivacyScreen(
             if (isSubmitting) {
                 CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
             } else {
-                Text(text = "Guardar y Continuar", color = Color.Black, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = if (requiredAcceptance) "Aceptar y continuar" else "Guardar cambios",
+                    color = Color.Black,
+                    style = MaterialTheme.typography.titleMedium
+                )
             }
         }
     }
