@@ -16,11 +16,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -39,6 +44,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.presentation.theme.GoldOnPrimary
 import com.gymvip.mobile.presentation.theme.GoldPrimary
@@ -47,23 +53,27 @@ import com.gymvip.mobile.presentation.viewmodel.AuthViewModel
 @Composable
 fun LoginScreen(
     viewModel: AuthViewModel,
-    onNavigateToActivation: () -> Unit
+    onNavigateToActivation: () -> Unit,
+    onNavigateToRecovery: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
-
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var rememberCredentials by remember { mutableStateOf(false) }
+    var showPassword by remember { mutableStateOf(false) }
 
-    LaunchedEffect(state.rememberedIdentifier) {
-        if (!state.rememberedIdentifier.isNullOrBlank() && email.isBlank()) {
-            email = state.rememberedIdentifier ?: ""
+    LaunchedEffect(state.rememberedIdentifier, state.rememberedPassword) {
+        if (email.isBlank() && !state.rememberedIdentifier.isNullOrBlank()) {
+            email = state.rememberedIdentifier.orEmpty()
+            rememberCredentials = true
+        }
+        if (password.isBlank() && !state.rememberedPassword.isNullOrBlank()) {
+            password = state.rememberedPassword.orEmpty()
             rememberCredentials = true
         }
     }
 
     val scrollState = rememberScrollState()
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -72,24 +82,15 @@ fun LoginScreen(
         contentAlignment = Alignment.Center
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(scrollState),
+            modifier = Modifier.fillMaxWidth().verticalScroll(scrollState),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .background(GoldPrimary),
+                modifier = Modifier.size(64.dp).clip(CircleShape).background(GoldPrimary),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "V",
-                    color = Color.Black,
-                    style = MaterialTheme.typography.headlineLarge
-                )
+                Text("V", color = Color.Black, style = MaterialTheme.typography.headlineLarge)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -105,7 +106,6 @@ fun LoginScreen(
             )
 
             Spacer(modifier = Modifier.height(32.dp))
-
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
@@ -120,14 +120,22 @@ fun LoginScreen(
             )
 
             Spacer(modifier = Modifier.height(16.dp))
-
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
                 label = { Text("Contraseña") },
                 singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                trailingIcon = {
+                    IconButton(onClick = { showPassword = !showPassword }) {
+                        Icon(
+                            imageVector = if (showPassword) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                            contentDescription = if (showPassword) "Ocultar contraseña" else "Mostrar contraseña",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = GoldPrimary,
@@ -135,7 +143,14 @@ fun LoginScreen(
                 )
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(onClick = onNavigateToRecovery) {
+                    Text("¿Olvidaste tu contraseña?", color = GoldPrimary)
+                }
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -147,14 +162,22 @@ fun LoginScreen(
                     colors = CheckboxDefaults.colors(checkedColor = GoldPrimary)
                 )
                 Text(
-                    text = "Recordar credenciales en este dispositivo",
+                    text = if (state.secureCredentialStorageAvailable) {
+                        "Recordar correo y contraseña en este dispositivo"
+                    } else {
+                        "Recordar correo en este dispositivo"
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
             Text(
-                text = "Su identificador se protege en el almacenamiento seguro de la plataforma (Keystore/Keychain). La contraseña nunca se almacena en memoria plana.",
+                text = if (state.secureCredentialStorageAvailable) {
+                    "Las credenciales se guardan cifradas en el almacenamiento seguro de Android. Solo se guardan después de iniciar sesión correctamente."
+                } else {
+                    "La contraseña no se guarda en esta plataforma. Puedes recordar el correo y volver a escribirla al iniciar sesión."
+                },
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 4.dp)
@@ -163,20 +186,17 @@ fun LoginScreen(
             if (state.errorMessage != null) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = state.errorMessage ?: "",
+                    text = state.errorMessage.orEmpty(),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
 
             Spacer(modifier = Modifier.height(20.dp))
-
             Button(
                 onClick = { viewModel.login(email, password, rememberCredentials) },
                 enabled = !state.isLoading,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
+                modifier = Modifier.fillMaxWidth().height(50.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = GoldPrimary,
                     contentColor = GoldOnPrimary
@@ -186,12 +206,11 @@ fun LoginScreen(
                 if (state.isLoading) {
                     CircularProgressIndicator(color = GoldOnPrimary, modifier = Modifier.size(24.dp))
                 } else {
-                    Text(text = "Iniciar Sesión", style = MaterialTheme.typography.titleMedium)
+                    Text("Iniciar sesión", style = MaterialTheme.typography.titleMedium)
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "¿Es su primera vez con cuenta nueva?",
@@ -199,7 +218,7 @@ fun LoginScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 TextButton(onClick = onNavigateToActivation) {
-                    Text(text = "Activar cuenta", color = GoldPrimary)
+                    Text("Activar cuenta", color = GoldPrimary)
                 }
             }
         }
