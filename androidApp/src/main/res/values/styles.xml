@@ -1,0 +1,10 @@
+<resources>
+    <style name="Theme.GymVip.Base" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#0B0D12</item>
+        <item name="android:colorAccent">#E5C158</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">#0B0D12</item>
+    </style>
+    <style name="Theme.GymVip" parent="Theme.GymVip.Base" />
+</resources>

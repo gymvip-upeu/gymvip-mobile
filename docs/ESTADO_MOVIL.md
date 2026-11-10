@@ -1,4 +1,5 @@
 # ESTADO DEL PROYECTO MÓVIL (KMP) — GYM VIP
+> Documento histórico anterior a la migración a `androidApp` + `shared`. Sus marcas de APROBADO no constituyen evidencia de esta entrega. Para estado y pruebas actuales consultar `DECISIONES.md` y `PRUEBAS.md`.
 **Fecha de corte:** 09 de Noviembre de 2026 (America/Lima)  
 **Módulo:** `gymvip-mobile`  
 **Responsable Técnico Principal:** André Acosta  

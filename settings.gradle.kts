@@ -25,5 +25,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "gymvip-mobile"
-include(":composeApp")
+rootProject.name = "GymVip"
+include(":androidApp", ":shared")

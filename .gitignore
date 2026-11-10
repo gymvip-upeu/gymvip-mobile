@@ -8,3 +8,7 @@ build/
 .DS_Store
 local.properties
 .kotlin/
+phase*-build.log
+phase*-live.log
+phase5-*.log
+qa/phase5/capturas/
