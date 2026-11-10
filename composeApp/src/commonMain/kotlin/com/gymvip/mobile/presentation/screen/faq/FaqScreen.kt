@@ -28,6 +28,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material3.Icon
+import androidx.compose.ui.text.font.FontWeight
 import com.gymvip.mobile.domain.model.Faq
 import com.gymvip.mobile.domain.usecase.GetFaqsUseCase
 import com.gymvip.mobile.presentation.theme.GoldPrimary
@@ -55,8 +62,23 @@ fun FaqScreen(
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onBackground
             )
-            TextButton(onClick = onBack) {
-                Text(text = "← Volver", color = GoldPrimary)
+            TextButton(
+                onClick = onBack,
+                modifier = Modifier.defaultMinSize(minWidth = 72.dp, minHeight = 48.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = "Volver",
+                    tint = GoldPrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Volver",
+                    color = GoldPrimary,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
 

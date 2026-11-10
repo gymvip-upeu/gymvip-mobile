@@ -16,8 +16,10 @@ import io.ktor.http.contentType
  */
 class MemberApi(
     private val client: HttpClient,
-    private val baseUrl: String = GymVipHttpClient.baseUrl
+    baseUrl: String? = null
 ) {
+    private val explicitBaseUrl: String? = baseUrl
+    private val baseUrl: String get() = explicitBaseUrl ?: GymVipHttpClient.baseUrl
     /**
      * Consulta el espacio de trabajo unificado del socio autenticado (GET /api/v1/member-app/me).
      * Retorna cliente, vigencia/cobertura, periodos, pagos y asistencias en una sola invocación.

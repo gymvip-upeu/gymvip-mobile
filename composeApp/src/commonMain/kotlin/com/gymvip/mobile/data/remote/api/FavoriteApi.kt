@@ -20,8 +20,10 @@ import io.ktor.http.contentType
  */
 class FavoriteApi(
     private val client: HttpClient,
-    private val baseUrl: String = GymVipHttpClient.baseUrl
+    baseUrl: String? = null
 ) {
+    private val explicitBaseUrl: String? = baseUrl
+    private val baseUrl: String get() = explicitBaseUrl ?: GymVipHttpClient.baseUrl
     suspend fun getFavorites(): Result<List<FavoriteResponseDto>> = runCatching {
         val response = client.get("$baseUrl/api/v1/member-app/favorites")
         if (response.status == HttpStatusCode.OK) {

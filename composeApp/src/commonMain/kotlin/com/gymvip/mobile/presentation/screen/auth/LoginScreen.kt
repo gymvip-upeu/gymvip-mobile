@@ -62,13 +62,9 @@ fun LoginScreen(
     var rememberCredentials by remember { mutableStateOf(false) }
     var showPassword by remember { mutableStateOf(false) }
 
-    LaunchedEffect(state.rememberedIdentifier, state.rememberedPassword) {
+    LaunchedEffect(state.rememberedIdentifier) {
         if (email.isBlank() && !state.rememberedIdentifier.isNullOrBlank()) {
             email = state.rememberedIdentifier.orEmpty()
-            rememberCredentials = true
-        }
-        if (password.isBlank() && !state.rememberedPassword.isNullOrBlank()) {
-            password = state.rememberedPassword.orEmpty()
             rememberCredentials = true
         }
     }
@@ -162,22 +158,14 @@ fun LoginScreen(
                     colors = CheckboxDefaults.colors(checkedColor = GoldPrimary)
                 )
                 Text(
-                    text = if (state.secureCredentialStorageAvailable) {
-                        "Recordar correo y contraseña en este dispositivo"
-                    } else {
-                        "Recordar correo en este dispositivo"
-                    },
+                    text = "Recordar mi correo en este dispositivo",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
             Text(
-                text = if (state.secureCredentialStorageAvailable) {
-                    "Las credenciales se guardan cifradas en el almacenamiento seguro de Android. Solo se guardan después de iniciar sesión correctamente."
-                } else {
-                    "La contraseña no se guarda en esta plataforma. Puedes recordar el correo y volver a escribirla al iniciar sesión."
-                },
+                text = "Por seguridad y cumplimiento normativo, la contraseña no se almacena en memoria persistente.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 4.dp)

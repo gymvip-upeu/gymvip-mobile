@@ -27,6 +27,8 @@ import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -457,8 +459,23 @@ fun PasswordRecoveryScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        TextButton(onClick = onBackToLogin) {
-            Text("← Volver al inicio de sesión", color = GoldPrimary)
+        TextButton(
+            onClick = onBackToLogin,
+            modifier = Modifier.defaultMinSize(minWidth = 120.dp, minHeight = 48.dp)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                contentDescription = "Volver",
+                tint = GoldPrimary,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "Volver al inicio de sesión",
+                color = GoldPrimary,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
         }
     }
 }

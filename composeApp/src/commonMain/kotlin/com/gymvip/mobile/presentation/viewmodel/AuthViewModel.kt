@@ -40,16 +40,10 @@ class AuthViewModel(
     init {
         scope.launch {
             val rememberedIdentifier = authRepository.getRememberedIdentifier()
-            val secureStorageAvailable = authRepository.supportsSecureCredentialStorage()
-            val rememberedPassword = if (secureStorageAvailable) {
-                authRepository.getRememberedPassword()
-            } else {
-                null
-            }
             _uiState.value = _uiState.value.copy(
                 rememberedIdentifier = rememberedIdentifier,
-                rememberedPassword = rememberedPassword,
-                secureCredentialStorageAvailable = secureStorageAvailable
+                rememberedPassword = null,
+                secureCredentialStorageAvailable = false
             )
         }
 
@@ -111,16 +105,11 @@ class AuthViewModel(
                 onSuccess = {
                     if (rememberCredentials) {
                         authRepository.saveRememberedIdentifier(email.trim())
-                        val canStorePasswordSecurely = authRepository.supportsSecureCredentialStorage()
-                        if (canStorePasswordSecurely) {
-                            authRepository.saveRememberedPassword(pass)
-                        } else {
-                            authRepository.clearRememberedPassword()
-                        }
+                        authRepository.clearRememberedPassword()
                         _uiState.value = _uiState.value.copy(
                             rememberedIdentifier = email.trim(),
-                            rememberedPassword = if (canStorePasswordSecurely) pass else null,
-                            secureCredentialStorageAvailable = canStorePasswordSecurely
+                            rememberedPassword = null,
+                            secureCredentialStorageAvailable = false
                         )
                     }
                 },

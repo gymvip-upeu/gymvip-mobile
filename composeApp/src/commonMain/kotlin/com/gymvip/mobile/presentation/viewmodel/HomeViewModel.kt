@@ -1,10 +1,12 @@
 package com.gymvip.mobile.presentation.viewmodel
 
+import com.gymvip.mobile.domain.error.AppError
 import com.gymvip.mobile.domain.model.MemberProfile
 import com.gymvip.mobile.domain.model.MembershipSummary
 import com.gymvip.mobile.domain.repository.ConfigRepository
 import com.gymvip.mobile.domain.repository.MemberRepository
 import com.gymvip.mobile.domain.usecase.GetMembershipSummaryUseCase
+import com.gymvip.mobile.presentation.component.ConnectionNoticeType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -22,6 +24,7 @@ data class HomeUiState(
     val membership: MembershipSummary? = null,
     val remoteNoticeBanner: String? = null,
     val isOffline: Boolean = false,
+    val noticeType: ConnectionNoticeType = ConnectionNoticeType.NONE,
     val errorMessage: String? = null
 )
 
@@ -60,20 +63,30 @@ class HomeViewModel(
 
     fun refreshAll() {
         scope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            _uiState.value = _uiState.value.copy(isLoading = true)
             val profResult = memberRepository.refreshProfile(accountId)
             val memResult = getMembershipSummaryUseCase.refresh(accountId)
 
             if (profResult.isFailure && memResult.isFailure) {
+                val ex = profResult.exceptionOrNull() ?: memResult.exceptionOrNull()
+                val (noticeType, message) = when (ex) {
+                    is AppError.Unauthorized -> ConnectionNoticeType.SESSION_EXPIRED to "Sesión expirada. Inicie sesión nuevamente para actualizar sus datos."
+                    is AppError.Server -> ConnectionNoticeType.SERVER_ERROR to "El servidor de GYM VIP no responde temporalmente. Mostrando datos locales de su última sesión."
+                    is AppError.Network -> ConnectionNoticeType.OFFLINE_NETWORK to "Sin conexión a internet. Mostrando datos locales de su última sesión."
+                    else -> ConnectionNoticeType.OFFLINE_NETWORK to "Modo sin conexión. Mostrando datos locales de su última sesión."
+                }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     isOffline = true,
-                    errorMessage = "Sin conexión al servidor. Mostrando datos locales de la última sesión."
+                    noticeType = noticeType,
+                    errorMessage = message
                 )
             } else {
+                // Al reconectar y sincronizar exitosamente, ocultar automáticamente el banner
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     isOffline = false,
+                    noticeType = ConnectionNoticeType.NONE,
                     errorMessage = null
                 )
             }

@@ -1,5 +1,6 @@
 package com.gymvip.mobile.presentation.screen.splash
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -32,9 +33,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.presentation.theme.GoldPrimary
+import gymvip_mobile.composeapp.generated.resources.Res
+import gymvip_mobile.composeapp.generated.resources.bg_athlete
+import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun OnboardingScreen(
@@ -49,16 +54,34 @@ fun OnboardingScreen(
     )
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(Color(0xFF0B0D12), Color(0xFF111722), Color(0xFF090B10))
-                )
-            )
-            .systemBarsPadding()
-            .padding(horizontal = 24.dp, vertical = 18.dp)
+        modifier = Modifier.fillMaxSize()
     ) {
+        // Fondo deportista de espaldas con overlay oscuro de alto contraste
+        Image(
+            painter = painterResource(Res.drawable.bg_athlete),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xDF090B10),
+                            Color(0xF0111722),
+                            Color(0xFA090B10)
+                        )
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .systemBarsPadding()
+                .padding(horizontal = 24.dp, vertical = 18.dp)
+        ) {
         Column(modifier = Modifier.fillMaxSize()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -143,4 +166,5 @@ fun OnboardingScreen(
             }
         }
     }
+}
 }

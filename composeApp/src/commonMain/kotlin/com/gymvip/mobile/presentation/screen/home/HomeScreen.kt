@@ -44,7 +44,11 @@ fun HomeScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        OfflineBanner(isOffline = state.isOffline)
+        OfflineBanner(
+            isOffline = state.isOffline,
+            noticeType = state.noticeType,
+            customMessage = state.errorMessage
+        )
 
         Column(
             modifier = Modifier

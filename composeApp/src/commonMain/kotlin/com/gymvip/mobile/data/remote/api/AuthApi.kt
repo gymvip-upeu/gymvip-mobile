@@ -20,8 +20,10 @@ import io.ktor.http.contentType
 
 class AuthApi(
     private val client: HttpClient,
-    private val baseUrl: String = GymVipHttpClient.baseUrl
+    baseUrl: String? = null
 ) {
+    private val explicitBaseUrl: String? = baseUrl
+    private val baseUrl: String get() = explicitBaseUrl ?: GymVipHttpClient.baseUrl
     suspend fun login(request: LoginRequestDto): Result<LoginResponseDto> = runCatching {
         val response = client.post("$baseUrl/api/v1/auth/login") {
             contentType(ContentType.Application.Json)

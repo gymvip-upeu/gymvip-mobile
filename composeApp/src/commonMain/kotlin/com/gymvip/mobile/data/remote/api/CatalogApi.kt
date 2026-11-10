@@ -14,8 +14,10 @@ import io.ktor.http.contentType
 
 class CatalogApi(
     private val client: HttpClient,
-    private val baseUrl: String = GymVipHttpClient.baseUrl
+    baseUrl: String? = null
 ) {
+    private val explicitBaseUrl: String? = baseUrl
+    private val baseUrl: String get() = explicitBaseUrl ?: GymVipHttpClient.baseUrl
     suspend fun getCatalogProducts(): Result<List<ProductDto>> = runCatching {
         val response = client.get("$baseUrl/api/v1/catalog/products")
         if (response.status == HttpStatusCode.OK) {

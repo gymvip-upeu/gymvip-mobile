@@ -137,28 +137,7 @@ class CatalogRepositoryImpl(
     }
 
     override suspend fun scanSupplement(code: String): Result<AdminSupplementDto> {
-        val remote = catalogApi.scanSupplement(code.trim())
-        if (remote.isSuccess) return remote
-
-        // Fallback para códigos demo si estamos en modo desconectado / pruebas locales
-        if (code.trim() == "7751234567890" || code.trim().equals("PROD-WHEY-01", ignoreCase = true)) {
-            return Result.success(
-                AdminSupplementDto(
-                    id = "supp-demo-01",
-                    name = "Proteína Whey Gold Standard 2kg",
-                    brand = "Optimum Nutrition",
-                    category = "PROTEINA",
-                    flavor = "Chocolate Doble",
-                    weightKg = 2.0,
-                    price = 249.90,
-                    stock = 15,
-                    isAvailable = true,
-                    barcode = code.trim(),
-                    description = "Aislado de proteína de suero de alta pureza con rápida absorción"
-                )
-            )
-        }
-        return remote
+        return catalogApi.scanSupplement(code.trim())
     }
 
     override suspend fun updateSupplementBarcode(id: String, barcode: String): Result<AdminSupplementDto> {

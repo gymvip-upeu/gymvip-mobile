@@ -300,16 +300,27 @@ data class AdminSupplementDto(
     val brand: String? = null,
     val category: String? = null,
     val flavor: String? = null,
+    val presentation: String? = null,
+    val netContent: String? = null,
     val weightKg: Double? = null,
     val price: Double? = null,
+    val pricePen: Double? = null,
     val stock: Int? = null,
+    val availability: String? = null,
     val isAvailable: Boolean = true,
     val imageUrl: String? = null,
     val description: String? = null,
     val barcode: String? = null,
     val createdAt: String? = null,
-    val updatedAt: String? = null
-)
+    val updatedAt: String? = null,
+    val updatedAtUtc: String? = null
+) {
+    val displayPrice: Double
+        get() = price ?: pricePen ?: 0.0
+
+    val displayAvailable: Boolean
+        get() = if (availability != null) availability.equals("DISPONIBLE", ignoreCase = true) else isAvailable
+}
 
 @Serializable
 data class BarcodeUpdateRequestDto(

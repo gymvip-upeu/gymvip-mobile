@@ -23,6 +23,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material3.Icon
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.presentation.theme.GoldPrimary
 import com.gymvip.mobile.presentation.viewmodel.PreferencesViewModel
@@ -50,8 +57,23 @@ fun PreferencesScreen(
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onBackground
             )
-            TextButton(onClick = onBack) {
-                Text(text = "← Volver", color = GoldPrimary)
+            TextButton(
+                onClick = onBack,
+                modifier = Modifier.defaultMinSize(minWidth = 72.dp, minHeight = 48.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = "Volver",
+                    tint = GoldPrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Volver",
+                    color = GoldPrimary,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
 
@@ -87,6 +109,42 @@ fun PreferencesScreen(
                     subtitle = "Fondo claro con tipografía nítida",
                     selected = state.currentTheme == "LIGHT",
                     onClick = { viewModel.setTheme("LIGHT") }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "ENTORNO / SERVIDOR API",
+            style = MaterialTheme.typography.labelLarge,
+            color = GoldPrimary
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                ThemeOptionRow(
+                    label = "Servidor Render (Nube)",
+                    subtitle = "https://gymvip-backend.onrender.com",
+                    selected = state.currentServer.contains("onrender.com"),
+                    onClick = { viewModel.setServer("https://gymvip-backend.onrender.com") }
+                )
+                ThemeOptionRow(
+                    label = "Emulador Android (Local)",
+                    subtitle = "http://10.0.2.2:8081",
+                    selected = state.currentServer.contains("10.0.2.2"),
+                    onClick = { viewModel.setServer("http://10.0.2.2:8081") }
+                )
+                ThemeOptionRow(
+                    label = "Host Local / Red Local",
+                    subtitle = "http://localhost:8081",
+                    selected = state.currentServer.contains("localhost"),
+                    onClick = { viewModel.setServer("http://localhost:8081") }
                 )
             }
         }

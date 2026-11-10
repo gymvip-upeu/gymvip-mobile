@@ -1,5 +1,6 @@
 package com.gymvip.mobile.presentation.viewmodel
 
+import com.gymvip.mobile.data.remote.api.GymVipHttpClient
 import com.gymvip.mobile.domain.repository.ConfigRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,7 +14,8 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 data class PreferencesUiState(
-    val currentTheme: String = "SYSTEM" // SYSTEM, DARK, LIGHT
+    val currentTheme: String = "SYSTEM", // SYSTEM, DARK, LIGHT
+    val currentServer: String = GymVipHttpClient.baseUrl
 )
 
 class PreferencesViewModel(
@@ -25,7 +27,7 @@ class PreferencesViewModel(
 
     init {
         configRepository.getThemePreference().onEach { theme ->
-            _uiState.value = _uiState.value.copy(currentTheme = theme)
+            _uiState.value = _uiState.value.copy(currentTheme = theme, currentServer = GymVipHttpClient.baseUrl)
         }.launchIn(scope)
     }
 
@@ -33,6 +35,11 @@ class PreferencesViewModel(
         scope.launch {
             configRepository.setThemePreference(theme)
         }
+    }
+
+    fun setServer(serverUrl: String) {
+        GymVipHttpClient.baseUrl = serverUrl
+        _uiState.value = _uiState.value.copy(currentServer = serverUrl)
     }
 
     fun onCleared() {

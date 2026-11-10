@@ -11,6 +11,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.domain.model.GymService
 import com.gymvip.mobile.domain.repository.GymServiceRepository
@@ -58,8 +60,23 @@ fun ServicesScreen(
                     color = MaterialTheme.colorScheme.onBackground
                 )
             }
-            TextButton(onClick = onBack) {
-                Text(text = "Volver", color = GoldPrimary)
+            TextButton(
+                onClick = onBack,
+                modifier = Modifier.defaultMinSize(minWidth = 72.dp, minHeight = 48.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = "Volver",
+                    tint = GoldPrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Volver",
+                    color = GoldPrimary,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
 

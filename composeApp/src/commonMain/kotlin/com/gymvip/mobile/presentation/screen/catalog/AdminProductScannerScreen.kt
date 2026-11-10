@@ -371,12 +371,12 @@ fun AdminProductScannerScreen(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(if (product.isAvailable) SuccessGreen.copy(alpha = 0.2f) else DangerRed.copy(alpha = 0.2f))
+                                .background(if (product.displayAvailable) SuccessGreen.copy(alpha = 0.2f) else DangerRed.copy(alpha = 0.2f))
                                 .padding(horizontal = 8.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = if (product.isAvailable) "DISPONIBLE" else "AGOTADO",
-                                color = if (product.isAvailable) SuccessGreen else DangerRed,
+                                text = if (product.displayAvailable) "DISPONIBLE" else "AGOTADO",
+                                color = if (product.displayAvailable) SuccessGreen else DangerRed,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold
                             )
@@ -404,7 +404,7 @@ fun AdminProductScannerScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Precio: S/. ${product.price?.let { "%.2f".format(it) } ?: "0.00"}",
+                            text = "Precio: S/. ${"%.2f".format(product.displayPrice)}",
                             style = MaterialTheme.typography.titleSmall,
                             color = GoldPrimary,
                             fontWeight = FontWeight.Bold

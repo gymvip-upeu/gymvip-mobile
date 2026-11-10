@@ -35,11 +35,18 @@ fun TermsAndPrivacyScreen(
     var isError by remember { mutableStateOf(false) }
 
     LaunchedEffect(accountId) {
-        val res = repository.fetchConsent(accountId)
-        res.onSuccess {
-            termsAccepted = it.termsAccepted
-            privacyAcknowledged = it.privacyAcknowledged
-            whatsappConsent = it.whatsappConsent
+        if (!requiredAcceptance) {
+            val res = repository.fetchConsent(accountId)
+            res.onSuccess {
+                termsAccepted = it.termsAccepted
+                privacyAcknowledged = it.privacyAcknowledged
+                whatsappConsent = it.whatsappConsent
+            }
+        } else {
+            // En primer acceso, los checkboxes inician estrictamente desmarcados para consentimiento explícito
+            termsAccepted = false
+            privacyAcknowledged = false
+            whatsappConsent = false
         }
     }
 
@@ -83,6 +90,14 @@ fun TermsAndPrivacyScreen(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "CONSENTIMIENTOS OBLIGATORIOS (USO ESENCIAL DEL SERVICIO)",
+            style = MaterialTheme.typography.labelSmall,
+            color = GoldPrimary,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Tarjeta de Términos
         Card(
@@ -161,7 +176,15 @@ fun TermsAndPrivacyScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "CONSENTIMIENTO OPCIONAL (NOTIFICACIONES Y RECORDATORIOS)",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Tarjeta de Consentimiento Opcional de Comunicaciones (WhatsApp)
         Card(
