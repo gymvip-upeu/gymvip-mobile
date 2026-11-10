@@ -58,16 +58,31 @@ fun CatalogoComunidadScreen(vm: ComunidadViewModel, volver: (() -> Unit)? = null
     var query by rememberSaveable { mutableStateOf(s.filtro.consulta) }
     var filtros by remember { mutableStateOf(false) }
     var nota by remember { mutableStateOf<FavoritoSocio?>(null) }
+    var verCarrito by rememberSaveable { mutableStateOf(false) }
     val favoritoHabilitado = vm.esSocio && AppConfig.FEATURE_FAVORITOS
     LaunchedEffect(tab) { when(tab) { 0 -> vm.cargarCatalogo(); 1 -> vm.cargarPromos(); else -> vm.cargarFavoritos() } }
-    AlVolver(s.productoId != null || s.ofertaId != null) { vm.cerrarDetalle() }
-    if (s.productoId != null || s.ofertaId != null) {
-        DetalleComercial(vm) { producto -> tab = 1; vm.cerrarDetalle(); vm.cargarPromos(producto = producto) }
+    AlVolver(verCarrito || s.productoId != null || s.ofertaId != null) {
+        if (verCarrito) verCarrito = false else vm.cerrarDetalle()
+    }
+    if (verCarrito) {
+        CarritoScreen(vm) { verCarrito = false }
         return
     }
-    MarcoComunidad("Catálogo", "Productos y promociones disponibles en recepción.", volver,
+    if (s.productoId != null || s.ofertaId != null) {
+        DetalleComercial(vm, { producto -> tab = 1; vm.cerrarDetalle(); vm.cargarPromos(producto = producto) },
+            { verCarrito = true; vm.cerrarDetalle() })
+        return
+    }
+    MarcoComunidad("Suplementos", "Explora productos. Confirma precios y stock en recepción.", volver,
         when(tab) { 0 -> s.cargandoCatalogo; 1 -> s.cargandoPromos; else -> s.cargandoFavoritos },
         { when(tab) { 0 -> vm.cargarCatalogo(); 1 -> vm.cargarPromos(); else -> vm.cargarFavoritos() } }) {
+        item {
+            OutlinedButton({ verCarrito = true }, Modifier.fillMaxWidth()) {
+                Icon(Icons.Outlined.ShoppingCart, null)
+                Spacer(Modifier.width(8.dp))
+                Text("Mi carrito · ${s.carrito.cantidad} ${if (s.carrito.cantidad == 1) "producto" else "productos"} · ${s.carrito.total.amountInSoles}")
+            }
+        }
         item {
             Row(Modifier.fillMaxWidth()) {
                 listOf("Productos", "Promociones").plus(if (favoritoHabilitado) listOf("Favoritos") else emptyList()).forEachIndexed { i, label ->
@@ -91,7 +106,7 @@ fun CatalogoComunidadScreen(vm: ComunidadViewModel, volver: (() -> Unit)? = null
                 }
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("" to "Todos", "PROTEINA" to "Proteína", "CREATINA" to "Creatina", "PREENTRENO" to "Preentreno",
-                        "AMINOACIDOS" to "Aminoácidos", "VITAMINAS" to "Vitaminas", "OTROS" to "Otros").forEach { (id, label) ->
+                        "AMINOACIDOS" to "Aminoácidos", "VITAMINAS" to "Vitaminas", "OTROS" to "Snacks y otros").forEach { (id, label) ->
                         ChipFiltro(label, s.filtro.categoria == id) { vm.cargarCatalogo(s.filtro.copy(categoria = id, consulta = query)) }
                     }
                 }
@@ -148,7 +163,16 @@ fun CatalogoComunidadScreen(vm: ComunidadViewModel, volver: (() -> Unit)? = null
 private fun ProductoCard(p: Suplemento, vm: ComunidadViewModel, modifier: Modifier) {
     val s by vm.state.collectAsState()
     Card(modifier.clickable { vm.abrirProducto(p.id) }, shape = MaterialTheme.shapes.medium) {
-        Box { FotoProducto(p, vm, Modifier.fillMaxWidth().height(130.dp))
+        Box { FotoProducto(p, vm, Modifier.fillMaxWidth().height(172.dp))
+            s.ofertasEnCatalogo[p.id]?.let { oferta ->
+                val referencia = oferta.precioReferencia.cents
+                val descuento = (((referencia - oferta.precioOferta.cents) * 100 + referencia / 2) / referencia).toInt()
+                Surface(Modifier.align(Alignment.TopStart), color = androidx.compose.ui.graphics.Color(0xFFE60032),
+                    shape = MaterialTheme.shapes.small) {
+                    Text("-$descuento%", Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                        color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.labelMedium)
+                }
+            }
             Surface(Modifier.align(Alignment.BottomStart).padding(8.dp), shape = MaterialTheme.shapes.small,
                 color = MaterialTheme.colorScheme.background.copy(alpha = .85f)) {
                 Text(p.categoria.lowercase().replaceFirstChar(Char::uppercaseChar), Modifier.padding(6.dp), style = MaterialTheme.typography.labelSmall)
@@ -162,12 +186,20 @@ private fun ProductoCard(p: Suplemento, vm: ComunidadViewModel, modifier: Modifi
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(p.nombre, style = MaterialTheme.typography.titleSmall)
             Text(p.marca, style = MaterialTheme.typography.labelSmall)
+            Text("Imagen ilustrativa", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             val oferta = s.ofertasEnCatalogo[p.id]
             if (oferta != null) Text(oferta.precioReferencia.amountInSoles, style = MaterialTheme.typography.labelSmall,
                 textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough)
             Text((oferta?.precioOferta ?: p.precio).amountInSoles, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
-            Text(if (oferta != null) "Promoción vigente" else "Precio regular", style = MaterialTheme.typography.labelSmall)
-            Text(if (p.disponible) "Disponible en recepción" else "Agotado temporalmente", style = MaterialTheme.typography.labelSmall)
+            Text(if (oferta != null) "Promoción vigente" else "Precio referencial", style = MaterialTheme.typography.labelSmall)
+            Text(if (p.disponible) "Consultar en recepción" else "Agotado temporalmente", style = MaterialTheme.typography.labelSmall)
+            Button({ vm.agregarAlCarrito(p, oferta?.precioOferta ?: p.precio) },
+                Modifier.fillMaxWidth(), enabled = p.disponible,
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)) {
+                Icon(Icons.Outlined.AddShoppingCart, null, Modifier.size(17.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("Agregar", style = MaterialTheme.typography.labelSmall)
+            }
         }
     }
 }

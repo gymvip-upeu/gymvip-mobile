@@ -14,14 +14,14 @@ import pe.edu.upeu.gymvip.presentation.component.*
 import pe.edu.upeu.gymvip.presentation.viewmodel.ComunidadViewModel
 
 @Composable
-fun DetalleComercial(vm: ComunidadViewModel, verPromociones: (String) -> Unit) {
+fun DetalleComercial(vm: ComunidadViewModel, verPromociones: (String) -> Unit, verCarrito: () -> Unit) {
     val s by vm.state.collectAsState()
     val producto = s.producto ?: s.oferta?.producto
     MarcoComunidad(if (s.ofertaId != null) "Promoción" else "Detalle del producto", "Consulta la información registrada por el gimnasio.", vm::cerrarDetalle) {
         if (s.cargandoDetalle) item { Esqueleto() }
         s.errorDetalle?.let { item { EstadoError(it) { s.productoId?.let(vm::abrirProducto) ?: s.ofertaId?.let(vm::abrirOferta) } } }
         producto?.let { p ->
-            item { FotoProducto(p, vm, Modifier.fillMaxWidth().height(240.dp)) }
+            item { FotoProducto(p, vm, Modifier.fillMaxWidth().height(240.dp)); Text("Imagen ilustrativa", style = MaterialTheme.typography.labelSmall) }
             item { EncabezadoPantalla(s.oferta?.nombre ?: p.nombre, p.marca, p.categoria) }
             item { PanelSocio {
                 if (s.oferta != null) {
@@ -39,9 +39,15 @@ fun DetalleComercial(vm: ComunidadViewModel, verPromociones: (String) -> Unit) {
                         TextButton({ vm.abrirOferta(o.id) }) { Text("Ver condiciones de la promoción") }
                     } ?: Text(p.precio.amountInSoles, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
                 }
-                Text(if (p.disponible) "Disponible en recepción" else "Agotado temporalmente")
+                Text(if (p.disponible) "Confirma precio y stock en recepción" else "Agotado temporalmente")
+                val precio = s.oferta?.takeIf { it.vigente }?.precioOferta ?: s.ofertaProducto?.precioOferta ?: p.precio
+                Button({ vm.agregarAlCarrito(p, precio) }, Modifier.fillMaxWidth(), enabled = p.disponible) {
+                    Text("Agregar al carrito · ${precio.amountInSoles}")
+                }
+                TextButton(verCarrito) { Text("Ver mi carrito (${s.carrito.cantidad})") }
                 FilaDetalle("Presentación", p.presentacion); FilaDetalle("Contenido neto", p.contenido)
                 if (p.sabor.isNotBlank()) FilaDetalle("Sabor", p.sabor)
+                Text("Descripción", style = MaterialTheme.typography.titleMedium)
                 Text(p.descripcion)
                 if (p.ingredientes.isNotBlank()) { Text("Ingredientes", style = MaterialTheme.typography.titleMedium); Text(p.ingredientes) }
                 TextButton({ verPromociones(p.id) }) { Text("Ver promociones de este producto") }

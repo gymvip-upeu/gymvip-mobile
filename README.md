@@ -12,6 +12,8 @@ ADMIN y RECEPCION mantienen sus paneles y acceden al catálogo de consulta y pre
 
 El [ajuste de lectura CLIENTE](docs/PROPUESTA_CATALOGO_SOCIO.md) está aplicado: productos/imágenes publicados y promociones vigentes; escrituras e historiales siguen siendo de ADMIN. También se corrigieron las lecturas de consentimiento y Avisos. El modo demo intercambiable y la compilación iOS siguen pendientes.
 
+La [tienda de suplementos](docs/TIENDA_SUPLEMENTOS.md) incorpora nueve productos de muestra, cuatro promociones de ejemplo, imágenes ilustrativas y precios referenciales cargados en el backend local. Los tres roles pueden preparar una lista en un carrito local y mostrarla en recepción; el pago y la confirmación del stock son presenciales. La compilación Android y **102 pruebas móviles** pasaron el 09-11-2026.
+
 ## Estructura
 
 - `androidApp/`: aplicación Android, MainActivity y GymVipApplication.

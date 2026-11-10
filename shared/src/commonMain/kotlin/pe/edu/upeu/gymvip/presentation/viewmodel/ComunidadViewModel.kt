@@ -8,6 +8,7 @@ import pe.edu.upeu.gymvip.domain.model.*
 import pe.edu.upeu.gymvip.domain.repository.ComunidadRepository
 
 data class ComunidadUiState(val datos: DatosComunidad = DatosComunidad(),
+    val carrito: CarritoSuplementos = CarritoSuplementos(),
     val catalogo: PaginaComercial<Suplemento>? = null, val promociones: PaginaComercial<Oferta>? = null,
     val destacadas: List<Oferta> = emptyList(), val filtro: FiltroCatalogo = FiltroCatalogo(),
     val ofertasEnCatalogo: Map<String, Oferta> = emptyMap(), val errorPrecios: String? = null,
@@ -80,6 +81,14 @@ class ComunidadViewModel(val repository: ComunidadRepository, val esSocio: Boole
         detailJob = scope.launch { val r = repository.oferta(id); _state.update { it.copy(cargandoDetalle = false, oferta = r.getOrNull(), errorDetalle = r.exceptionOrNull()?.message) } }
     }
     fun cerrarDetalle() { detailJob?.cancel(); _state.update { it.copy(productoId = null, ofertaId = null, producto = null, oferta = null, errorDetalle = null, cargandoDetalle = false) } }
+    fun agregarAlCarrito(producto: Suplemento, precio: MoneyPen) {
+        if (!producto.disponible) return
+        _state.update { it.copy(carrito = it.carrito.agregar(producto, precio)) }
+    }
+    fun cantidadCarrito(id: String, cantidad: Int) {
+        _state.update { it.copy(carrito = it.carrito.cambiarCantidad(id, cantidad)) }
+    }
+    fun vaciarCarrito() { _state.update { it.copy(carrito = CarritoSuplementos()) } }
     fun cargarFavoritos() { if (!esSocio || state.value.cargandoFavoritos) return
         _state.update { it.copy(cargandoFavoritos = true, errorFavoritos = null) }; scope.launch {
         val r = repository.favoritos()

@@ -57,6 +57,18 @@ class ComunidadViewModelTest {
         vm.cargarAvisos(); vm.cargarFavoritos(); vm.cargarFaq(); runCurrent()
         assertEquals(0, repo.consultasPrivadas)
     }
+    @Test fun carritoLocalDisponibleParaPersonalYSeparadoPorSesion() = runTest {
+        val repo = Repo()
+        val item = Suplemento("p1", "Creatina", "Marca", "CREATINA", "Pote", "500 g", "", "Descripción", "",
+            MoneyPen(14990), true, true, emptyList())
+        val personal = ComunidadViewModel(repo, false, backgroundScope)
+        personal.agregarAlCarrito(item, item.precio)
+        assertEquals(1, personal.state.value.carrito.cantidad)
+        val socio = ComunidadViewModel(repo, true, backgroundScope)
+        socio.agregarAlCarrito(item, item.precio)
+        assertEquals(1, socio.state.value.carrito.cantidad)
+        assertEquals(0, ComunidadViewModel(repo, true, backgroundScope).state.value.carrito.cantidad)
+    }
     @Test fun falloAlLeerConservaAvisoSinLeerYPublicaError() = runTest {
         val repo = Repo().apply {
             data.value = DatosComunidad(avisos = listOf(InboxItem("a1", "socio", "Aviso", "Mensaje", InboxCategory.COMUNICADO, "2026-11-09T12:00:00Z", false)))
