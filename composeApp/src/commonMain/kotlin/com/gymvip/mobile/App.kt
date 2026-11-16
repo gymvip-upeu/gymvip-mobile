@@ -169,6 +169,7 @@ fun App() {
             is NavDestination.Faq -> {
                 FaqScreen(
                     getFaqsUseCase = AppContainer.getFaqsUseCase,
+                    receptionWhatsAppNumber = AppContainer.configRepository.receptionWhatsAppNumber,
                     onBack = { currentDestination = NavDestination.Main(currentTab) }
                 )
             }

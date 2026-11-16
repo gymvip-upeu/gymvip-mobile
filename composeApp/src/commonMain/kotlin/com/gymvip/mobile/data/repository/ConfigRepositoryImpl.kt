@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.asStateFlow
 
 class ConfigRepositoryImpl : ConfigRepository {
 
+    override val receptionWhatsAppNumber: String = "+51 905 436 989"
+
     private val _themePreference = MutableStateFlow("SYSTEM") // SYSTEM, DARK, LIGHT
 
     // Defaults locales informativos (sin impacto financiero ni de permisos)
