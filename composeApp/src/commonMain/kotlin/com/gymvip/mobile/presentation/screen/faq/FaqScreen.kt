@@ -93,9 +93,17 @@ fun FaqScreen(
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Volver")
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = "Volver",
+                    tint = MaterialTheme.colorScheme.onBackground
+                )
             }
-            Text("Ayuda y atención", style = MaterialTheme.typography.titleLarge)
+            Text(
+                text = "Ayuda y atención",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onBackground
+            )
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outline)
 
