@@ -46,6 +46,9 @@ import com.gymvip.mobile.domain.model.InboxItem
 import com.gymvip.mobile.presentation.component.EmptyView
 import com.gymvip.mobile.presentation.component.ErrorRetryView
 import com.gymvip.mobile.presentation.component.LoadingView
+import com.gymvip.mobile.presentation.permission.NotificationPermissionStatus
+import com.gymvip.mobile.presentation.permission.rememberNotificationPermission
+import com.gymvip.mobile.presentation.screen.permissions.NotificationPermissionCard
 import com.gymvip.mobile.presentation.viewmodel.InboxViewModel
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
@@ -57,6 +60,7 @@ import kotlinx.datetime.toLocalDateTime
 @Composable
 fun InboxScreen(viewModel: InboxViewModel) {
     val state by viewModel.uiState.collectAsState()
+    val notificationPermission = rememberNotificationPermission()
     var unreadOnly by remember(viewModel) { mutableStateOf(false) }
     var selectedId by remember(viewModel) { mutableStateOf<String?>(null) }
     val visibleItems = if (unreadOnly) state.items.filterNot { it.isRead } else state.items
@@ -97,6 +101,11 @@ fun InboxScreen(viewModel: InboxViewModel) {
                         )
                     }
                 }
+            }
+            if (notificationPermission.status == NotificationPermissionStatus.CAN_REQUEST ||
+                notificationPermission.status == NotificationPermissionStatus.DISABLED
+            ) {
+                item { NotificationPermissionCard(notificationPermission) }
             }
             if (state.loadFailed) {
                 item {
