@@ -109,13 +109,19 @@ android {
         }
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
+            buildConfigField("String", "DEFAULT_SERVER_URL", "\"https://gymvip-backend.onrender.com\"")
             // Firma de release configurada si se proveen keystore/contraseñas privadas
         }
         getByName("debug") {
             isDebuggable = true
+            buildConfigField("String", "DEFAULT_SERVER_URL", "\"http://10.0.2.2:8080\"")
         }
     }
 
@@ -143,4 +149,21 @@ compose.desktop {
         }
     }
 }
+
+tasks.register("validateReleaseConfiguration") {
+    description = "Valida que las compilaciones de producción no dependan de localhost o emuladores"
+    group = "verification"
+    doLast {
+        val configuredUrl = "https://gymvip-backend.onrender.com"
+        if (configuredUrl.contains("localhost") || configuredUrl.contains("10.0.2.2") || configuredUrl.contains("127.0.0.1")) {
+            throw GradleException("ERROR DE SEGURIDAD CRÍTICO: La compilación de release no puede apuntar a IP local o emulador ($configuredUrl)")
+        }
+        logger.lifecycle("[SEGURIDAD CI/CD] URL de servidor release verificada para producción: $configuredUrl")
+    }
+}
+
+tasks.matching { it.name.startsWith("assembleRelease") || it.name.startsWith("bundleRelease") }.configureEach {
+    dependsOn("validateReleaseConfiguration")
+}
+
 
