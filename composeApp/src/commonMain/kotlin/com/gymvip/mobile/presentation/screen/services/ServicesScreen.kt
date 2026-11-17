@@ -41,6 +41,7 @@ fun ServicesScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .safeDrawingPadding()
             .padding(16.dp)
     ) {
         Row(

@@ -174,20 +174,6 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(14.dp))
         }
 
-        // Botón de Cerrar Sesión seguro
-        Button(
-            onClick = { viewModel.logout() },
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (followsSystem) MaterialTheme.colorScheme.errorContainer else DangerRed.copy(alpha = 0.15f),
-                contentColor = if (followsSystem) MaterialTheme.colorScheme.onErrorContainer else DangerRed
-            ),
-            shape = RoundedCornerShape(10.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-        ) {
-            Text(text = "Cerrar sesión segura", style = MaterialTheme.typography.titleMedium)
-        }
     }
 }
 

@@ -6,8 +6,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,6 +23,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Campaign
+import androidx.compose.material.icons.outlined.FitnessCenter
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material3.Card
 import androidx.compose.material3.Button
@@ -54,6 +58,8 @@ import com.gymvip.mobile.presentation.theme.accentForeground
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
+    onNavigateServices: () -> Unit,
+    onNavigateFaq: () -> Unit,
     onNavigateTab: (MainTab) -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -137,6 +143,28 @@ fun HomeScreen(
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onBackground
             )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                QuickActionCard(
+                    icon = Icons.Outlined.FitnessCenter,
+                    title = "Servicios e instalaciones",
+                    subtitle = "Conoce el gimnasio",
+                    onClick = onNavigateServices,
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                )
+                QuickActionCard(
+                    icon = Icons.AutoMirrored.Outlined.HelpOutline,
+                    title = "Ayuda y preguntas frecuentes",
+                    subtitle = "Consulta y contacta a recepción",
+                    onClick = onNavigateFaq,
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                )
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {

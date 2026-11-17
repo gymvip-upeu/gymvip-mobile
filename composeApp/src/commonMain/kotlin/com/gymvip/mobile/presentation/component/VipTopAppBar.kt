@@ -2,7 +2,7 @@ package com.gymvip.mobile.presentation.component
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -22,7 +22,7 @@ import com.gymvip.mobile.presentation.theme.accentForeground
 @Composable
 fun VipTopAppBar(
     title: String,
-    onOpenDrawer: () -> Unit,
+    onOpenSettings: (() -> Unit)? = null,
     onSyncClick: (() -> Unit)? = null,
     isSyncing: Boolean = false
 ) {
@@ -32,15 +32,6 @@ fun VipTopAppBar(
     TopAppBar(
         title = {
             Text(title, style = MaterialTheme.typography.titleLarge)
-        },
-        navigationIcon = {
-            IconButton(onClick = onOpenDrawer, modifier = Modifier.size(48.dp)) {
-                Icon(
-                    imageVector = Icons.Outlined.Menu,
-                    contentDescription = "Abrir menú",
-                    tint = colors.onSurface
-                )
-            }
         },
         actions = {
             if (onSyncClick != null) {
@@ -58,6 +49,11 @@ fun VipTopAppBar(
                             tint = colors.onSurface
                         )
                     }
+                }
+            }
+            if (onOpenSettings != null) {
+                IconButton(onClick = onOpenSettings, modifier = Modifier.size(48.dp)) {
+                    Icon(Icons.Outlined.Settings, contentDescription = "Ajustes", tint = colors.onSurface)
                 }
             }
         },

@@ -3,12 +3,7 @@ package com.gymvip.mobile
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -16,13 +11,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.gymvip.mobile.di.AppContainer
-import com.gymvip.mobile.presentation.component.VipDrawerContent
 import com.gymvip.mobile.presentation.component.VipNavigationBar
 import com.gymvip.mobile.presentation.component.VipTopAppBar
+import com.gymvip.mobile.presentation.navigation.AppBackHandler
 import com.gymvip.mobile.presentation.navigation.MainTab
 import com.gymvip.mobile.presentation.navigation.NavDestination
 import com.gymvip.mobile.presentation.screen.auth.ActivationScreen
@@ -37,7 +31,9 @@ import com.gymvip.mobile.presentation.screen.legal.TermsAndPrivacyScreen
 import com.gymvip.mobile.presentation.screen.membership.MembershipScreen
 import com.gymvip.mobile.presentation.screen.permissions.AppPermissionsScreen
 import com.gymvip.mobile.presentation.screen.preferences.PreferencesScreen
+import com.gymvip.mobile.presentation.screen.profile.EditProfileScreen
 import com.gymvip.mobile.presentation.screen.profile.ProfileScreen
+import com.gymvip.mobile.presentation.screen.settings.SettingsScreen
 import com.gymvip.mobile.presentation.screen.services.ServicesScreen
 import com.gymvip.mobile.presentation.screen.splash.OnboardingScreen
 import com.gymvip.mobile.presentation.screen.splash.SplashScreen
@@ -50,13 +46,9 @@ import com.gymvip.mobile.presentation.viewmodel.InboxViewModel
 import com.gymvip.mobile.presentation.viewmodel.MembershipViewModel
 import com.gymvip.mobile.presentation.viewmodel.PreferencesViewModel
 import com.gymvip.mobile.presentation.viewmodel.ProfileViewModel
-import kotlinx.coroutines.launch
 
 @Composable
 fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
-    val coroutineScope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
-
     // Preferencias de tema
     val preferencesViewModel = remember {
         PreferencesViewModel(AppContainer.configRepository)
@@ -76,7 +68,26 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
         var currentDestination by remember { mutableStateOf<NavDestination>(NavDestination.Splash) }
         var currentTab by remember { mutableStateOf(MainTab.HOME) }
 
-        val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+        val profileAccountId = authState.authenticatedProfile?.accountId?.takeIf { it.isNotBlank() }
+        val profileViewModel = if (authState.isAuthenticated && profileAccountId != null) {
+            remember(profileAccountId) {
+                ProfileViewModel(memberRepository = AppContainer.memberRepository, accountId = profileAccountId)
+            }
+        } else null
+        DisposableEffect(profileViewModel) {
+            onDispose { profileViewModel?.onCleared() }
+        }
+
+        val parentDestination = when (val destination = currentDestination) {
+            NavDestination.Settings -> NavDestination.Main(MainTab.PROFILE)
+            NavDestination.Faq, NavDestination.Services -> NavDestination.Main(MainTab.HOME)
+            NavDestination.EditProfile, NavDestination.Preferences, NavDestination.Permissions -> NavDestination.Settings
+            is NavDestination.TermsAndPrivacy -> if (destination.requiresAcceptance) null else NavDestination.Settings
+            else -> null
+        }
+        AppBackHandler(enabled = parentDestination != null) {
+            parentDestination?.let { currentDestination = it }
+        }
 
         // Una sesión autenticada no entra al contenido hasta aceptar términos y privacidad.
         LaunchedEffect(authState.isAuthenticated, authState.authenticatedProfile?.accountId) {
@@ -114,6 +125,7 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                 currentDestination !is NavDestination.PasswordRecovery &&
                 currentDestination !is NavDestination.Activation
             ) {
+                currentTab = MainTab.HOME
                 currentDestination = NavDestination.Onboarding
             }
         }
@@ -170,15 +182,32 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                 FaqScreen(
                     getFaqsUseCase = AppContainer.getFaqsUseCase,
                     receptionWhatsAppNumber = AppContainer.configRepository.receptionWhatsAppNumber,
-                    onBack = { currentDestination = NavDestination.Main(currentTab) }
+                    onBack = { currentDestination = NavDestination.Main(MainTab.HOME) }
                 )
             }
 
             is NavDestination.Services -> {
                 ServicesScreen(
                     repository = AppContainer.gymServiceRepository,
-                    onBack = { currentDestination = NavDestination.Main(currentTab) }
+                    onBack = { currentDestination = NavDestination.Main(MainTab.HOME) }
                 )
+            }
+
+            is NavDestination.Settings -> {
+                SettingsScreen(
+                    onBack = { currentDestination = NavDestination.Main(MainTab.PROFILE) },
+                    onEditProfile = { currentDestination = NavDestination.EditProfile },
+                    onPermissions = { currentDestination = NavDestination.Permissions },
+                    onAppearance = { currentDestination = NavDestination.Preferences },
+                    onTermsAndPrivacy = { currentDestination = NavDestination.TermsAndPrivacy() },
+                    onLogout = authViewModel::logout
+                )
+            }
+
+            is NavDestination.EditProfile -> {
+                profileViewModel?.let {
+                    EditProfileScreen(viewModel = it, onBack = { currentDestination = NavDestination.Settings })
+                }
             }
 
             is NavDestination.TermsAndPrivacy -> {
@@ -187,21 +216,23 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                     repository = AppContainer.legalConsentRepository,
                     accountId = accountId,
                     requiredAcceptance = dest.requiresAcceptance,
-                    onBackOrAccepted = { currentDestination = NavDestination.Main(currentTab) }
+                    onBackOrAccepted = {
+                        currentDestination = if (dest.requiresAcceptance) {
+                            NavDestination.Main(currentTab)
+                        } else NavDestination.Settings
+                    }
                 )
             }
 
             is NavDestination.Preferences -> {
                 PreferencesScreen(
                     viewModel = preferencesViewModel,
-                    onBack = { currentDestination = NavDestination.Main(currentTab) }
+                    onBack = { currentDestination = NavDestination.Settings }
                 )
             }
 
             is NavDestination.Permissions -> {
-                AppPermissionsScreen(
-                    onBack = { currentDestination = NavDestination.Main(currentTab) }
-                )
+                AppPermissionsScreen(onBack = { currentDestination = NavDestination.Settings })
             }
 
             is NavDestination.Main -> {
@@ -247,140 +278,63 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                     onDispose { inboxViewModel.onCleared() }
                 }
 
-                val profileViewModel = remember(accountId) {
-                    ProfileViewModel(
-                        memberRepository = AppContainer.memberRepository,
-                        authRepository = AppContainer.authRepository,
-                        accountId = accountId
-                    )
-                }
-
                 val userRoles = authState.authenticatedProfile?.roles.orEmpty()
-                val isAdminOrReception = userRoles.any {
-                    it.contains("ADMIN", ignoreCase = true) || it.contains("RECEPCION", ignoreCase = true)
-                }
-                val accountType = when {
-                    userRoles.any { it.contains("ADMIN", ignoreCase = true) } -> "Administrador"
-                    userRoles.any { it.contains("RECEPCION", ignoreCase = true) } -> "Recepción"
-                    else -> "Socio / miembro"
-                }
 
-                ModalNavigationDrawer(
-                    drawerState = drawerState,
-                    drawerContent = {
-                        VipDrawerContent(
-                            memberName = authState.authenticatedProfile?.fullName ?: "Socio VIP",
-                            memberEmail = authState.authenticatedProfile?.email ?: "",
-                            accountType = accountType,
-                            isAdminOrReception = isAdminOrReception,
-                            onNavigateFaq = {
-                                coroutineScope.launch {
-                                    drawerState.close()
-                                    currentDestination = NavDestination.Faq
-                                }
+                Scaffold(
+                    topBar = {
+                        VipTopAppBar(
+                            title = when (currentTab) {
+                                MainTab.HOME -> "GYM VIP"
+                                MainTab.MEMBERSHIP -> "Membresía"
+                                MainTab.CATALOG -> "Catálogo y Planes"
+                                MainTab.INBOX -> "Avisos"
+                                MainTab.PROFILE -> "Mi Perfil"
                             },
-                            onNavigateServices = {
-                                coroutineScope.launch {
-                                    drawerState.close()
-                                    currentDestination = NavDestination.Services
-                                }
-                            },
-                            onNavigateTermsAndPrivacy = {
-                                coroutineScope.launch {
-                                    drawerState.close()
-                                    currentDestination = NavDestination.TermsAndPrivacy()
-                                }
-                            },
-                            onNavigatePreferences = {
-                                coroutineScope.launch {
-                                    drawerState.close()
-                                    currentDestination = NavDestination.Preferences
-                                }
-                            },
-                            onNavigatePermissions = {
-                                coroutineScope.launch {
-                                    drawerState.close()
-                                    currentDestination = NavDestination.Permissions
-                                }
-                            },
-                            onNavigateAdminScanner = {
-                                coroutineScope.launch {
-                                    drawerState.close()
-                                    currentDestination = NavDestination.AdminScanner
-                                }
-                            },
-                            onSyncNow = {
-                                coroutineScope.launch {
-                                    drawerState.close()
-                                    favoritesViewModel.syncPending()
-                                    membershipViewModel.refresh()
-                                    homeViewModel.refreshAll()
-                                    inboxViewModel.refresh()
-                                    snackbarHostState.showSnackbar("Sincronización manual ejecutada")
-                                }
-                            },
-                            onLogout = {
-                                coroutineScope.launch {
-                                    drawerState.close()
-                                    authViewModel.logout()
-                                }
+                            onOpenSettings = if (currentTab == MainTab.PROFILE) {
+                                { currentDestination = NavDestination.Settings }
+                            } else null,
+                            onSyncClick = {
+                                favoritesViewModel.syncPending()
+                                membershipViewModel.refresh()
+                                homeViewModel.refreshAll()
+                                inboxViewModel.refresh()
+                            }
+                        )
+                    },
+                    bottomBar = {
+                        VipNavigationBar(
+                            currentTab = currentTab,
+                            onTabSelected = { tab ->
+                                currentTab = tab
+                                currentDestination = NavDestination.Main(tab)
                             }
                         )
                     }
-                ) {
-                    Scaffold(
-                        topBar = {
-                            VipTopAppBar(
-                                title = when (currentTab) {
-                                    MainTab.HOME -> "GYM VIP"
-                                    MainTab.MEMBERSHIP -> "Membresía"
-                                    MainTab.CATALOG -> "Catálogo y Planes"
-                                    MainTab.INBOX -> "Avisos"
-                                    MainTab.PROFILE -> "Mi Perfil"
-                                },
-                                onOpenDrawer = {
-                                    coroutineScope.launch { drawerState.open() }
-                                },
-                                onSyncClick = {
-                                    favoritesViewModel.syncPending()
-                                    membershipViewModel.refresh()
-                                    homeViewModel.refreshAll()
-                                    inboxViewModel.refresh()
-                                }
-                            )
-                        },
-                        bottomBar = {
-                            VipNavigationBar(
-                                currentTab = currentTab,
-                                onTabSelected = { tab ->
+                ) { innerPadding ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    ) {
+                        when (currentTab) {
+                            MainTab.HOME -> HomeScreen(
+                                viewModel = homeViewModel,
+                                onNavigateServices = { currentDestination = NavDestination.Services },
+                                onNavigateFaq = { currentDestination = NavDestination.Faq },
+                                onNavigateTab = { tab ->
                                     currentTab = tab
                                     currentDestination = NavDestination.Main(tab)
                                 }
                             )
-                        },
-                        snackbarHost = { SnackbarHost(snackbarHostState) }
-                    ) { innerPadding ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(innerPadding)
-                        ) {
-                            when (currentTab) {
-                                MainTab.HOME -> HomeScreen(
-                                    viewModel = homeViewModel,
-                                    onNavigateTab = { tab ->
-                                        currentTab = tab
-                                        currentDestination = NavDestination.Main(tab)
-                                    }
-                                )
-                                MainTab.MEMBERSHIP -> MembershipScreen(viewModel = membershipViewModel)
-                                MainTab.CATALOG -> CatalogScreen(
-                                    catalogViewModel = catalogViewModel,
-                                    favoritesViewModel = favoritesViewModel
-                                )
-                                MainTab.INBOX -> InboxScreen(viewModel = inboxViewModel)
-                                MainTab.PROFILE -> ProfileScreen(
-                                    viewModel = profileViewModel,
+                            MainTab.MEMBERSHIP -> MembershipScreen(viewModel = membershipViewModel)
+                            MainTab.CATALOG -> CatalogScreen(
+                                catalogViewModel = catalogViewModel,
+                                favoritesViewModel = favoritesViewModel
+                            )
+                            MainTab.INBOX -> InboxScreen(viewModel = inboxViewModel)
+                            MainTab.PROFILE -> profileViewModel?.let {
+                                ProfileScreen(
+                                    viewModel = it,
                                     userRoles = userRoles,
                                     onNavigateAdminScanner = { currentDestination = NavDestination.AdminScanner }
                                 )

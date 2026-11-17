@@ -1,114 +1,100 @@
 package com.gymvip.mobile.presentation.screen.permissions
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.gymvip.mobile.presentation.permission.NotificationPermission
-import com.gymvip.mobile.presentation.permission.NotificationPermissionStatus
+import com.gymvip.mobile.presentation.permission.DevicePermission
+import com.gymvip.mobile.presentation.permission.DevicePermissionStatus
+import com.gymvip.mobile.presentation.permission.rememberCameraPermission
 import com.gymvip.mobile.presentation.permission.rememberNotificationPermission
-import com.gymvip.mobile.presentation.theme.accentForeground
+import com.gymvip.mobile.presentation.screen.settings.SettingsPage
 
 @Composable
 fun AppPermissionsScreen(onBack: () -> Unit) {
-    val permission = rememberNotificationPermission()
+    val notifications = rememberNotificationPermission()
+    val camera = rememberCameraPermission()
 
-    Column(
-        modifier = Modifier.fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .safeDrawingPadding()
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+    SettingsPage(title = "Permisos de la aplicación", onBack = onBack) {
+        PermissionCard(
+            title = "Notificaciones",
+            description = "Recibe avisos del gimnasio en tu dispositivo.",
+            icon = Icons.Outlined.Notifications,
+            permission = notifications
+        )
+        PermissionCard(
+            title = "Cámara",
+            description = "Permite escanear códigos de barras desde la aplicación.",
+            icon = Icons.Outlined.PhotoCamera,
+            permission = camera
+        )
+        if (camera.status != DevicePermissionStatus.UNAVAILABLE ||
+            notifications.status != DevicePermissionStatus.UNAVAILABLE
         ) {
-            IconButton(onClick = onBack) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = "Volver",
-                    tint = MaterialTheme.colorScheme.onBackground
-                )
-            }
             Text(
-                text = "Permisos de la aplicación",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onBackground
+                "Para desactivar un permiso, el interruptor te lleva a los ajustes de Android.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-        }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-
-        Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp)
-        ) {
-            NotificationPermissionCard(permission)
         }
     }
 }
 
 @Composable
-internal fun NotificationPermissionCard(permission: NotificationPermission) {
-    val description = when (permission.status) {
-        NotificationPermissionStatus.CAN_REQUEST ->
-            "Si activas las notificaciones, GYM VIP podrá mostrar avisos en tu celular."
-        NotificationPermissionStatus.DISABLED ->
-            "Las notificaciones están desactivadas. Puedes seguir consultando tus avisos aquí."
-        NotificationPermissionStatus.ENABLED ->
-            "Las notificaciones están permitidas en este dispositivo."
-        NotificationPermissionStatus.UNAVAILABLE ->
-            "Puedes gestionar este permiso desde la app de Android."
-    }
-
-    OutlinedCard(
+private fun PermissionCard(
+    title: String,
+    description: String,
+    icon: ImageVector,
+    permission: DevicePermission
+) {
+    Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(Icons.Outlined.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.accentForeground)
-                Text("Notificaciones", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Icon(icon, contentDescription = null)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    if (permission.status == DevicePermissionStatus.UNAVAILABLE) {
+                        "No disponible en esta plataforma."
+                    } else description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
-            Text(
-                description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            Switch(
+                checked = permission.status == DevicePermissionStatus.ENABLED,
+                onCheckedChange = if (permission.status == DevicePermissionStatus.UNAVAILABLE) null else {
+                    {
+                        if (permission.status == DevicePermissionStatus.CAN_REQUEST) permission.request()
+                        else permission.openSettings()
+                    }
+                },
+                enabled = permission.status != DevicePermissionStatus.UNAVAILABLE,
+                modifier = Modifier.semantics { contentDescription = title }
             )
-            when (permission.status) {
-                NotificationPermissionStatus.CAN_REQUEST ->
-                    Button(onClick = permission.request) { Text("Activar notificaciones") }
-                NotificationPermissionStatus.DISABLED, NotificationPermissionStatus.ENABLED ->
-                    OutlinedButton(onClick = permission.openSettings) { Text("Abrir ajustes", color = MaterialTheme.colorScheme.accentForeground) }
-                NotificationPermissionStatus.UNAVAILABLE -> Unit
-            }
         }
     }
 }
