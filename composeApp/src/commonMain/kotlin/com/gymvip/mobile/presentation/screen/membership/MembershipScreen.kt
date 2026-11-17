@@ -1,5 +1,8 @@
 package com.gymvip.mobile.presentation.screen.membership
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,8 +34,8 @@ import com.gymvip.mobile.presentation.component.LoadingView
 import com.gymvip.mobile.presentation.component.MembershipStatusCard
 import com.gymvip.mobile.presentation.component.OfflineBanner
 import com.gymvip.mobile.presentation.component.PaymentItemCard
-import com.gymvip.mobile.presentation.theme.GoldPrimary
 import com.gymvip.mobile.presentation.viewmodel.MembershipViewModel
+import com.gymvip.mobile.presentation.theme.accentForeground
 
 @Composable
 fun MembershipScreen(viewModel: MembershipViewModel) {
@@ -48,11 +51,11 @@ fun MembershipScreen(viewModel: MembershipViewModel) {
         TabRow(
             selectedTabIndex = state.selectedSubTab,
             containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = GoldPrimary,
+            contentColor = MaterialTheme.colorScheme.accentForeground,
             indicator = { tabPositions ->
                 TabRowDefaults.SecondaryIndicator(
                     modifier = Modifier.tabIndicatorOffset(tabPositions[state.selectedSubTab]),
-                    color = GoldPrimary
+                    color = MaterialTheme.colorScheme.accentForeground
                 )
             }
         ) {
@@ -121,7 +124,7 @@ private fun MembershipDetailTab(state: com.gymvip.mobile.presentation.viewmodel.
 private fun PaymentHistoryTab(state: com.gymvip.mobile.presentation.viewmodel.MembershipUiState) {
     if (state.payments.isEmpty()) {
         EmptyView(
-            icon = "💳",
+            icon = Icons.AutoMirrored.Outlined.ReceiptLong,
             title = "Sin pagos registrados",
             message = "No se encontraron recibos de pago en su cuenta de socio."
         )

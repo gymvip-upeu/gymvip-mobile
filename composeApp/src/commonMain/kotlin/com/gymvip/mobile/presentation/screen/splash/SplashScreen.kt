@@ -22,8 +22,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.presentation.theme.GoldPrimary
+import com.gymvip.mobile.presentation.theme.LocalGymVipSystemTheme
 import gymvip_mobile.composeapp.generated.resources.Res
 import gymvip_mobile.composeapp.generated.resources.bg_athlete
+import gymvip_mobile.composeapp.generated.resources.club_training
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 
@@ -32,6 +34,8 @@ fun SplashScreen(
     onResolved: (Boolean) -> Unit,
     isSessionActive: Boolean
 ) {
+    val followsSystem = LocalGymVipSystemTheme.current
+    val accent = if (followsSystem) MaterialTheme.colorScheme.primary else GoldPrimary
     LaunchedEffect(Unit) {
         delay(600)
         onResolved(isSessionActive)
@@ -41,9 +45,8 @@ fun SplashScreen(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        // Fondo deportista de espaldas con overlay oscuro de alto contraste (vistas previas a login)
         Image(
-            painter = painterResource(Res.drawable.bg_athlete),
+            painter = painterResource(if (followsSystem) Res.drawable.club_training else Res.drawable.bg_athlete),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
@@ -53,7 +56,11 @@ fun SplashScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(
+                        colors = if (followsSystem) listOf(
+                            MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.78f),
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.90f),
+                            MaterialTheme.colorScheme.background
+                        ) else listOf(
                             Color(0xCC050608),
                             Color(0xE60A0C10),
                             Color(0xFA050608)
@@ -66,12 +73,12 @@ fun SplashScreen(
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape)
-                    .background(GoldPrimary),
+                    .background(accent),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "V",
-                    color = Color.Black,
+                    color = if (followsSystem) MaterialTheme.colorScheme.onPrimary else Color.Black,
                     style = MaterialTheme.typography.headlineLarge
                 )
             }
@@ -79,7 +86,7 @@ fun SplashScreen(
             Text(
                 text = "GYM VIP",
                 style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onBackground
+                color = if (followsSystem) Color.White else MaterialTheme.colorScheme.onBackground
             )
             Text(
                 text = "Experiencia Digital del Socio",
@@ -87,7 +94,7 @@ fun SplashScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(32.dp))
-            CircularProgressIndicator(color = GoldPrimary, modifier = Modifier.size(32.dp))
+            CircularProgressIndicator(color = if (followsSystem) Color.White else accent, modifier = Modifier.size(32.dp))
         }
     }
 }

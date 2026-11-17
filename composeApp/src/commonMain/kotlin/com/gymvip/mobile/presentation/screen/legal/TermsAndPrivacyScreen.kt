@@ -13,8 +13,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.domain.repository.LegalConsentRepository
-import com.gymvip.mobile.presentation.theme.GoldPrimary
 import kotlinx.coroutines.launch
+import com.gymvip.mobile.presentation.theme.accentForeground
+import com.gymvip.mobile.presentation.theme.LocalGymVipSystemTheme
 
 @Composable
 fun TermsAndPrivacyScreen(
@@ -54,6 +55,7 @@ fun TermsAndPrivacyScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .safeDrawingPadding()
             .padding(16.dp)
             .verticalScroll(scrollState)
     ) {
@@ -66,7 +68,7 @@ fun TermsAndPrivacyScreen(
                 Text(
                     text = "CONDICIONES LEGALES",
                     style = MaterialTheme.typography.labelSmall,
-                    color = GoldPrimary,
+                    color = MaterialTheme.colorScheme.accentForeground,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
@@ -78,13 +80,13 @@ fun TermsAndPrivacyScreen(
             if (requiredAcceptance) {
                 Text(
                     text = "Obligatorio",
-                    color = GoldPrimary,
+                    color = MaterialTheme.colorScheme.accentForeground,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold
                 )
             } else {
                 TextButton(onClick = onBackOrAccepted) {
-                    Text(text = "Cerrar", color = GoldPrimary)
+                    Text(text = "Cerrar", color = MaterialTheme.colorScheme.accentForeground)
                 }
             }
         }
@@ -94,7 +96,7 @@ fun TermsAndPrivacyScreen(
         Text(
             text = "CONSENTIMIENTOS OBLIGATORIOS (USO ESENCIAL DEL SERVICIO)",
             style = MaterialTheme.typography.labelSmall,
-            color = GoldPrimary,
+            color = MaterialTheme.colorScheme.accentForeground,
             fontWeight = FontWeight.Bold
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -126,7 +128,7 @@ fun TermsAndPrivacyScreen(
                     Checkbox(
                         checked = termsAccepted,
                         onCheckedChange = { termsAccepted = it },
-                        colors = CheckboxDefaults.colors(checkedColor = GoldPrimary)
+                        colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
                     )
                     Text(
                         text = "He leído y acepto los Términos y Condiciones del servicio (Obligatorio)",
@@ -165,7 +167,7 @@ fun TermsAndPrivacyScreen(
                     Checkbox(
                         checked = privacyAcknowledged,
                         onCheckedChange = { privacyAcknowledged = it },
-                        colors = CheckboxDefaults.colors(checkedColor = GoldPrimary)
+                        colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
                     )
                     Text(
                         text = "Constancia de lectura del Aviso de Privacidad (Obligatorio)",
@@ -211,7 +213,7 @@ fun TermsAndPrivacyScreen(
                     Checkbox(
                         checked = whatsappConsent,
                         onCheckedChange = { whatsappConsent = it },
-                        colors = CheckboxDefaults.colors(checkedColor = GoldPrimary)
+                        colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
                     )
                     Text(
                         text = "Acepto recibir recordatorios de vencimiento por WhatsApp",
@@ -226,7 +228,7 @@ fun TermsAndPrivacyScreen(
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = statusMessage ?: "",
-                color = if (isError) MaterialTheme.colorScheme.error else GoldPrimary,
+                color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.accentForeground,
                 style = MaterialTheme.typography.bodyMedium
             )
         }
@@ -261,15 +263,15 @@ fun TermsAndPrivacyScreen(
             },
             enabled = !isSubmitting,
             modifier = Modifier.fillMaxWidth().height(50.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
             shape = RoundedCornerShape(10.dp)
         ) {
             if (isSubmitting) {
-                CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
+                CircularProgressIndicator(color = if (LocalGymVipSystemTheme.current) MaterialTheme.colorScheme.onPrimary else Color.Black, modifier = Modifier.size(24.dp))
             } else {
                 Text(
                     text = if (requiredAcceptance) "Aceptar y continuar" else "Guardar cambios",
-                    color = Color.Black,
+                    color = if (LocalGymVipSystemTheme.current) MaterialTheme.colorScheme.onPrimary else Color.Black,
                     style = MaterialTheme.typography.titleMedium
                 )
             }

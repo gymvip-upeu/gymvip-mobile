@@ -16,8 +16,9 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.domain.model.GymService
 import com.gymvip.mobile.domain.repository.GymServiceRepository
-import com.gymvip.mobile.presentation.theme.GoldPrimary
 import kotlinx.coroutines.launch
+import com.gymvip.mobile.presentation.theme.accentForeground
+import com.gymvip.mobile.presentation.theme.LocalGymVipSystemTheme
 
 @Composable
 fun ServicesScreen(
@@ -40,6 +41,7 @@ fun ServicesScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .safeDrawingPadding()
             .padding(16.dp)
     ) {
         Row(
@@ -51,7 +53,7 @@ fun ServicesScreen(
                 Text(
                     text = "SERVICIOS E INSTALACIONES",
                     style = MaterialTheme.typography.labelSmall,
-                    color = GoldPrimary,
+                    color = MaterialTheme.colorScheme.accentForeground,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
@@ -67,13 +69,13 @@ fun ServicesScreen(
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = "Volver",
-                    tint = GoldPrimary,
+                    tint = MaterialTheme.colorScheme.accentForeground,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = "Volver",
-                    color = GoldPrimary,
+                    color = MaterialTheme.colorScheme.accentForeground,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -84,7 +86,7 @@ fun ServicesScreen(
 
         if (isLoading) {
             Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = GoldPrimary)
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.accentForeground)
             }
         } else if (services.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -103,9 +105,9 @@ fun ServicesScreen(
                                 isLoading = false
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary)
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
-                        Text("Reintentar", color = Color.Black)
+                        Text("Reintentar", color = if (LocalGymVipSystemTheme.current) MaterialTheme.colorScheme.onPrimary else Color.Black)
                     }
                 }
             }
@@ -143,13 +145,13 @@ fun ServiceItemCard(service: GymService) {
                 )
                 if (service.isIncluded) {
                     Surface(
-                        color = GoldPrimary.copy(alpha = 0.15f),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                         shape = RoundedCornerShape(16.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, GoldPrimary)
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
                     ) {
                         Text(
                             text = "Incluido",
-                            color = GoldPrimary,
+                            color = MaterialTheme.colorScheme.accentForeground,
                             style = MaterialTheme.typography.labelSmall,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                         )
@@ -165,7 +167,7 @@ fun ServiceItemCard(service: GymService) {
             )
 
             Spacer(modifier = Modifier.height(8.dp))
-            Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -178,7 +180,7 @@ fun ServiceItemCard(service: GymService) {
             Text(
                 text = "Ubicación: ${service.location}",
                 style = MaterialTheme.typography.labelSmall,
-                color = GoldPrimary
+                color = MaterialTheme.colorScheme.accentForeground
             )
         }
     }

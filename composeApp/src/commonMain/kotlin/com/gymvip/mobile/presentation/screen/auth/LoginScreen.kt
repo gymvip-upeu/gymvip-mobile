@@ -28,7 +28,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,14 +40,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import com.gymvip.mobile.presentation.theme.GoldOnPrimary
-import com.gymvip.mobile.presentation.theme.GoldPrimary
 import com.gymvip.mobile.presentation.viewmodel.AuthViewModel
+import com.gymvip.mobile.presentation.theme.accentForeground
+import com.gymvip.mobile.presentation.theme.vipOutlinedTextFieldColors
 
 @Composable
 fun LoginScreen(
@@ -83,10 +81,10 @@ fun LoginScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Box(
-                modifier = Modifier.size(64.dp).clip(CircleShape).background(GoldPrimary),
+                modifier = Modifier.size(64.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
                 contentAlignment = Alignment.Center
             ) {
-                Text("V", color = Color.Black, style = MaterialTheme.typography.headlineLarge)
+                Text("V", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.headlineLarge)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -109,10 +107,7 @@ fun LoginScreen(
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = GoldPrimary,
-                    focusedLabelColor = GoldPrimary
-                )
+                colors = vipOutlinedTextFieldColors()
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -133,10 +128,7 @@ fun LoginScreen(
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = GoldPrimary,
-                    focusedLabelColor = GoldPrimary
-                )
+                colors = vipOutlinedTextFieldColors()
             )
 
             Row(
@@ -144,7 +136,7 @@ fun LoginScreen(
                 horizontalArrangement = Arrangement.End
             ) {
                 TextButton(onClick = onNavigateToRecovery) {
-                    Text("¿Olvidaste tu contraseña?", color = GoldPrimary)
+                    Text("¿Olvidaste tu contraseña?", color = MaterialTheme.colorScheme.accentForeground)
                 }
             }
 
@@ -155,7 +147,7 @@ fun LoginScreen(
                 Checkbox(
                     checked = rememberCredentials,
                     onCheckedChange = { rememberCredentials = it },
-                    colors = CheckboxDefaults.colors(checkedColor = GoldPrimary)
+                    colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
                 )
                 Text(
                     text = "Recordar mi correo en este dispositivo",
@@ -186,13 +178,13 @@ fun LoginScreen(
                 enabled = !state.isLoading,
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = GoldPrimary,
-                    contentColor = GoldOnPrimary
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 shape = RoundedCornerShape(10.dp)
             ) {
                 if (state.isLoading) {
-                    CircularProgressIndicator(color = GoldOnPrimary, modifier = Modifier.size(24.dp))
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
                 } else {
                     Text("Iniciar sesión", style = MaterialTheme.typography.titleMedium)
                 }
@@ -206,7 +198,7 @@ fun LoginScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 TextButton(onClick = onNavigateToActivation) {
-                    Text("Activar cuenta", color = GoldPrimary)
+                    Text("Activar cuenta", color = MaterialTheme.colorScheme.accentForeground)
                 }
             }
         }

@@ -30,6 +30,7 @@ import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -46,9 +47,6 @@ import com.gymvip.mobile.domain.model.InboxItem
 import com.gymvip.mobile.presentation.component.EmptyView
 import com.gymvip.mobile.presentation.component.ErrorRetryView
 import com.gymvip.mobile.presentation.component.LoadingView
-import com.gymvip.mobile.presentation.permission.NotificationPermissionStatus
-import com.gymvip.mobile.presentation.permission.rememberNotificationPermission
-import com.gymvip.mobile.presentation.screen.permissions.NotificationPermissionCard
 import com.gymvip.mobile.presentation.viewmodel.InboxViewModel
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
@@ -56,11 +54,11 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
+import com.gymvip.mobile.presentation.theme.accentForeground
 
 @Composable
 fun InboxScreen(viewModel: InboxViewModel) {
     val state by viewModel.uiState.collectAsState()
-    val notificationPermission = rememberNotificationPermission()
     var unreadOnly by remember(viewModel) { mutableStateOf(false) }
     var selectedId by remember(viewModel) { mutableStateOf<String?>(null) }
     val visibleItems = if (unreadOnly) state.items.filterNot { it.isRead } else state.items
@@ -102,11 +100,6 @@ fun InboxScreen(viewModel: InboxViewModel) {
                     }
                 }
             }
-            if (notificationPermission.status == NotificationPermissionStatus.CAN_REQUEST ||
-                notificationPermission.status == NotificationPermissionStatus.DISABLED
-            ) {
-                item { NotificationPermissionCard(notificationPermission) }
-            }
             if (state.loadFailed) {
                 item {
                     Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium) {
@@ -119,7 +112,11 @@ fun InboxScreen(viewModel: InboxViewModel) {
                                 modifier = Modifier.weight(1f),
                                 style = MaterialTheme.typography.bodySmall
                             )
-                            TextButton(onClick = viewModel::refresh, enabled = !state.isLoading) {
+                            TextButton(
+                                onClick = viewModel::refresh,
+                                enabled = !state.isLoading,
+                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.accentForeground)
+                            ) {
                                 Text("Reintentar")
                             }
                         }
@@ -186,7 +183,7 @@ private fun InboxCard(item: InboxItem, onOpen: () -> Unit) {
                 if (!item.isRead) {
                     Text(
                         text = "Sin leer",
-                        color = colors.primary,
+                        color = colors.accentForeground,
                         style = MaterialTheme.typography.labelMedium
                     )
                 }
@@ -223,7 +220,7 @@ private fun InboxDetail(item: InboxItem, onClose: () -> Unit) {
                 style = MaterialTheme.typography.bodyLarge
             )
             TextButton(onClick = onClose, modifier = Modifier.align(Alignment.End)) {
-                Text("Volver a Avisos")
+                Text("Volver a Avisos", color = MaterialTheme.colorScheme.accentForeground)
             }
         }
     }
@@ -253,7 +250,7 @@ private fun InboxCategoryIcon(category: InboxCategory) {
         color = MaterialTheme.colorScheme.surfaceVariant
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.accentForeground)
         }
     }
 }

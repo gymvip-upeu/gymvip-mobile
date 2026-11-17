@@ -6,15 +6,20 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material.icons.outlined.WifiOff
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.gymvip.mobile.presentation.theme.DangerRed
-import com.gymvip.mobile.presentation.theme.WarningAmber
 
 enum class ConnectionNoticeType {
     NONE,
@@ -42,15 +47,20 @@ fun OfflineBanner(
     }
 
     val icon = when (effectiveType) {
-        ConnectionNoticeType.SESSION_EXPIRED -> "⚠️"
-        ConnectionNoticeType.SERVER_ERROR -> "⚡"
-        ConnectionNoticeType.OFFLINE_NETWORK -> "📡"
-        ConnectionNoticeType.NONE -> "🔄"
+        ConnectionNoticeType.SESSION_EXPIRED -> Icons.Outlined.ErrorOutline
+        ConnectionNoticeType.SERVER_ERROR -> Icons.Outlined.CloudOff
+        ConnectionNoticeType.OFFLINE_NETWORK -> Icons.Outlined.WifiOff
+        ConnectionNoticeType.NONE -> Icons.Outlined.Sync
     }
 
     val color = when (effectiveType) {
-        ConnectionNoticeType.SESSION_EXPIRED -> DangerRed
-        else -> WarningAmber
+        ConnectionNoticeType.SESSION_EXPIRED -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.onPrimaryContainer
+    }
+    val background = if (effectiveType == ConnectionNoticeType.SESSION_EXPIRED) {
+        MaterialTheme.colorScheme.surfaceVariant
+    } else {
+        MaterialTheme.colorScheme.primaryContainer
     }
 
     val defaultMessage = when (effectiveType) {
@@ -64,7 +74,8 @@ fun OfflineBanner(
             }
         }
         ConnectionNoticeType.NONE -> {
-            "$pendingSyncCount cambio(s) pendientes de sincronización con el servidor."
+            if (pendingSyncCount == 1) "1 cambio pendiente de sincronización." else
+                "$pendingSyncCount cambios pendientes de sincronización."
         }
     }
 
@@ -73,11 +84,11 @@ fun OfflineBanner(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(color.copy(alpha = 0.18f))
+            .background(background)
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text = icon, style = MaterialTheme.typography.titleMedium)
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = message,

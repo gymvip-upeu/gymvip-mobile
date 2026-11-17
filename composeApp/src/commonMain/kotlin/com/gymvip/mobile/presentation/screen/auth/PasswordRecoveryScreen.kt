@@ -54,10 +54,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.presentation.theme.DangerRed
-import com.gymvip.mobile.presentation.theme.GoldOnPrimary
-import com.gymvip.mobile.presentation.theme.GoldPrimary
 import com.gymvip.mobile.presentation.theme.SuccessGreen
 import com.gymvip.mobile.presentation.viewmodel.AuthViewModel
+import com.gymvip.mobile.presentation.theme.accentForeground
+import com.gymvip.mobile.presentation.theme.vipOutlinedTextFieldColors
 
 @Composable
 fun PasswordRecoveryScreen(
@@ -91,7 +91,7 @@ fun PasswordRecoveryScreen(
         Text(
             text = "GYM VIP",
             style = MaterialTheme.typography.titleMedium,
-            color = GoldPrimary,
+            color = MaterialTheme.colorScheme.accentForeground,
             fontWeight = FontWeight.Bold
         )
         Spacer(modifier = Modifier.height(6.dp))
@@ -114,11 +114,11 @@ fun PasswordRecoveryScreen(
         TabRow(
             selectedTabIndex = selectedStep,
             containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = GoldPrimary,
+            contentColor = MaterialTheme.colorScheme.accentForeground,
             indicator = { tabPositions ->
                 TabRowDefaults.SecondaryIndicator(
                     modifier = Modifier.tabIndicatorOffset(tabPositions[selectedStep]),
-                    color = GoldPrimary
+                    color = MaterialTheme.colorScheme.accentForeground
                 )
             }
         ) {
@@ -154,6 +154,7 @@ fun PasswordRecoveryScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
+                colors = vipOutlinedTextFieldColors(),
                 value = email,
                 onValueChange = {
                     email = it
@@ -167,7 +168,7 @@ fun PasswordRecoveryScreen(
                     Icon(
                         imageVector = Icons.Outlined.Email,
                         contentDescription = "Correo",
-                        tint = GoldPrimary
+                        tint = MaterialTheme.colorScheme.accentForeground
                     )
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
@@ -212,7 +213,7 @@ fun PasswordRecoveryScreen(
                                 viewModel.clearMessages()
                             }
                         ) {
-                            Text("👉 Ingresar mi código ahora", color = GoldPrimary, fontWeight = FontWeight.Bold)
+                            Text("Ingresar mi código ahora", color = MaterialTheme.colorScheme.accentForeground, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -247,14 +248,14 @@ fun PasswordRecoveryScreen(
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = GoldPrimary,
-                    contentColor = GoldOnPrimary
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
                 if (uiState.isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(22.dp),
-                        color = GoldOnPrimary,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         strokeWidth = 2.dp
                     )
                 } else {
@@ -269,7 +270,7 @@ fun PasswordRecoveryScreen(
                     viewModel.clearMessages()
                 }
             ) {
-                Text("¿Ya tienes un código? Haz clic aquí", color = GoldPrimary)
+                Text("¿Ya tienes un código? Haz clic aquí", color = MaterialTheme.colorScheme.accentForeground)
             }
         }
 
@@ -310,8 +311,8 @@ fun PasswordRecoveryScreen(
                             modifier = Modifier.fillMaxWidth().height(48.dp),
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = GoldPrimary,
-                                contentColor = GoldOnPrimary
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
                             )
                         ) {
                             Text("Iniciar sesión", fontWeight = FontWeight.Bold)
@@ -328,6 +329,7 @@ fun PasswordRecoveryScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
+                    colors = vipOutlinedTextFieldColors(),
                     value = token,
                     onValueChange = {
                         token = it
@@ -340,7 +342,7 @@ fun PasswordRecoveryScreen(
                         Icon(
                             imageVector = Icons.Outlined.Key,
                             contentDescription = "Token",
-                            tint = GoldPrimary
+                            tint = MaterialTheme.colorScheme.accentForeground
                         )
                     },
                     modifier = Modifier.fillMaxWidth()
@@ -349,6 +351,7 @@ fun PasswordRecoveryScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 OutlinedTextField(
+                    colors = vipOutlinedTextFieldColors(),
                     value = newPassword,
                     onValueChange = {
                         newPassword = it
@@ -362,7 +365,7 @@ fun PasswordRecoveryScreen(
                         Icon(
                             imageVector = Icons.Outlined.Lock,
                             contentDescription = "Nueva contraseña",
-                            tint = GoldPrimary
+                            tint = MaterialTheme.colorScheme.accentForeground
                         )
                     },
                     trailingIcon = {
@@ -379,6 +382,7 @@ fun PasswordRecoveryScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 OutlinedTextField(
+                    colors = vipOutlinedTextFieldColors(),
                     value = confirmPassword,
                     onValueChange = {
                         confirmPassword = it
@@ -392,7 +396,7 @@ fun PasswordRecoveryScreen(
                         Icon(
                             imageVector = Icons.Outlined.Lock,
                             contentDescription = "Confirmar contraseña",
-                            tint = GoldPrimary
+                            tint = MaterialTheme.colorScheme.accentForeground
                         )
                     },
                     trailingIcon = {
@@ -440,14 +444,14 @@ fun PasswordRecoveryScreen(
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = GoldPrimary,
-                        contentColor = GoldOnPrimary
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
                     if (uiState.isLoading) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(22.dp),
-                            color = GoldOnPrimary,
+                            color = MaterialTheme.colorScheme.onPrimary,
                             strokeWidth = 2.dp
                         )
                     } else {
@@ -466,13 +470,13 @@ fun PasswordRecoveryScreen(
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                 contentDescription = "Volver",
-                tint = GoldPrimary,
+                tint = MaterialTheme.colorScheme.accentForeground,
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = "Volver al inicio de sesión",
-                color = GoldPrimary,
+                color = MaterialTheme.colorScheme.accentForeground,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )

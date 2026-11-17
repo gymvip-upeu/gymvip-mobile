@@ -1,12 +1,9 @@
 package com.gymvip.mobile.presentation.screen.preferences
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -17,22 +14,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material3.Icon
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.gymvip.mobile.presentation.theme.GoldPrimary
+import com.gymvip.mobile.presentation.screen.settings.SettingsPage
 import com.gymvip.mobile.presentation.viewmodel.PreferencesViewModel
+import com.gymvip.mobile.presentation.theme.accentForeground
 
 @Composable
 fun PreferencesScreen(
@@ -41,50 +31,12 @@ fun PreferencesScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Preferencias de la Aplicación",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            TextButton(
-                onClick = onBack,
-                modifier = Modifier.defaultMinSize(minWidth = 72.dp, minHeight = 48.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = "Volver",
-                    tint = GoldPrimary,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "Volver",
-                    color = GoldPrimary,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
+    SettingsPage(title = "Apariencia", onBack = onBack) {
         Text(
             text = "TEMA VISUAL",
             style = MaterialTheme.typography.labelLarge,
-            color = GoldPrimary
+            color = MaterialTheme.colorScheme.accentForeground
         )
-        Spacer(modifier = Modifier.height(8.dp))
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -94,7 +46,7 @@ fun PreferencesScreen(
             Column(modifier = Modifier.padding(12.dp)) {
                 ThemeOptionRow(
                     label = "Seguir tema del sistema",
-                    subtitle = "Automático según configuración del dispositivo",
+                    subtitle = "Negro carbón con acentos azules de VIP Center Fit",
                     selected = state.currentTheme == "SYSTEM",
                     onClick = { viewModel.setTheme("SYSTEM") }
                 )
@@ -113,14 +65,12 @@ fun PreferencesScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
 
         Text(
             text = "ENTORNO / SERVIDOR API",
             style = MaterialTheme.typography.labelLarge,
-            color = GoldPrimary
+            color = MaterialTheme.colorScheme.accentForeground
         )
-        Spacer(modifier = Modifier.height(8.dp))
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -149,14 +99,12 @@ fun PreferencesScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
 
         Text(
             text = "INFORMACIÓN DEL SISTEMA",
             style = MaterialTheme.typography.labelLarge,
-            color = GoldPrimary
+            color = MaterialTheme.colorScheme.accentForeground
         )
-        Spacer(modifier = Modifier.height(8.dp))
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -171,7 +119,7 @@ fun PreferencesScreen(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Versión de la aplicación: 1.0.0",
+                    text = "Versión de la aplicación: 1.1.0",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -197,7 +145,7 @@ private fun ThemeOptionRow(
         RadioButton(
             selected = selected,
             onClick = onClick,
-            colors = RadioButtonDefaults.colors(selectedColor = GoldPrimary)
+            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
         )
         Column(modifier = Modifier.padding(start = 8.dp)) {
             Text(text = label, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)

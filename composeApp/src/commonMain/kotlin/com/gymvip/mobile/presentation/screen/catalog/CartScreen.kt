@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -49,7 +50,7 @@ fun CartScreen(
 
         if (cart.items.isEmpty()) {
             EmptyView(
-                icon = "🛒",
+                icon = Icons.Outlined.ShoppingCart,
                 title = "Carrito Vacío",
                 message = "Tu carrito está vacío. Explora el catálogo de suplementos para armar tu pedido.",
                 modifier = Modifier.weight(1f)
@@ -122,7 +123,7 @@ fun CartScreen(
                     cart.items.forEach { line ->
                         Text("${line.quantity} × ${line.product.name} — ${line.subtotal.amountInSoles}")
                     }
-                    Divider(modifier = Modifier.padding(vertical = 4.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     Text(
                         "Total referencial: ${cart.totalPrice.amountInSoles}",
                         style = MaterialTheme.typography.titleMedium,

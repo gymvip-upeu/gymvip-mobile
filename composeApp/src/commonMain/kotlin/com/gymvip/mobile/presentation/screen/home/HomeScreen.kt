@@ -1,22 +1,37 @@
 package com.gymvip.mobile.presentation.screen.home
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.Campaign
+import androidx.compose.material.icons.outlined.FitnessCenter
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material3.Card
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -24,16 +39,27 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.presentation.component.MembershipStatusCard
 import com.gymvip.mobile.presentation.component.OfflineBanner
+import com.gymvip.mobile.presentation.component.navigationIcon
 import com.gymvip.mobile.presentation.navigation.MainTab
-import com.gymvip.mobile.presentation.theme.GoldPrimary
+import com.gymvip.mobile.presentation.theme.LocalGymVipSystemTheme
 import com.gymvip.mobile.presentation.viewmodel.HomeViewModel
+import gymvip_mobile.composeapp.generated.resources.Res
+import gymvip_mobile.composeapp.generated.resources.club_training
+import org.jetbrains.compose.resources.painterResource
+import com.gymvip.mobile.presentation.theme.accentForeground
 
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
+    onNavigateServices: () -> Unit,
+    onNavigateFaq: () -> Unit,
     onNavigateTab: (MainTab) -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -56,19 +82,19 @@ fun HomeScreen(
                 .verticalScroll(scrollState)
                 .padding(16.dp)
         ) {
-            // Saludo personalizado al socio
             val memberName = state.profile?.firstName ?: "Socio"
-            Text(
-                text = "¡Hola, $memberName!",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Text(
-                text = "Bienvenido a su centro de control personal GYM VIP.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
+            if (LocalGymVipSystemTheme.current) {
+                HomeWelcomeCard(
+                    memberName = memberName,
+                    onMembershipClick = { onNavigateTab(MainTab.MEMBERSHIP) }
+                )
+            } else {
+                Text(
+                    text = "¡Hola, $memberName!",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+            }
             Spacer(modifier = Modifier.height(20.dp))
 
             // Banner informativo (Firebase Remote Config acotado con fallback local)
@@ -77,12 +103,19 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(GoldPrimary.copy(alpha = 0.15f))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .padding(14.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = "📢", style = MaterialTheme.typography.titleMedium)
-                        Spacer(modifier = Modifier.padding(horizontal = 4.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            Icons.Outlined.Campaign,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.accentForeground,
+                            modifier = Modifier.size(20.dp)
+                        )
                         Text(
                             text = state.remoteNoticeBanner ?: "",
                             style = MaterialTheme.typography.bodyMedium,
@@ -95,9 +128,9 @@ fun HomeScreen(
 
             // Tarjeta principal de membresía activa (con regla estricta de 30 días)
             Text(
-                text = "ESTADO DE MI MEMBRESÍA",
+                text = "Estado de mi membresía",
                 style = MaterialTheme.typography.labelLarge,
-                color = GoldPrimary
+                color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(modifier = Modifier.height(8.dp))
             MembershipStatusCard(membership = state.membership)
@@ -106,22 +139,44 @@ fun HomeScreen(
 
             // Accesos directos
             Text(
-                text = "ACCESOS RÁPIDOS",
+                text = "Accesos rápidos",
                 style = MaterialTheme.typography.labelLarge,
-                color = GoldPrimary
+                color = MaterialTheme.colorScheme.onBackground
             )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                QuickActionCard(
+                    icon = Icons.Outlined.FitnessCenter,
+                    title = "Servicios e instalaciones",
+                    subtitle = "Conoce el gimnasio",
+                    onClick = onNavigateServices,
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                )
+                QuickActionCard(
+                    icon = Icons.AutoMirrored.Outlined.HelpOutline,
+                    title = "Ayuda y preguntas frecuentes",
+                    subtitle = "Consulta y contacta a recepción",
+                    onClick = onNavigateFaq,
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                )
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 QuickActionCard(
-                    icon = "💳",
-                    title = "Mis Pagos",
+                    icon = Icons.AutoMirrored.Outlined.ReceiptLong,
+                    title = "Mis pagos",
                     subtitle = "Historial en PEN",
                     onClick = { onNavigateTab(MainTab.MEMBERSHIP) },
                     modifier = Modifier.weight(1f)
                 )
                 QuickActionCard(
-                    icon = "📋",
+                    icon = MainTab.CATALOG.navigationIcon,
                     title = "Catálogo",
                     subtitle = "Planes y suplementos",
                     onClick = { onNavigateTab(MainTab.CATALOG) },
@@ -133,15 +188,15 @@ fun HomeScreen(
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 QuickActionCard(
-                    icon = "🔔",
+                    icon = MainTab.INBOX.navigationIcon,
                     title = "Avisos",
                     subtitle = "Comunicados del club",
                     onClick = { onNavigateTab(MainTab.INBOX) },
                     modifier = Modifier.weight(1f)
                 )
                 QuickActionCard(
-                    icon = "👤",
-                    title = "Mi Perfil",
+                    icon = MainTab.PROFILE.navigationIcon,
+                    title = "Mi perfil",
                     subtitle = "Datos del titular",
                     onClick = { onNavigateTab(MainTab.PROFILE) },
                     modifier = Modifier.weight(1f)
@@ -152,22 +207,87 @@ fun HomeScreen(
 }
 
 @Composable
+private fun HomeWelcomeCard(
+    memberName: String,
+    onMembershipClick: () -> Unit
+) {
+    val charcoal = MaterialTheme.colorScheme.surfaceContainerLowest
+    Box(
+        modifier = Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(26.dp))
+            .background(charcoal)
+            .heightIn(min = 186.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Image(
+            painter = painterResource(Res.drawable.club_training),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            alignment = Alignment.CenterEnd,
+            modifier = Modifier.matchParentSize()
+        )
+        Box(
+            modifier = Modifier.matchParentSize().background(
+                Brush.horizontalGradient(
+                    0f to charcoal.copy(alpha = 0.98f),
+                    0.54f to charcoal.copy(alpha = 0.82f),
+                    1f to charcoal.copy(alpha = 0.10f)
+                )
+            )
+        )
+        Column(
+            modifier = Modifier.fillMaxWidth(0.64f).padding(horizontal = 20.dp, vertical = 16.dp)
+        ) {
+            Text(
+                text = "¡Hola, $memberName!",
+                style = MaterialTheme.typography.headlineMedium,
+                color = Color.White
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(onClick = onMembershipClick) {
+                Text("Mi membresía")
+                Spacer(modifier = Modifier.width(6.dp))
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun QuickActionCard(
-    icon: String,
+    icon: ImageVector,
     title: String,
     subtitle: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val shape = RoundedCornerShape(if (LocalGymVipSystemTheme.current) 20.dp else 12.dp)
     Card(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(shape)
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(12.dp)
+        shape = shape
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            Text(text = icon, style = MaterialTheme.typography.headlineSmall)
+            Surface(
+                modifier = Modifier.size(36.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = MaterialTheme.shapes.small
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(21.dp),
+                        tint = MaterialTheme.colorScheme.accentForeground
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
             Text(text = subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

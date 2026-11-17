@@ -55,8 +55,10 @@ import com.gymvip.mobile.presentation.permission.rememberNativePermissionRequest
 import com.gymvip.mobile.presentation.theme.DangerRed
 import com.gymvip.mobile.presentation.theme.GoldOnPrimary
 import com.gymvip.mobile.presentation.theme.GoldPrimary
+import com.gymvip.mobile.presentation.theme.LocalGymVipSystemTheme
 import com.gymvip.mobile.presentation.theme.SuccessGreen
 import kotlinx.coroutines.launch
+import com.gymvip.mobile.presentation.theme.vipOutlinedTextFieldColors
 
 @Composable
 fun AdminProductScannerScreen(
@@ -64,6 +66,10 @@ fun AdminProductScannerScreen(
     userRoles: List<String>,
     onBack: () -> Unit
 ) {
+    val followsSystem = LocalGymVipSystemTheme.current
+    val accent = if (followsSystem) MaterialTheme.colorScheme.primary else GoldPrimary
+    val accentForeground = if (followsSystem) MaterialTheme.colorScheme.onSurface else GoldPrimary
+    val onAccent = if (followsSystem) MaterialTheme.colorScheme.onPrimary else GoldOnPrimary
     val coroutineScope = rememberCoroutineScope()
     val isAuthorized = userRoles.any {
         it.contains("ADMIN", ignoreCase = true) || it.contains("RECEPCION", ignoreCase = true)
@@ -128,7 +134,7 @@ fun AdminProductScannerScreen(
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = "Volver",
-                    tint = GoldPrimary
+                    tint = accentForeground
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
@@ -142,7 +148,7 @@ fun AdminProductScannerScreen(
                 Text(
                     text = "Gestión de catálogo y códigos de barra",
                     style = MaterialTheme.typography.labelSmall,
-                    color = GoldPrimary
+                    color = accentForeground
                 )
             }
         }
@@ -158,7 +164,7 @@ fun AdminProductScannerScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "🔒 Acceso Restringido",
+                        text = "Acceso restringido",
                         style = MaterialTheme.typography.titleMedium,
                         color = DangerRed,
                         fontWeight = FontWeight.Bold
@@ -184,7 +190,7 @@ fun AdminProductScannerScreen(
                 Text(
                     text = "LECTOR / BÚSQUEDA DE CÓDIGO",
                     style = MaterialTheme.typography.labelMedium,
-                    color = GoldPrimary,
+                    color = accentForeground,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(10.dp))
@@ -196,6 +202,7 @@ fun AdminProductScannerScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 OutlinedTextField(
+                    colors = vipOutlinedTextFieldColors(),
                     value = scannedCodeInput,
                     onValueChange = {
                         scannedCodeInput = it
@@ -208,7 +215,7 @@ fun AdminProductScannerScreen(
                         Icon(
                             imageVector = Icons.Outlined.QrCodeScanner,
                             contentDescription = "Código",
-                            tint = GoldPrimary
+                            tint = accentForeground
                         )
                     },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -226,8 +233,8 @@ fun AdminProductScannerScreen(
                         onClick = { performScan(scannedCodeInput) },
                         enabled = !isLoading,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = GoldPrimary,
-                            contentColor = GoldOnPrimary
+                            containerColor = accent,
+                            contentColor = onAccent
                         ),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.weight(1f).height(46.dp)
@@ -235,7 +242,7 @@ fun AdminProductScannerScreen(
                         if (isLoading) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
-                                color = GoldOnPrimary,
+                                color = onAccent,
                                 strokeWidth = 2.dp
                             )
                         } else {
@@ -249,6 +256,7 @@ fun AdminProductScannerScreen(
                 if (!cameraGranted) {
                     Spacer(modifier = Modifier.height(10.dp))
                     OutlinedButton(
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = accentForeground),
                         onClick = { permissionRequester.requestAppPermissions() },
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth().height(38.dp)
@@ -256,14 +264,14 @@ fun AdminProductScannerScreen(
                         Icon(
                             imageVector = Icons.Outlined.CameraAlt,
                             contentDescription = "Cámara",
-                            tint = GoldPrimary,
+                            tint = accentForeground,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "Habilitar / Conceder permiso de Cámara",
                             style = MaterialTheme.typography.bodySmall,
-                            color = GoldPrimary,
+                            color = accentForeground,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -279,6 +287,7 @@ fun AdminProductScannerScreen(
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     OutlinedButton(
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = accentForeground),
                         onClick = {
                             scannedCodeInput = "7751234567890"
                             performScan("7751234567890")
@@ -289,6 +298,7 @@ fun AdminProductScannerScreen(
                         Text("7751234567890", style = MaterialTheme.typography.labelSmall)
                     }
                     OutlinedButton(
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = accentForeground),
                         onClick = {
                             scannedCodeInput = "PROD-WHEY-01"
                             performScan("PROD-WHEY-01")
@@ -365,7 +375,7 @@ fun AdminProductScannerScreen(
                         Text(
                             text = "PRODUCTO ENCONTRADO",
                             style = MaterialTheme.typography.labelSmall,
-                            color = GoldPrimary,
+                            color = accentForeground,
                             fontWeight = FontWeight.Bold
                         )
                         Box(
@@ -406,7 +416,7 @@ fun AdminProductScannerScreen(
                         Text(
                             text = "Precio: S/. ${"%.2f".format(product.displayPrice)}",
                             style = MaterialTheme.typography.titleSmall,
-                            color = GoldPrimary,
+                            color = accentForeground,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
@@ -452,7 +462,7 @@ fun AdminProductScannerScreen(
                                 Text(
                                     text = product.barcode.takeIf { !it.isNullOrBlank() } ?: "Sin código asignado",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = if (product.barcode.isNullOrBlank()) DangerRed else GoldPrimary,
+                                    color = if (product.barcode.isNullOrBlank()) DangerRed else accentForeground,
                                     fontWeight = FontWeight.SemiBold
                                 )
                             }
@@ -463,7 +473,7 @@ fun AdminProductScannerScreen(
                                 Icon(
                                     imageVector = Icons.Outlined.Edit,
                                     contentDescription = "Editar código",
-                                    tint = GoldPrimary
+                                    tint = accentForeground
                                 )
                             }
                         }
@@ -473,6 +483,7 @@ fun AdminProductScannerScreen(
                     if (isEditingBarcode) {
                         Spacer(modifier = Modifier.height(12.dp))
                         OutlinedTextField(
+                            colors = vipOutlinedTextFieldColors(),
                             value = newBarcodeInput,
                             onValueChange = { newBarcodeInput = it },
                             label = { Text("Nuevo código de barras") },
@@ -482,7 +493,7 @@ fun AdminProductScannerScreen(
                                 Icon(
                                     imageVector = Icons.Outlined.QrCode,
                                     contentDescription = "Código",
-                                    tint = GoldPrimary
+                                    tint = accentForeground
                                 )
                             },
                             modifier = Modifier.fillMaxWidth()
@@ -493,6 +504,7 @@ fun AdminProductScannerScreen(
                             horizontalArrangement = Arrangement.End
                         ) {
                             OutlinedButton(
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = accentForeground),
                                 onClick = { isEditingBarcode = false },
                                 shape = RoundedCornerShape(8.dp)
                             ) {
@@ -524,8 +536,8 @@ fun AdminProductScannerScreen(
                                     }
                                 },
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = GoldPrimary,
-                                    contentColor = GoldOnPrimary
+                                    containerColor = accent,
+                                    contentColor = onAccent
                                 ),
                                 shape = RoundedCornerShape(8.dp)
                             ) {

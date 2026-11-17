@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.presentation.theme.DangerRed
 import com.gymvip.mobile.presentation.theme.GoldOnPrimary
 import com.gymvip.mobile.presentation.theme.GoldPrimary
+import com.gymvip.mobile.presentation.theme.LocalGymVipSystemTheme
 import com.gymvip.mobile.presentation.theme.SuccessGreen
 import com.gymvip.mobile.presentation.viewmodel.ProfileViewModel
 
@@ -41,6 +42,10 @@ fun ProfileScreen(
     userRoles: List<String> = emptyList(),
     onNavigateAdminScanner: () -> Unit = {}
 ) {
+    val followsSystem = LocalGymVipSystemTheme.current
+    val accent = if (followsSystem) MaterialTheme.colorScheme.primary else GoldPrimary
+    val accentForeground = if (followsSystem) MaterialTheme.colorScheme.onSurface else GoldPrimary
+    val onAccent = if (followsSystem) MaterialTheme.colorScheme.onPrimary else GoldOnPrimary
     val state by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
 
@@ -81,13 +86,13 @@ fun ProfileScreen(
                     modifier = Modifier
                         .size(72.dp)
                         .clip(CircleShape)
-                        .background(GoldPrimary),
+                        .background(accent),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = profile?.firstName?.take(1)?.uppercase() ?: "S",
                         style = MaterialTheme.typography.headlineLarge,
-                        color = Color.Black
+                        color = if (followsSystem) onAccent else Color.Black
                     )
                 }
 
@@ -121,7 +126,7 @@ fun ProfileScreen(
                 Text(
                     text = "Tipo de cuenta: $accountType",
                     style = MaterialTheme.typography.labelMedium,
-                    color = GoldPrimary
+                    color = accentForeground
                 )
             }
         }
@@ -132,7 +137,7 @@ fun ProfileScreen(
         Text(
             text = "DATOS DEL TITULAR",
             style = MaterialTheme.typography.labelLarge,
-            color = GoldPrimary
+            color = accentForeground
         )
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -156,33 +161,19 @@ fun ProfileScreen(
             Button(
                 onClick = onNavigateAdminScanner,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = GoldPrimary,
-                    contentColor = GoldOnPrimary
+                    containerColor = accent,
+                    contentColor = onAccent
                 ),
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp)
             ) {
-                Text(text = "📷 Abrir Escáner de Productos (Admin)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(text = "Abrir escáner de productos (admin)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(14.dp))
         }
 
-        // Botón de Cerrar Sesión seguro
-        Button(
-            onClick = { viewModel.logout() },
-            colors = ButtonDefaults.buttonColors(
-                containerColor = DangerRed.copy(alpha = 0.15f),
-                contentColor = DangerRed
-            ),
-            shape = RoundedCornerShape(10.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-        ) {
-            Text(text = "🚪 Cerrar Sesión Segura", style = MaterialTheme.typography.titleMedium)
-        }
     }
 }
 

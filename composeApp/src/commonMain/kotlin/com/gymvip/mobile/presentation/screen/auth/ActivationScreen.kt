@@ -18,7 +18,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.defaultMinSize
@@ -38,10 +37,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.gymvip.mobile.presentation.theme.GoldOnPrimary
-import com.gymvip.mobile.presentation.theme.GoldPrimary
 import com.gymvip.mobile.presentation.theme.SuccessGreen
 import com.gymvip.mobile.presentation.viewmodel.AuthViewModel
+import com.gymvip.mobile.presentation.theme.accentForeground
+import com.gymvip.mobile.presentation.theme.vipOutlinedTextFieldColors
 
 @Composable
 fun ActivationScreen(
@@ -90,10 +89,7 @@ fun ActivationScreen(
                 placeholder = { Text("Ej: ACT-9821-X9") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = GoldPrimary,
-                    focusedLabelColor = GoldPrimary
-                )
+                colors = vipOutlinedTextFieldColors()
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -106,10 +102,7 @@ fun ActivationScreen(
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = GoldPrimary,
-                    focusedLabelColor = GoldPrimary
-                )
+                colors = vipOutlinedTextFieldColors()
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -122,15 +115,12 @@ fun ActivationScreen(
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = GoldPrimary,
-                    focusedLabelColor = GoldPrimary
-                )
+                colors = vipOutlinedTextFieldColors()
             )
 
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "ℹ️ Mínimo 8 caracteres, al menos una mayúscula, una minúscula y un número.",
+                text = "Mínimo 8 caracteres, al menos una mayúscula, una minúscula y un número.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -162,13 +152,13 @@ fun ActivationScreen(
                     .fillMaxWidth()
                     .height(50.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = GoldPrimary,
-                    contentColor = GoldOnPrimary
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 shape = RoundedCornerShape(10.dp)
             ) {
                 if (state.isLoading) {
-                    CircularProgressIndicator(color = GoldOnPrimary, modifier = Modifier.size(24.dp))
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
                 } else {
                     Text(text = "Activar Mi Cuenta", style = MaterialTheme.typography.titleMedium)
                 }
@@ -183,13 +173,13 @@ fun ActivationScreen(
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = "Volver",
-                    tint = GoldPrimary,
+                    tint = MaterialTheme.colorScheme.accentForeground,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = "Volver al inicio de sesión",
-                    color = GoldPrimary,
+                    color = MaterialTheme.colorScheme.accentForeground,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
