@@ -55,6 +55,8 @@ import com.gymvip.mobile.domain.model.Faq
 import com.gymvip.mobile.domain.usecase.GetFaqsUseCase
 import com.gymvip.mobile.presentation.component.ErrorRetryView
 import com.gymvip.mobile.presentation.component.LoadingView
+import com.gymvip.mobile.presentation.theme.accentForeground
+import com.gymvip.mobile.presentation.theme.vipOutlinedTextFieldColors
 
 @Composable
 fun FaqScreen(
@@ -108,6 +110,7 @@ fun FaqScreen(
         HorizontalDivider(color = MaterialTheme.colorScheme.outline)
 
         OutlinedTextField(
+            colors = vipOutlinedTextFieldColors(),
             value = query,
             onValueChange = {
                 query = it
@@ -194,7 +197,7 @@ fun FaqScreen(
                                 selectedCategory = null
                                 expandedId = null
                                 focus.clearFocus()
-                            }) { Text("Ver todas las preguntas") }
+                            }) { Text("Ver todas las preguntas", color = MaterialTheme.colorScheme.accentForeground) }
                         }
                     }
                 }
@@ -228,7 +231,7 @@ private fun FaqAccordionCard(faq: Faq, expanded: Boolean, onClick: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (faq.category.isNotBlank()) {
-                Text(faq.category, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
+                Text(faq.category, color = MaterialTheme.colorScheme.accentForeground, style = MaterialTheme.typography.labelMedium)
             }
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -242,7 +245,7 @@ private fun FaqAccordionCard(faq: Faq, expanded: Boolean, onClick: () -> Unit) {
                 Icon(
                     imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.accentForeground
                 )
             }
             AnimatedVisibility(visible = expanded) {

@@ -10,12 +10,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -23,7 +29,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.domain.model.Favorite
 import com.gymvip.mobile.domain.model.MembershipStatus
@@ -32,10 +37,10 @@ import com.gymvip.mobile.domain.model.PaymentSummary
 import com.gymvip.mobile.domain.model.Product
 import com.gymvip.mobile.domain.model.SyncStatus
 import com.gymvip.mobile.presentation.theme.DangerRed
-import com.gymvip.mobile.presentation.theme.GoldOnPrimary
-import com.gymvip.mobile.presentation.theme.GoldPrimary
+import com.gymvip.mobile.presentation.theme.LocalGymVipSystemTheme
 import com.gymvip.mobile.presentation.theme.SuccessGreen
 import com.gymvip.mobile.presentation.theme.WarningAmber
+import com.gymvip.mobile.presentation.theme.accentForeground
 
 @Composable
 fun MembershipStatusCard(
@@ -45,7 +50,7 @@ fun MembershipStatusCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .border(1.dp, GoldPrimary.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
+            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
@@ -102,14 +107,14 @@ fun MembershipStatusCard(
                         Text(
                             text = "${membership.daysRemaining} días",
                             style = MaterialTheme.typography.titleMedium,
-                            color = if (membership.daysRemaining > 5) GoldPrimary else DangerRed
+                            color = if (membership.daysRemaining > 5) MaterialTheme.colorScheme.accentForeground else MaterialTheme.colorScheme.error
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "ℹ️ Regla de 30 días continuos con cero tolerancia. Renovaciones exclusivamente en mostrador de recepción.",
+                    text = "Regla de 30 días continuos con cero tolerancia. Renovaciones exclusivamente en mostrador de recepción.",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -126,11 +131,12 @@ fun MembershipStatusCard(
 
 @Composable
 fun VipStatusBadge(status: MembershipStatus) {
+    val colors = MaterialTheme.colorScheme
     val (bgColor, textColor, label) = when (status) {
-        MembershipStatus.VIGENTE -> Triple(SuccessGreen.copy(alpha = 0.2f), SuccessGreen, "VIGENTE")
-        MembershipStatus.PROXIMA_A_VENCER -> Triple(WarningAmber.copy(alpha = 0.2f), WarningAmber, "POR VENCER")
-        MembershipStatus.VENCIDA -> Triple(DangerRed.copy(alpha = 0.2f), DangerRed, "VENCIDA")
-        MembershipStatus.SIN_MEMBRESIA -> Triple(Color.Gray.copy(alpha = 0.2f), Color.LightGray, "INACTIVA")
+        MembershipStatus.VIGENTE -> Triple(colors.secondaryContainer, colors.onSecondaryContainer, "VIGENTE")
+        MembershipStatus.PROXIMA_A_VENCER -> Triple(colors.primaryContainer, colors.onPrimaryContainer, "POR VENCER")
+        MembershipStatus.VENCIDA -> Triple(colors.surface, colors.error, "VENCIDA")
+        MembershipStatus.SIN_MEMBRESIA -> Triple(colors.surfaceVariant, colors.onSurfaceVariant, "INACTIVA")
     }
 
     Box(
@@ -164,7 +170,7 @@ fun PaymentItemCard(
                 Text(
                     text = payment.amount.amountInSoles,
                     style = MaterialTheme.typography.titleMedium,
-                    color = GoldPrimary
+                    color = MaterialTheme.colorScheme.accentForeground
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -217,12 +223,12 @@ fun ProductItemCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(GoldPrimary.copy(alpha = 0.2f))
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     ) {
                         Text(
                             text = "-${product.promotionDiscountPercent ?: 10}% PROMO",
-                            color = GoldPrimary,
+                            color = MaterialTheme.colorScheme.accentForeground,
                             style = MaterialTheme.typography.labelSmall
                         )
                     }
@@ -245,18 +251,20 @@ fun ProductItemCard(
                 Text(
                     text = product.price.amountInSoles,
                     style = MaterialTheme.typography.titleLarge,
-                    color = GoldPrimary
+                    color = MaterialTheme.colorScheme.accentForeground
                 )
 
                 Button(
                     onClick = { onAddToFavorites(product) },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = GoldPrimary,
-                        contentColor = GoldOnPrimary
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     ),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text(text = "⭐ Guardar Favorito", style = MaterialTheme.typography.labelLarge)
+                    Icon(Icons.Outlined.StarBorder, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(text = "Guardar favorito", style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
@@ -293,7 +301,7 @@ fun FavoriteItemCard(
             Text(
                 text = "Precio referencial: ${favorite.productPrice.amountInSoles}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = GoldPrimary
+                color = MaterialTheme.colorScheme.accentForeground
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -325,17 +333,29 @@ fun FavoriteItemCard(
             ) {
                 OutlinedButton(
                     onClick = { onEditNote(favorite) },
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.accentForeground),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text(text = "✏️ Editar Nota")
+                    Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(text = "Editar nota")
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 OutlinedButton(
                     onClick = { onDelete(favorite) },
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = DangerRed),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = if (LocalGymVipSystemTheme.current) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error
+                    ),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text(text = "🗑️ Quitar")
+                    Icon(
+                        Icons.Outlined.DeleteOutline,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(text = "Quitar")
                 }
             }
         }

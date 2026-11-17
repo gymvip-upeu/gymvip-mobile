@@ -31,8 +31,8 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.gymvip.mobile.presentation.theme.GoldPrimary
 import com.gymvip.mobile.presentation.viewmodel.PreferencesViewModel
+import com.gymvip.mobile.presentation.theme.accentForeground
 
 @Composable
 fun PreferencesScreen(
@@ -64,13 +64,13 @@ fun PreferencesScreen(
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = "Volver",
-                    tint = GoldPrimary,
+                    tint = MaterialTheme.colorScheme.accentForeground,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = "Volver",
-                    color = GoldPrimary,
+                    color = MaterialTheme.colorScheme.accentForeground,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -82,7 +82,7 @@ fun PreferencesScreen(
         Text(
             text = "TEMA VISUAL",
             style = MaterialTheme.typography.labelLarge,
-            color = GoldPrimary
+            color = MaterialTheme.colorScheme.accentForeground
         )
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -94,7 +94,7 @@ fun PreferencesScreen(
             Column(modifier = Modifier.padding(12.dp)) {
                 ThemeOptionRow(
                     label = "Seguir tema del sistema",
-                    subtitle = "Automático según configuración del dispositivo",
+                    subtitle = "Negro carbón con acentos azules de VIP Center Fit",
                     selected = state.currentTheme == "SYSTEM",
                     onClick = { viewModel.setTheme("SYSTEM") }
                 )
@@ -118,7 +118,7 @@ fun PreferencesScreen(
         Text(
             text = "ENTORNO / SERVIDOR API",
             style = MaterialTheme.typography.labelLarge,
-            color = GoldPrimary
+            color = MaterialTheme.colorScheme.accentForeground
         )
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -154,7 +154,7 @@ fun PreferencesScreen(
         Text(
             text = "INFORMACIÓN DEL SISTEMA",
             style = MaterialTheme.typography.labelLarge,
-            color = GoldPrimary
+            color = MaterialTheme.colorScheme.accentForeground
         )
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -197,7 +197,7 @@ private fun ThemeOptionRow(
         RadioButton(
             selected = selected,
             onClick = onClick,
-            colors = RadioButtonDefaults.colors(selectedColor = GoldPrimary)
+            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
         )
         Column(modifier = Modifier.padding(start = 8.dp)) {
             Text(text = label, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)

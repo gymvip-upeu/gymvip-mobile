@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.presentation.permission.NotificationPermission
 import com.gymvip.mobile.presentation.permission.NotificationPermissionStatus
 import com.gymvip.mobile.presentation.permission.rememberNotificationPermission
+import com.gymvip.mobile.presentation.theme.accentForeground
 
 @Composable
 fun AppPermissionsScreen(onBack: () -> Unit) {
@@ -93,7 +94,7 @@ internal fun NotificationPermissionCard(permission: NotificationPermission) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(Icons.Outlined.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Outlined.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.accentForeground)
                 Text("Notificaciones", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             }
             Text(
@@ -105,7 +106,7 @@ internal fun NotificationPermissionCard(permission: NotificationPermission) {
                 NotificationPermissionStatus.CAN_REQUEST ->
                     Button(onClick = permission.request) { Text("Activar notificaciones") }
                 NotificationPermissionStatus.DISABLED, NotificationPermissionStatus.ENABLED ->
-                    OutlinedButton(onClick = permission.openSettings) { Text("Abrir ajustes") }
+                    OutlinedButton(onClick = permission.openSettings) { Text("Abrir ajustes", color = MaterialTheme.colorScheme.accentForeground) }
                 NotificationPermissionStatus.UNAVAILABLE -> Unit
             }
         }

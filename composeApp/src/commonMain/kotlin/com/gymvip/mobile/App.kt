@@ -53,7 +53,7 @@ import com.gymvip.mobile.presentation.viewmodel.ProfileViewModel
 import kotlinx.coroutines.launch
 
 @Composable
-fun App() {
+fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -63,7 +63,7 @@ fun App() {
     }
     val preferencesState by preferencesViewModel.uiState.collectAsState()
 
-    GymVipTheme(themePreference = preferencesState.currentTheme) {
+    GymVipTheme(themePreference = preferencesState.currentTheme, onDarkThemeChanged = onDarkThemeChanged) {
         val authViewModel = remember {
             AuthViewModel(
                 loginUseCase = AppContainer.loginUseCase,

@@ -11,19 +11,23 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ShoppingBag
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
@@ -41,10 +45,10 @@ import com.gymvip.mobile.presentation.component.FavoriteItemCard
 import com.gymvip.mobile.presentation.component.LoadingView
 import com.gymvip.mobile.presentation.component.OfflineBanner
 import com.gymvip.mobile.presentation.component.ProductItemCard
-import com.gymvip.mobile.presentation.theme.GoldOnPrimary
-import com.gymvip.mobile.presentation.theme.GoldPrimary
 import com.gymvip.mobile.presentation.viewmodel.CatalogViewModel
 import com.gymvip.mobile.presentation.viewmodel.FavoritesViewModel
+import com.gymvip.mobile.presentation.theme.accentForeground
+import com.gymvip.mobile.presentation.theme.vipOutlinedTextFieldColors
 
 @Composable
 fun CatalogScreen(
@@ -67,11 +71,11 @@ fun CatalogScreen(
         TabRow(
             selectedTabIndex = catalogState.selectedSubTab,
             containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = GoldPrimary,
+            contentColor = MaterialTheme.colorScheme.accentForeground,
             indicator = { tabPositions ->
                 TabRowDefaults.SecondaryIndicator(
                     modifier = Modifier.tabIndicatorOffset(tabPositions[catalogState.selectedSubTab]),
-                    color = GoldPrimary
+                    color = MaterialTheme.colorScheme.accentForeground
                 )
             }
         ) {
@@ -85,7 +89,13 @@ fun CatalogScreen(
                 onClick = { catalogViewModel.setSubTab(1) },
                 text = {
                     val count = favoritesState.favorites.size
-                    Text("⭐ Mis Favoritos ($count)", style = MaterialTheme.typography.titleSmall)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(Icons.Outlined.StarBorder, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text("Mis favoritos ($count)", style = MaterialTheme.typography.titleSmall)
+                    }
                 }
             )
         }
@@ -121,7 +131,7 @@ fun CatalogScreen(
                     Text(
                         text = "Producto: ${product?.name}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = GoldPrimary
+                        color = MaterialTheme.colorScheme.accentForeground
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     OutlinedTextField(
@@ -131,10 +141,7 @@ fun CatalogScreen(
                         placeholder = { Text("Ej: Consultar sabor vainilla en recepción") },
                         maxLines = 3,
                         modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = GoldPrimary,
-                            focusedLabelColor = GoldPrimary
-                        )
+                        colors = vipOutlinedTextFieldColors()
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
@@ -148,15 +155,18 @@ fun CatalogScreen(
                 Button(
                     onClick = { favoritesViewModel.saveFavoriteFromDialog() },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = GoldPrimary,
-                        contentColor = GoldOnPrimary
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
                     Text("Guardar")
                 }
             },
             dismissButton = {
-                OutlinedButton(onClick = { favoritesViewModel.dismissDialog() }) {
+                OutlinedButton(
+                    onClick = { favoritesViewModel.dismissDialog() },
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.accentForeground)
+                ) {
                     Text("Cancelar")
                 }
             }
@@ -174,7 +184,7 @@ fun CatalogScreen(
                     Text(
                         text = "Producto: ${fav?.productName}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = GoldPrimary
+                        color = MaterialTheme.colorScheme.accentForeground
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     OutlinedTextField(
@@ -183,10 +193,7 @@ fun CatalogScreen(
                         label = { Text("Nota personal") },
                         maxLines = 3,
                         modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = GoldPrimary,
-                            focusedLabelColor = GoldPrimary
-                        )
+                        colors = vipOutlinedTextFieldColors()
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
@@ -200,15 +207,18 @@ fun CatalogScreen(
                 Button(
                     onClick = { favoritesViewModel.saveEditedNote() },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = GoldPrimary,
-                        contentColor = GoldOnPrimary
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
                     Text("Actualizar Nota")
                 }
             },
             dismissButton = {
-                OutlinedButton(onClick = { favoritesViewModel.dismissDialog() }) {
+                OutlinedButton(
+                    onClick = { favoritesViewModel.dismissDialog() },
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.accentForeground)
+                ) {
                     Text("Cancelar")
                 }
             }
@@ -237,8 +247,8 @@ private fun CatalogTab(
                 onClick = { onFilterCategory(null) },
                 label = { Text("Todos") },
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = GoldPrimary,
-                    selectedLabelColor = GoldOnPrimary
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
             ProductCategory.entries.forEach { cat ->
@@ -254,8 +264,8 @@ private fun CatalogTab(
                     onClick = { onFilterCategory(cat) },
                     label = { Text(name) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = GoldPrimary,
-                        selectedLabelColor = GoldOnPrimary
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                     )
                 )
             }
@@ -265,7 +275,7 @@ private fun CatalogTab(
             LoadingView("Cargando catálogo...")
         } else if (state.products.isEmpty()) {
             EmptyView(
-                icon = "📋",
+                icon = Icons.Outlined.ShoppingBag,
                 title = "Sin productos",
                 message = "No se encontraron elementos en esta categoría."
             )
@@ -310,9 +320,12 @@ private fun FavoritesTab(
                     Text(
                         text = "Pendientes en cola: ${state.pendingCount}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = GoldPrimary
+                        color = MaterialTheme.colorScheme.accentForeground
                     )
-                    OutlinedButton(onClick = onSyncNow) {
+                    OutlinedButton(
+                        onClick = onSyncNow,
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.accentForeground)
+                    ) {
                         Text(text = if (state.isSyncing) "Sincronizando..." else "Sincronizar ahora")
                     }
                 }
@@ -321,7 +334,7 @@ private fun FavoritesTab(
 
         if (state.favorites.isEmpty()) {
             EmptyView(
-                icon = "⭐",
+                icon = Icons.Outlined.StarBorder,
                 title = "Sin favoritos aún",
                 message = "Explore el catálogo y guarde productos con notas personales para consultarlos offline."
             )

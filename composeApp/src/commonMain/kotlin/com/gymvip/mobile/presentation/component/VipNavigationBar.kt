@@ -1,10 +1,10 @@
 package com.gymvip.mobile.presentation.component
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CreditCard
+import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -14,8 +14,19 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.presentation.navigation.MainTab
-import com.gymvip.mobile.presentation.theme.GoldPrimary
+import com.gymvip.mobile.presentation.theme.LocalGymVipSystemTheme
+
+internal val MainTab.navigationIcon: ImageVector
+    get() = when (this) {
+        MainTab.HOME -> Icons.Outlined.Home
+        MainTab.MEMBERSHIP -> Icons.Outlined.Badge
+        MainTab.CATALOG -> Icons.Outlined.ShoppingBag
+        MainTab.INBOX -> Icons.Outlined.Notifications
+        MainTab.PROFILE -> Icons.Outlined.PersonOutline
+    }
 
 @Composable
 fun VipNavigationBar(
@@ -23,28 +34,23 @@ fun VipNavigationBar(
     onTabSelected: (MainTab) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = MaterialTheme.colorScheme
+    val followsSystem = LocalGymVipSystemTheme.current
     NavigationBar(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        tonalElevation = 0.dp
     ) {
         MainTab.entries.forEach { tab ->
             val isSelected = currentTab == tab
-            val icon = when (tab) {
-                MainTab.HOME -> Icons.Outlined.Home
-                MainTab.MEMBERSHIP -> Icons.Outlined.CreditCard
-                MainTab.CATALOG -> Icons.Outlined.ShoppingBag
-                MainTab.INBOX -> Icons.Outlined.Notifications
-                MainTab.PROFILE -> Icons.Outlined.Person
-            }
-
             NavigationBarItem(
                 selected = isSelected,
                 onClick = { onTabSelected(tab) },
                 icon = {
                     Icon(
-                        imageVector = icon,
-                        contentDescription = tab.title
+                        imageVector = tab.navigationIcon,
+                        contentDescription = null
                     )
                 },
                 label = {
@@ -54,11 +60,11 @@ fun VipNavigationBar(
                     )
                 },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = GoldPrimary,
-                    selectedTextColor = GoldPrimary,
-                    indicatorColor = MaterialTheme.colorScheme.surfaceVariant,
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    selectedIconColor = if (followsSystem) colors.onPrimary else colors.onPrimaryContainer,
+                    selectedTextColor = colors.onSurface,
+                    indicatorColor = if (followsSystem) colors.primary else colors.primaryContainer,
+                    unselectedIconColor = colors.onSurfaceVariant,
+                    unselectedTextColor = colors.onSurfaceVariant
                 )
             )
         }

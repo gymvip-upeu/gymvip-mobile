@@ -29,6 +29,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -37,8 +38,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.presentation.theme.GoldPrimary
+import com.gymvip.mobile.presentation.theme.LocalGymVipSystemTheme
 import gymvip_mobile.composeapp.generated.resources.Res
 import gymvip_mobile.composeapp.generated.resources.bg_athlete
+import gymvip_mobile.composeapp.generated.resources.club_training
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
@@ -47,6 +50,8 @@ fun OnboardingScreen(
     onActivate: () -> Unit
 ) {
     var page by remember { mutableIntStateOf(0) }
+    val followsSystem = LocalGymVipSystemTheme.current
+    val accent = if (followsSystem) Color.White else GoldPrimary
     val titles = listOf("Tu membresía.\nSiempre clara.", "Entrena informado.\nDecide mejor.")
     val descriptions = listOf(
         "Consulta vigencia, pagos registrados y novedades sin trámites innecesarios.",
@@ -56,11 +61,11 @@ fun OnboardingScreen(
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Fondo deportista de espaldas con overlay oscuro de alto contraste
         Image(
-            painter = painterResource(Res.drawable.bg_athlete),
+            painter = painterResource(if (followsSystem) Res.drawable.club_training else Res.drawable.bg_athlete),
             contentDescription = null,
             contentScale = ContentScale.Crop,
+            alignment = if (followsSystem) BiasAlignment(0.45f, 0f) else Alignment.Center,
             modifier = Modifier.fillMaxSize()
         )
         Box(
@@ -68,7 +73,12 @@ fun OnboardingScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(
+                        colors = if (followsSystem) listOf(
+                            Color(0xCC14171C),
+                            Color(0x2216263C),
+                            MaterialTheme.colorScheme.background,
+                            MaterialTheme.colorScheme.surface
+                        ) else listOf(
                             Color(0xDF090B10),
                             Color(0xF0111722),
                             Color(0xFA090B10)
@@ -91,10 +101,10 @@ fun OnboardingScreen(
                     modifier = Modifier
                         .size(42.dp)
                         .clip(CircleShape)
-                        .border(1.dp, GoldPrimary, CircleShape),
+                        .border(1.dp, accent, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("GV", color = GoldPrimary, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text("GV", color = accent, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Text("GYM VIP", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
@@ -108,7 +118,7 @@ fun OnboardingScreen(
 
             Text(
                 text = if (page == 0) "TU EXPERIENCIA, EN UN SOLO LUGAR" else "INFORMACIÓN CONFIABLE",
-                color = GoldPrimary,
+                color = accent,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -137,7 +147,7 @@ fun OnboardingScreen(
                             .width(if (index == page) 24.dp else 8.dp)
                             .height(8.dp)
                             .clip(CircleShape)
-                            .background(if (index == page) GoldPrimary else Color(0xFF59606B))
+                            .background(if (index == page) accent else Color(0xFF59606B))
                     )
                 }
             }
@@ -147,7 +157,10 @@ fun OnboardingScreen(
                 onClick = { if (page == 0) page = 1 else onLogin() },
                 modifier = Modifier.fillMaxWidth().height(58.dp),
                 shape = RoundedCornerShape(30.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary, contentColor = Color(0xFF17130A))
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (followsSystem) MaterialTheme.colorScheme.primary else accent,
+                    contentColor = if (followsSystem) MaterialTheme.colorScheme.onPrimary else Color(0xFF17130A)
+                )
             ) {
                 Text(if (page == 0) "Continuar" else "Iniciar sesión", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }

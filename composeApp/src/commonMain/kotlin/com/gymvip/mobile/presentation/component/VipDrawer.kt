@@ -32,10 +32,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import com.gymvip.mobile.presentation.theme.GoldPrimary
+import com.gymvip.mobile.presentation.theme.accentForeground
 
 @Composable
 fun VipDrawerContent(
@@ -68,13 +67,13 @@ fun VipDrawerContent(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(GoldPrimary),
+                        .background(MaterialTheme.colorScheme.primary),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = memberName.take(1).uppercase(),
                         style = MaterialTheme.typography.titleLarge,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
@@ -92,7 +91,7 @@ fun VipDrawerContent(
                     Text(
                         text = accountType,
                         style = MaterialTheme.typography.labelSmall,
-                        color = GoldPrimary
+                        color = MaterialTheme.colorScheme.accentForeground
                     )
                 }
             }
@@ -189,7 +188,7 @@ private fun DrawerMenuItem(
         Icon(
             imageVector = icon,
             contentDescription = title,
-            tint = if (isDanger) MaterialTheme.colorScheme.error else GoldPrimary,
+            tint = if (isDanger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.accentForeground,
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.width(12.dp))
