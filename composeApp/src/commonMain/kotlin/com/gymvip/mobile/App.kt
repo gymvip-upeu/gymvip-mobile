@@ -10,6 +10,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -168,6 +169,7 @@ fun App() {
             is NavDestination.Faq -> {
                 FaqScreen(
                     getFaqsUseCase = AppContainer.getFaqsUseCase,
+                    receptionWhatsAppNumber = AppContainer.configRepository.receptionWhatsAppNumber,
                     onBack = { currentDestination = NavDestination.Main(currentTab) }
                 )
             }
@@ -241,6 +243,9 @@ fun App() {
                         accountId = accountId
                     )
                 }
+                DisposableEffect(inboxViewModel) {
+                    onDispose { inboxViewModel.onCleared() }
+                }
 
                 val profileViewModel = remember(accountId) {
                     ProfileViewModel(
@@ -310,6 +315,7 @@ fun App() {
                                     favoritesViewModel.syncPending()
                                     membershipViewModel.refresh()
                                     homeViewModel.refreshAll()
+                                    inboxViewModel.refresh()
                                     snackbarHostState.showSnackbar("Sincronización manual ejecutada")
                                 }
                             },
@@ -339,6 +345,7 @@ fun App() {
                                     favoritesViewModel.syncPending()
                                     membershipViewModel.refresh()
                                     homeViewModel.refreshAll()
+                                    inboxViewModel.refresh()
                                 }
                             )
                         },

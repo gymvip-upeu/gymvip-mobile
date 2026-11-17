@@ -151,11 +151,7 @@ class InboxRepositoryImpl(
                 InboxItem(it.id, it.accountId, it.title, it.message, cat, it.createdAt, it.isRead == 1L)
             })
         } else {
-            val cached = database.gymVipDatabaseQueries.selectInboxByAccountId(accountId).executeAsList()
-            Result.success(cached.map {
-                val cat = try { InboxCategory.valueOf(it.category) } catch (_: Exception) { InboxCategory.COMUNICADO }
-                InboxItem(it.id, it.accountId, it.title, it.message, cat, it.createdAt, it.isRead == 1L)
-            })
+            Result.failure(remoteResult.exceptionOrNull() ?: Exception("Error al cargar avisos"))
         }
     }
 

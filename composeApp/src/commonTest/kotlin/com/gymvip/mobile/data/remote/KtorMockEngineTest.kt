@@ -14,12 +14,16 @@ import com.gymvip.mobile.data.remote.dto.PasswordResetRequestDto
 import com.gymvip.mobile.domain.error.AppError
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.request.get
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.Url
 import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class KtorMockEngineTest {
@@ -354,5 +358,51 @@ class KtorMockEngineTest {
         assertTrue(result.isSuccess)
         val supp = result.getOrThrow()
         assertEquals("7759998887776", supp.barcode)
+    }
+
+    private class FakeTestTokenStore(private val token: String?) : com.gymvip.mobile.data.local.SecureTokenStore {
+        override suspend fun saveTokens(accessToken: String, refreshToken: String?, accountId: String) {}
+        override suspend fun getAccessToken(): String? = token
+        override suspend fun getRefreshToken(): String? = null
+        override suspend fun getAccountId(): String? = null
+        override suspend fun clear() {}
+        override suspend fun saveRememberedIdentifier(identifier: String) {}
+        override suspend fun getRememberedIdentifier(): String? = null
+        override suspend fun clearRememberedIdentifier() {}
+    }
+
+    @Test
+    fun testIsAuthorizedOriginStrictValidation() {
+        val base = "https://gymvip-backend.onrender.com"
+        assertTrue(GymVipHttpClient.isAuthorizedOrigin(Url("https://gymvip-backend.onrender.com/api/v1/test"), base))
+        assertFalse(GymVipHttpClient.isAuthorizedOrigin(Url("http://gymvip-backend.onrender.com/api/v1/test"), base))
+        assertFalse(GymVipHttpClient.isAuthorizedOrigin(Url("https://evil-gymvip.onrender.com/api/v1/test"), base))
+        assertFalse(GymVipHttpClient.isAuthorizedOrigin(Url("https://gymvip-backend.onrender.com:8443/api/v1/test"), base))
+        assertFalse(GymVipHttpClient.isAuthorizedOrigin(Url("https://gymvip-backend.onrender.com.attacker.com/api/v1/test"), base))
+    }
+
+    @Test
+    fun testBearerTokenAttachedOnlyToAuthorizedOrigin() = runTest {
+        var capturedAuthHeader: String? = null
+        val mockEngine = MockEngine { request ->
+            capturedAuthHeader = request.headers[HttpHeaders.Authorization]
+            respond(content = "{}", status = HttpStatusCode.OK, headers = jsonHeaders)
+        }
+
+        GymVipHttpClient.baseUrl = "https://gymvip-backend.onrender.com"
+        val client = GymVipHttpClient.create(
+            engine = mockEngine,
+            tokenStore = FakeTestTokenStore("valid_secret_token_xyz"),
+            enableLogging = false
+        )
+
+        // Request to authorized origin
+        client.get("https://gymvip-backend.onrender.com/api/v1/secure-data")
+        assertEquals("Bearer valid_secret_token_xyz", capturedAuthHeader)
+
+        // Request to unauthorized external origin (must NOT receive Bearer token)
+        capturedAuthHeader = null
+        client.get("https://attacker-gymvip.com/api/v1/steal")
+        assertNull(capturedAuthHeader)
     }
 }
