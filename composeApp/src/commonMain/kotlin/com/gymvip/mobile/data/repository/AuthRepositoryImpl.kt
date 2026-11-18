@@ -39,7 +39,26 @@ class AuthRepositoryImpl(
             val accountRoles = serverRoles.ifEmpty { secureTokenStore.getAccountRoles() }
             if (serverRoles.isNotEmpty()) secureTokenStore.saveAccountRoles(serverRoles)
 
-            // Intentar revalidación con backend si es posible
+            // Si la cuenta es administrativa (ADMIN o RECEPCION), no requiere consulta de socio
+            if (accountRoles.isNotEmpty() && !accountRoles.contains("CLIENTE")) {
+                val now = Clock.System.now().toString()
+                val profile = localProfile?.toDomain()?.copy(roles = accountRoles) ?: MemberProfile(
+                    accountId = accountId,
+                    email = secureTokenStore.getRememberedIdentifier().orEmpty().ifBlank { "admin@gymvip.local" },
+                    firstName = if (accountRoles.contains("ADMIN")) "Administrador" else "Recepción",
+                    lastName = "GYM VIP",
+                    documentType = "DNI",
+                    documentNumber = "",
+                    phone = null,
+                    status = AccountStatus.ACTIVO,
+                    lastSyncedAt = now,
+                    roles = accountRoles
+                )
+                _authState.value = AuthState.Authenticated(profile, isCachedOffline = false)
+                return true
+            }
+
+            // Intentar revalidación con backend si es CLIENTE
             val remoteResult = memberApi.getProfile(accountId)
             if (remoteResult.isSuccess) {
                 val now = Clock.System.now().toString()
@@ -59,24 +78,61 @@ class AuthRepositoryImpl(
                 return true
             }
 
-            // Si falló por 401 o 403 (sesión expirada o revocada), limpiar tokens y requerir login
+            // Si falló por 401 (token expirado/inválido), limpiar
             val err = remoteResult.exceptionOrNull()
-            if (err is AppError.Unauthorized || err is AppError.Forbidden) {
+            if (err is AppError.Unauthorized) {
                 secureTokenStore.clear()
                 _authState.value = AuthState.Unauthenticated
                 return false
             }
 
-            // Si hay desconexión pero existe perfil local previamente sincronizado:
+            // Si falló por 403 (ej: contraseña temporal pendiente de cambio)
+            if (err is AppError.Forbidden) {
+                val sessionStatus = memberApi.getSessionStatus().getOrNull()
+                if (sessionStatus?.mustChangePassword == true) {
+                    val now = Clock.System.now().toString()
+                    val profile = localProfile?.toDomain()?.copy(roles = accountRoles) ?: MemberProfile(
+                        accountId = accountId,
+                        email = secureTokenStore.getRememberedIdentifier().orEmpty().ifBlank { "socio@gymvip.local" },
+                        firstName = "Socio",
+                        lastName = "VIP",
+                        documentType = "DNI",
+                        documentNumber = "",
+                        phone = null,
+                        status = AccountStatus.ACTIVO,
+                        lastSyncedAt = now,
+                        roles = accountRoles
+                    )
+                    _authState.value = AuthState.Authenticated(profile, isCachedOffline = false)
+                    return true
+                }
+                secureTokenStore.clear()
+                _authState.value = AuthState.Unauthenticated
+                return false
+            }
+
+            // Si hay desconexión o timeout pero existe perfil local previamente sincronizado:
             if (localProfile != null) {
                 _authState.value = AuthState.Authenticated(localProfile.toDomain().copy(roles = accountRoles), isCachedOffline = true)
                 return true
             }
 
-            // Sin perfil local y sin validación del servidor: no inventar perfil ACTIVO arbitrario
-            secureTokenStore.clear()
-            _authState.value = AuthState.Unauthenticated
-            return false
+            // Si hay token pero falló la red sin perfil previo: preservar sesión local temporal
+            val now = Clock.System.now().toString()
+            val fallbackProfile = MemberProfile(
+                accountId = accountId,
+                email = secureTokenStore.getRememberedIdentifier().orEmpty().ifBlank { "socio@gymvip.local" },
+                firstName = "Socio",
+                lastName = "VIP",
+                documentType = "DNI",
+                documentNumber = "",
+                phone = null,
+                status = AccountStatus.ACTIVO,
+                lastSyncedAt = now,
+                roles = accountRoles
+            )
+            _authState.value = AuthState.Authenticated(fallbackProfile, isCachedOffline = true)
+            return true
         }
         _authState.value = AuthState.Unauthenticated
         return false
@@ -84,7 +140,7 @@ class AuthRepositoryImpl(
 
     override suspend fun login(email: String, password: String): Result<MemberProfile> {
         _authState.value = AuthState.Loading
-        val loginResult = authApi.login(LoginRequestDto(email, password))
+        val loginResult = authApi.login(LoginRequestDto(email.trim(), password))
 
         return loginResult.fold(
             onSuccess = { dto ->
@@ -97,9 +153,46 @@ class AuthRepositoryImpl(
                 val accountRoles = dto.roles.map { it.trim().uppercase() }.filter(String::isNotBlank).distinct()
                 secureTokenStore.saveAccountRoles(accountRoles)
 
-                // Intentar obtener perfil completo del socio o guardar perfil básico
                 val now = Clock.System.now().toString()
-                val profileResult = memberApi.getProfile(accountId)
+
+                // Si NO es socio (ej. ADMIN o RECEPCION):
+                if (!accountRoles.contains("CLIENTE")) {
+                    val profile = MemberProfile(
+                        accountId = accountId,
+                        email = dto.email,
+                        firstName = if (accountRoles.contains("ADMIN")) "Administrador" else "Recepción",
+                        lastName = "GYM VIP",
+                        documentType = "DNI",
+                        documentNumber = "",
+                        phone = null,
+                        status = AccountStatus.ACTIVO,
+                        lastSyncedAt = now,
+                        roles = accountRoles
+                    )
+                    database.gymVipDatabaseQueries.insertOrReplaceProfile(
+                        accountId = profile.accountId,
+                        email = profile.email,
+                        firstName = profile.firstName,
+                        lastName = profile.lastName,
+                        documentType = profile.documentType,
+                        documentNumber = profile.documentNumber,
+                        phone = profile.phone,
+                        status = profile.status.name,
+                        lastSyncedAt = profile.lastSyncedAt
+                    )
+                    _authState.value = AuthState.Authenticated(profile)
+                    return@fold Result.success(profile)
+                }
+
+                // Si ES CLIENTE:
+                val sessionStatusResult = memberApi.getSessionStatus()
+                val mustChange = sessionStatusResult.getOrNull()?.mustChangePassword ?: false
+
+                val profileResult = if (!mustChange) {
+                    memberApi.getProfile(accountId)
+                } else {
+                    Result.failure(AppError.Forbidden("Debe cambiar su contraseña temporal antes de continuar"))
+                }
 
                 val profile = profileResult.getOrNull()?.toDomain(now)?.copy(roles = accountRoles) ?: MemberProfile(
                     accountId = accountId,

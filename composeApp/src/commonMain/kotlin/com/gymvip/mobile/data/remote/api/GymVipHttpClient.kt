@@ -48,9 +48,9 @@ object GymVipHttpClient {
             }
 
             install(HttpTimeout) {
-                requestTimeoutMillis = 15_000
-                connectTimeoutMillis = 10_000
-                socketTimeoutMillis = 15_000
+                requestTimeoutMillis = 60_000
+                connectTimeoutMillis = 30_000
+                socketTimeoutMillis = 60_000
             }
 
             if (tokenStore != null) {
@@ -88,12 +88,21 @@ object GymVipHttpClient {
 
         return when (status) {
             HttpStatusCode.Unauthorized -> AppError.Unauthorized("Credenciales inválidas o sesión expirada")
-            HttpStatusCode.Forbidden -> AppError.Forbidden("No cuenta con permisos de socio para esta acción")
+            HttpStatusCode.Forbidden -> {
+                if (body.contains("contraseña", ignoreCase = true) || body.contains("temporal", ignoreCase = true)) {
+                    AppError.Forbidden("Debe cambiar su contraseña temporal antes de continuar")
+                } else {
+                    AppError.Forbidden("No cuenta con permisos de socio para esta acción")
+                }
+            }
             HttpStatusCode.NotFound -> AppError.NotFound("El recurso solicitado no fue encontrado")
             HttpStatusCode.Conflict -> AppError.Conflict("CONFLICT", "Conflicto con el estado actual del servidor: $body")
             HttpStatusCode.BadRequest -> AppError.Validation("Datos de solicitud inválidos: $body")
+            HttpStatusCode.GatewayTimeout, HttpStatusCode.RequestTimeout -> {
+                AppError.Server(status.value, "Tiempo de espera agotado. El servidor en Render se está iniciando, por favor reintente en unos momentos.")
+            }
             HttpStatusCode.InternalServerError, HttpStatusCode.BadGateway, HttpStatusCode.ServiceUnavailable -> {
-                AppError.Server(status.value, "Error temporal del servidor del gimnasio (${status.value})")
+                AppError.Server(status.value, "Servidor del gimnasio no disponible temporalmente (${status.value}). Reintentando...")
             }
             else -> AppError.Server(status.value, "Respuesta inesperada del servidor: ${status.value}")
         }

@@ -98,8 +98,8 @@ android {
         applicationId = "com.gymvip.mobile"
         minSdk = 24
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -124,12 +124,12 @@ android {
         getByName("release") {
             isMinifyEnabled = false
             buildConfigField("String", "DEFAULT_SERVER_URL", "\"https://gymvip-backend.onrender.com\"")
-            // Firma de release configurada si se proveen keystore/contraseñas privadas
+            signingConfig = signingConfigs.getByName("debug")
         }
         getByName("debug") {
             isDebuggable = true
             signingConfig = signingConfigs.getByName("debug")
-            buildConfigField("String", "DEFAULT_SERVER_URL", "\"http://10.0.2.2:8080\"")
+            buildConfigField("String", "DEFAULT_SERVER_URL", "\"https://gymvip-backend.onrender.com\"")
         }
     }
 

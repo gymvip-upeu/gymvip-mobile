@@ -103,7 +103,7 @@ fun LoginScreen(
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = { Text("Correo electrónico") },
+                label = { Text("Correo o Código de Socio") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 modifier = Modifier.fillMaxWidth(),
@@ -188,6 +188,15 @@ fun LoginScreen(
                 } else {
                     Text("Iniciar sesión", style = MaterialTheme.typography.titleMedium)
                 }
+            }
+
+            if (state.isLoading) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Conectando con el servidor GYM VIP... (si el servidor en la nube estaba suspendido, esto puede demorar hasta un minuto)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
