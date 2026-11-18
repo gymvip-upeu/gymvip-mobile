@@ -113,6 +113,13 @@ android {
         buildConfig = true
     }
 
+    signingConfigs {
+        getByName("debug") {
+            enableV1Signing = true
+            enableV2Signing = true
+        }
+    }
+
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
@@ -121,6 +128,7 @@ android {
         }
         getByName("debug") {
             isDebuggable = true
+            signingConfig = signingConfigs.getByName("debug")
             buildConfigField("String", "DEFAULT_SERVER_URL", "\"http://10.0.2.2:8080\"")
         }
     }
