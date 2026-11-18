@@ -28,6 +28,7 @@ import com.gymvip.mobile.presentation.screen.faq.FaqScreen
 import com.gymvip.mobile.presentation.screen.home.HomeScreen
 import com.gymvip.mobile.presentation.screen.inbox.InboxScreen
 import com.gymvip.mobile.presentation.screen.legal.TermsAndPrivacyScreen
+import com.gymvip.mobile.presentation.screen.membership.MemberCheckInScannerScreen
 import com.gymvip.mobile.presentation.screen.membership.MembershipScreen
 import com.gymvip.mobile.presentation.screen.permissions.AppPermissionsScreen
 import com.gymvip.mobile.presentation.screen.preferences.PreferencesScreen
@@ -80,7 +81,7 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
 
         val parentDestination = when (val destination = currentDestination) {
             NavDestination.Settings -> NavDestination.Main(MainTab.PROFILE)
-            NavDestination.Faq, NavDestination.Services -> NavDestination.Main(MainTab.HOME)
+            NavDestination.Faq, NavDestination.Services, NavDestination.MemberCheckInScanner -> NavDestination.Main(MainTab.HOME)
             NavDestination.EditProfile, NavDestination.Preferences, NavDestination.Permissions -> NavDestination.Settings
             is NavDestination.TermsAndPrivacy -> if (destination.requiresAcceptance) null else NavDestination.Settings
             else -> null
@@ -168,6 +169,13 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                     catalogRepository = AppContainer.catalogRepository,
                     userRoles = userRoles,
                     onBack = { currentDestination = NavDestination.Main(currentTab) }
+                )
+            }
+
+            is NavDestination.MemberCheckInScanner -> {
+                MemberCheckInScannerScreen(
+                    memberRepository = AppContainer.memberRepository,
+                    onBack = { currentDestination = NavDestination.Main(MainTab.HOME) }
                 )
             }
 
@@ -324,7 +332,8 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                                 onNavigateTab = { tab ->
                                     currentTab = tab
                                     currentDestination = NavDestination.Main(tab)
-                                }
+                                },
+                                onNavigateCheckInScanner = { currentDestination = NavDestination.MemberCheckInScanner }
                             )
                             MainTab.MEMBERSHIP -> MembershipScreen(viewModel = membershipViewModel)
                             MainTab.CATALOG -> CatalogScreen(

@@ -232,4 +232,19 @@ class MemberApi(
             throw GymVipHttpClient.parseResponseError(response)
         }
     }
+
+    /**
+     * Registra asistencia del socio escaneando el código QR de recepción (POST /api/v1/member-app/attendance/check-in).
+     */
+    suspend fun selfCheckIn(challenge: String, requestId: String? = null): Result<MemberCheckInResponseDto> = runCatching {
+        val response = client.post("$baseUrl/api/v1/member-app/attendance/check-in") {
+            contentType(ContentType.Application.Json)
+            setBody(MemberSelfCheckInRequestDto(challenge = challenge, requestId = requestId))
+        }
+        if (response.status == HttpStatusCode.OK) {
+            response.body<MemberCheckInResponseDto>()
+        } else {
+            throw GymVipHttpClient.parseResponseError(response)
+        }
+    }
 }

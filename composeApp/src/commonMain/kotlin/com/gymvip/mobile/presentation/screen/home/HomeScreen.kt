@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
+import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material3.Card
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
@@ -41,13 +43,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.presentation.component.MembershipStatusCard
 import com.gymvip.mobile.presentation.component.OfflineBanner
 import com.gymvip.mobile.presentation.component.navigationIcon
 import com.gymvip.mobile.presentation.navigation.MainTab
+import com.gymvip.mobile.presentation.theme.GoldPrimary
 import com.gymvip.mobile.presentation.theme.LocalGymVipSystemTheme
 import com.gymvip.mobile.presentation.viewmodel.HomeViewModel
 import gymvip_mobile.composeapp.generated.resources.Res
@@ -60,7 +65,8 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     onNavigateServices: () -> Unit,
     onNavigateFaq: () -> Unit,
-    onNavigateTab: (MainTab) -> Unit
+    onNavigateTab: (MainTab) -> Unit,
+    onNavigateCheckInScanner: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
@@ -134,6 +140,59 @@ fun HomeScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
             MembershipStatusCard(membership = state.membership)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Acceso rápido a escaneo de asistencia en mostrador (Flujo QR Invertido)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onNavigateCheckInScanner() },
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp),
+                border = CardDefaults.outlinedCardBorder().copy(brush = SolidColor(GoldPrimary.copy(alpha = 0.85f)))
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(GoldPrimary.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.QrCodeScanner,
+                            contentDescription = "Escanear Asistencia",
+                            tint = GoldPrimary,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Escanear Asistencia",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Apunta al código QR de la pantalla de recepción",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                        contentDescription = null,
+                        tint = GoldPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 

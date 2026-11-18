@@ -108,6 +108,20 @@ class MemberRepositoryImpl(
         }
     }
 
+    override suspend fun checkInWithReceptionQr(challenge: String): Result<com.gymvip.mobile.domain.model.MemberCheckInResult> {
+        return memberApi.selfCheckIn(challenge).map { dto ->
+            com.gymvip.mobile.domain.model.MemberCheckInResult(
+                status = dto.status,
+                recorded = dto.recorded,
+                message = dto.message,
+                attendanceDate = dto.attendanceDate,
+                checkedAtUtc = dto.checkedAtUtc,
+                memberName = dto.memberName,
+                memberCode = dto.memberCode
+            )
+        }
+    }
+
     override suspend fun clearLocalData(accountId: String) {
         database.gymVipDatabaseQueries.transaction {
             database.gymVipDatabaseQueries.deleteProfileByAccountId(accountId)

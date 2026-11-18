@@ -13,5 +13,6 @@ interface MemberRepository {
     suspend fun refreshProfile(accountId: String): Result<MemberProfile>
     suspend fun refreshMembership(accountId: String): Result<MembershipSummary>
     suspend fun refreshPayments(accountId: String): Result<List<PaymentSummary>>
+    suspend fun checkInWithReceptionQr(challenge: String): Result<com.gymvip.mobile.domain.model.MemberCheckInResult>
     suspend fun clearLocalData(accountId: String)
 }

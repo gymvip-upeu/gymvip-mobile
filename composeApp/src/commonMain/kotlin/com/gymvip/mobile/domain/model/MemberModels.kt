@@ -20,3 +20,13 @@ data class MemberProfile(
 ) {
     val fullName: String get() = "$firstName $lastName"
 }
+
+data class MemberCheckInResult(
+    val status: String,
+    val recorded: Boolean,
+    val message: String,
+    val attendanceDate: String? = null,
+    val checkedAtUtc: String? = null,
+    val memberName: String? = null,
+    val memberCode: String? = null
+)

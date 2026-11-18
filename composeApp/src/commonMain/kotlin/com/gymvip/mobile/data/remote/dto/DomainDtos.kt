@@ -326,3 +326,20 @@ data class AdminSupplementDto(
 data class BarcodeUpdateRequestDto(
     val barcode: String
 )
+
+@Serializable
+data class MemberSelfCheckInRequestDto(
+    val challenge: String,
+    val requestId: String? = null
+)
+
+@Serializable
+data class MemberCheckInResponseDto(
+    val status: String,
+    val recorded: Boolean,
+    val message: String,
+    val attendanceDate: String? = null,
+    val checkedAtUtc: String? = null,
+    val memberName: String? = null,
+    val memberCode: String? = null
+)
