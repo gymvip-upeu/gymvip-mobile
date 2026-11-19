@@ -339,6 +339,7 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                             MainTab.CATALOG -> CatalogScreen(
                                 catalogViewModel = catalogViewModel,
                                 favoritesViewModel = favoritesViewModel,
+                                pickupOrdersApi = AppContainer.pickupOrdersApi,
                                 receptionWhatsAppNumber = AppContainer.configRepository.receptionWhatsAppNumber
                             )
                             MainTab.INBOX -> InboxScreen(viewModel = inboxViewModel)
