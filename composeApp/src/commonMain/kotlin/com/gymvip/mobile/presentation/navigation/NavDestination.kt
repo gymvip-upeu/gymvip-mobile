@@ -18,6 +18,8 @@ sealed class NavDestination {
     data object Faq : NavDestination()
     data object Settings : NavDestination()
     data object EditProfile : NavDestination()
+    data object AccountSecurity : NavDestination()
+    data object ConfirmEmail : NavDestination()
     data object Preferences : NavDestination()
     data object Services : NavDestination()
     data object AdminScanner : NavDestination()

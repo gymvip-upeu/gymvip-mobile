@@ -20,6 +20,7 @@ import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -66,6 +67,7 @@ internal fun SettingsPage(
 internal fun SettingsScreen(
     onBack: () -> Unit,
     onEditProfile: () -> Unit,
+    onAccountSecurity: () -> Unit,
     onPermissions: () -> Unit,
     onAppearance: () -> Unit,
     onTermsAndPrivacy: () -> Unit,
@@ -74,6 +76,8 @@ internal fun SettingsScreen(
     SettingsPage(title = "Ajustes", onBack = onBack) {
         SettingsSection("Perfil y cuenta") {
             SettingsRow("Editar perfil", Icons.Outlined.Badge, onEditProfile)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SettingsRow("Cuenta y seguridad", Icons.Outlined.ManageAccounts, onAccountSecurity)
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             SettingsRow("Permisos de la aplicación", Icons.Outlined.Security, onPermissions)
         }
@@ -95,7 +99,7 @@ internal fun SettingsScreen(
 }
 
 @Composable
-private fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
+internal fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
         Surface(
@@ -109,7 +113,7 @@ private fun SettingsSection(title: String, content: @Composable ColumnScope.() -
 }
 
 @Composable
-private fun SettingsRow(title: String, icon: ImageVector, onClick: () -> Unit) {
+internal fun SettingsRow(title: String, icon: ImageVector, onClick: () -> Unit) {
     Surface(onClick = onClick, color = MaterialTheme.colorScheme.surface) {
         Row(
             modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 12.dp),
