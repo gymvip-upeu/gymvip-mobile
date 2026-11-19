@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -34,10 +35,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -53,6 +53,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.domain.model.Faq
 import com.gymvip.mobile.domain.usecase.GetFaqsUseCase
+import com.gymvip.mobile.presentation.viewmodel.FaqViewModel
 import com.gymvip.mobile.presentation.component.ErrorRetryView
 import com.gymvip.mobile.presentation.component.LoadingView
 import com.gymvip.mobile.presentation.theme.accentForeground
@@ -64,19 +65,16 @@ fun FaqScreen(
     receptionWhatsAppNumber: String?,
     onBack: () -> Unit
 ) {
-    val faqs by getFaqsUseCase.observe().collectAsState(initial = emptyList())
+    val viewModel = remember(getFaqsUseCase) { FaqViewModel(getFaqsUseCase) }
+    val state by viewModel.uiState.collectAsState()
+    val faqs = state.items
     var query by rememberSaveable { mutableStateOf("") }
     var selectedCategory by rememberSaveable { mutableStateOf<String?>(null) }
     var expandedId by rememberSaveable { mutableStateOf<String?>(null) }
-    var attempt by remember { mutableIntStateOf(0) }
-    var loading by remember { mutableStateOf(true) }
-    var loadFailed by remember { mutableStateOf(false) }
     val focus = LocalFocusManager.current
 
-    LaunchedEffect(getFaqsUseCase, attempt) {
-        loading = true
-        loadFailed = getFaqsUseCase.refresh().isFailure
-        loading = false
+    DisposableEffect(viewModel) {
+        onDispose { viewModel.onCleared() }
     }
 
     val categories = remember(faqs) { faqs.map { it.category }.filter { it.isNotBlank() }.distinct() }
@@ -103,9 +101,17 @@ fun FaqScreen(
             }
             Text(
                 text = "Ayuda y atención",
+                modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onBackground
             )
+            IconButton(onClick = viewModel::refresh, enabled = !state.isLoading) {
+                Icon(
+                    Icons.Outlined.Refresh,
+                    contentDescription = "Actualizar preguntas frecuentes",
+                    tint = MaterialTheme.colorScheme.onBackground
+                )
+            }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outline)
 
@@ -133,6 +139,24 @@ fun FaqScreen(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { focus.clearFocus() })
         )
+
+        if (state.loadFailed && faqs.isNotEmpty()) {
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Column(Modifier.padding(14.dp)) {
+                    Text(
+                        "No pudimos actualizar las preguntas. Mostramos la última información guardada.",
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    TextButton(onClick = viewModel::refresh, enabled = !state.isLoading) {
+                        Text("Reintentar", color = MaterialTheme.colorScheme.accentForeground)
+                    }
+                }
+            }
+        }
 
         if (categories.isNotEmpty()) {
             LazyRow(
@@ -170,11 +194,11 @@ fun FaqScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             when {
-                loading && faqs.isEmpty() -> item { LoadingView("Cargando preguntas…") }
-                loadFailed && faqs.isEmpty() -> item {
+                state.isLoading && faqs.isEmpty() -> item { LoadingView("Cargando preguntas…") }
+                state.loadFailed && faqs.isEmpty() -> item {
                     ErrorRetryView(
                         message = "No pudimos cargar las preguntas frecuentes.",
-                        onRetry = { attempt++ }
+                        onRetry = viewModel::refresh
                     )
                 }
                 results.isEmpty() -> item {

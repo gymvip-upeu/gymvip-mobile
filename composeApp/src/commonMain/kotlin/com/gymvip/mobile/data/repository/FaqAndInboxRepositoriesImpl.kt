@@ -21,35 +21,6 @@ class FaqRepositoryImpl(
     private val database: GymVipDatabase
 ) : FaqRepository {
 
-    init {
-        seedFallbackFaqsIfEmpty()
-    }
-
-    private fun seedFallbackFaqsIfEmpty() {
-        val count = database.gymVipDatabaseQueries.selectAllFaqs().executeAsList().size
-        if (count == 0) {
-            val faqs = listOf(
-                Faq("faq_1", "¿Cómo funciona la vigencia de mi membresía mensual?", "La membresía mensual tiene una duración estricta de 30 días calendario continuos desde su inicio, con cero tolerancia de días de gracia.", "Membresías", 1),
-                Faq("faq_2", "¿Puedo pagar o renovar mi plan desde la aplicación móvil?", "No. Por política de seguridad y operación autorizada, todo pago y renovación se efectúa exclusivamente en el mostrador de recepción.", "Pagos", 2),
-                Faq("faq_3", "¿Puedo ver mis pagos anteriores si mi membresía ya venció?", "Sí. Su historial de pagos y perfil permanecen accesibles en la app mientras su cuenta de socio se mantenga habilitada.", "Historial", 3),
-                Faq("faq_4", "¿Qué horarios de atención tiene el gimnasio?", "Lunes a viernes de 6:00 a.m. a 10:00 p.m., sábados de 7:00 a.m. a 8:00 p.m. y domingos de 8:00 a.m. a 2:00 p.m.", "Instalaciones", 4),
-                Faq("faq_5", "¿Cómo solicito mi activación si es mi primera vez?", "Tras registrarse en recepción, el personal le entregará un comprobante con su código de activación presencial para configurar su contraseña personal.", "Cuenta", 5),
-                Faq("faq_6", "¿Cómo accedo a los suplementos y promociones?", "Consulte la sección Catálogo en la app móvil. Todas las compras y canjes se concretan directamente en recepción.", "Catálogo", 6)
-            )
-            database.gymVipDatabaseQueries.transaction {
-                faqs.forEach { faq ->
-                    database.gymVipDatabaseQueries.insertOrReplaceFaq(
-                        id = faq.id,
-                        question = faq.question,
-                        answer = faq.answer,
-                        category = faq.category,
-                        orderIndex = faq.orderIndex.toLong()
-                    )
-                }
-            }
-        }
-    }
-
     override fun observeFaqs(): Flow<List<Faq>> {
         return database.gymVipDatabaseQueries
             .selectAllFaqs()
@@ -86,12 +57,7 @@ class FaqRepositoryImpl(
             }
             Result.success(remoteList.map { Faq(it.id, it.question, it.answer, it.category, it.orderIndex) })
         } else {
-            val cached = database.gymVipDatabaseQueries.selectAllFaqs().executeAsList()
-            if (cached.isNotEmpty()) {
-                Result.success(cached.map { Faq(it.id, it.question, it.answer, it.category, it.orderIndex.toInt()) })
-            } else {
-                Result.failure(remoteResult.exceptionOrNull() ?: Exception("Error al cargar FAQs"))
-            }
+            Result.failure(remoteResult.exceptionOrNull() ?: Exception("Error al cargar preguntas frecuentes"))
         }
     }
 }
