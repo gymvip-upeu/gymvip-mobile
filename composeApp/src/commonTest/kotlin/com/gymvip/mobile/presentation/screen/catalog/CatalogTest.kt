@@ -36,6 +36,17 @@ class CatalogTest {
         assertTrue(products.filterCatalog("", null, "CREATINA", true, null).isEmpty())
     }
 
+    @Test
+    fun separatesFinishedOffersAndMatchesOfferOrProductName() {
+        val archived = whey.copy(offer = null, isPromotion = false, finishedOffer = offer)
+        val products = listOf(whey, archived, creatine)
+        assertEquals(listOf(whey), products.filterCatalog("Oferta", null, null, true, null))
+        assertEquals(listOf(archived), products.filterCatalog("vainilla", null, null, false, null, true))
+        assertTrue(products.filterCatalog("Oferta", null, null, false, 135.0, true).isEmpty())
+        assertEquals("AGOTADO", archived.availability)
+        assertEquals(MoneyPen.fromSoles(150), archived.currentPrice)
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun distinguishesEmptyVerifiedCatalogFromFailedRefresh() = runTest {

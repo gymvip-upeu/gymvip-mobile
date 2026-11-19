@@ -2,6 +2,7 @@ package com.gymvip.mobile.data.mapper
 
 import com.gymvip.mobile.data.local.Catalog_product
 import com.gymvip.mobile.data.remote.dto.ProductDto
+import com.gymvip.mobile.data.remote.dto.CatalogOfferDto
 import com.gymvip.mobile.domain.model.CatalogOffer
 import com.gymvip.mobile.domain.model.MoneyPen
 import com.gymvip.mobile.domain.model.Product
@@ -26,12 +27,14 @@ fun ProductDto.toDomain(): Product {
         netContent = netContent,
         flavor = flavor,
         ingredients = ingredients,
-        offer = offer?.let {
-            CatalogOffer(it.id, it.name, it.description, it.conditions,
-                MoneyPen.fromDouble(it.pricePen), it.startDate, it.endDate)
-        }
+        offer = offer?.toDomain(),
+        finishedOffer = finishedOffer?.toDomain()
     )
 }
+
+private fun CatalogOfferDto.toDomain() = CatalogOffer(
+    id, name, description, conditions, MoneyPen.fromDouble(pricePen), startDate, endDate
+)
 
 fun Catalog_product.toDomain(): Product {
     val domainCategory = try {

@@ -63,7 +63,8 @@ data class ProductDto(
     val netContent: String? = null,
     val flavor: String? = null,
     val ingredients: String? = null,
-    val offer: CatalogOfferDto? = null
+    val offer: CatalogOfferDto? = null,
+    val finishedOffer: CatalogOfferDto? = null
 )
 
 @Serializable

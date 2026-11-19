@@ -24,7 +24,8 @@ data class Product(
     val netContent: String? = null,
     val flavor: String? = null,
     val ingredients: String? = null,
-    val offer: CatalogOffer? = null
+    val offer: CatalogOffer? = null,
+    val finishedOffer: CatalogOffer? = null
 ) {
     val currentPrice: MoneyPen get() = offer?.price ?: price
 }

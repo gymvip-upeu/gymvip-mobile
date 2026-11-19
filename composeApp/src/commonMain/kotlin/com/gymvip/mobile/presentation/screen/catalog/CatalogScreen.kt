@@ -259,13 +259,14 @@ private fun CatalogTab(
     var maxPrice by remember { mutableStateOf("") }
     var supplementCategory by remember { mutableStateOf<String?>(null) }
     var selectedId by remember { mutableStateOf<String?>(null) }
+    var finishedOnly by remember { mutableStateOf(false) }
     val categories = state.products.mapNotNull { it.catalogCategory }
         .filter { code -> ProductCategory.entries.none { it.name == code } }.distinct().sorted()
     val limit = maxPrice.trim().replace(',', '.').toDoubleOrNull()
         ?.takeIf { it.isFinite() && it >= 0 }
     val badLimit = maxPrice.isNotBlank() && limit == null
     val visibleProducts = if (badLimit) emptyList() else state.products.filterCatalog(
-        query, state.selectedCategory, supplementCategory, state.onlyPromotions, limit
+        query, state.selectedCategory, supplementCategory, state.onlyPromotions && !finishedOnly, limit, finishedOnly
     )
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -287,18 +288,28 @@ private fun CatalogTab(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             FilterChip(
-                selected = state.selectedCategory == null,
-                onClick = { supplementCategory = null; onFilterCategory(null) },
-                label = { Text("Todos") },
+                selected = !state.onlyPromotions && !finishedOnly,
+                onClick = { finishedOnly = false; onFilterPromotions(false) },
+                label = { Text("Catálogo") },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = MaterialTheme.colorScheme.primary,
                     selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
             FilterChip(
-                selected = state.onlyPromotions,
-                onClick = { onFilterPromotions(!state.onlyPromotions) },
+                selected = state.onlyPromotions && !finishedOnly,
+                onClick = { finishedOnly = false; onFilterPromotions(true) },
                 label = { Text("Promociones vigentes") }
+            )
+            FilterChip(
+                selected = finishedOnly,
+                onClick = { finishedOnly = true; onFilterPromotions(false) },
+                label = { Text("Finalizadas") }
+            )
+            FilterChip(
+                selected = state.selectedCategory == null && supplementCategory == null,
+                onClick = { supplementCategory = null; onFilterCategory(null) },
+                label = { Text("Todas las categorías") }
             )
             ProductCategory.entries.filter { category ->
                 state.products.any { it.category == category }
@@ -339,7 +350,7 @@ private fun CatalogTab(
         } else if (visibleProducts.isEmpty() && !badLimit) {
             EmptyView(
                 icon = Icons.Outlined.ShoppingBag,
-                title = "Sin productos",
+                title = if (state.onlyPromotions || finishedOnly) "Sin promociones" else "Sin productos",
                 message = "No se encontraron elementos en esta categoría."
             )
         } else {
@@ -351,10 +362,19 @@ private fun CatalogTab(
             ) {
                 items(visibleProducts, key = { it.id }) { product ->
                     ProductItemCard(
-                        product = product,
+                        product = if (finishedOnly) product.copy(isPromotion = false, offer = null) else product,
                         onAddToFavorites = onAddToFavorites,
                         onViewDetails = { selectedId = product.id },
-                        thumbnail = { CatalogImage(product, loadThumbnail) }
+                        thumbnail = {
+                            CatalogImage(product, loadThumbnail)
+                            val offer = if (finishedOnly) product.finishedOffer else product.offer
+                            offer?.let {
+                                Text(if (finishedOnly) "${it.name} · Finalizada" else it.name)
+                            }
+                            listOfNotNull(product.presentation, product.netContent)
+                                .filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }
+                                ?.let { Text(it.joinToString(" · ")) }
+                        }
                     )
                 }
             }
@@ -379,11 +399,12 @@ private fun CatalogTab(
                     product.availability?.let {
                         Text(if (it == "DISPONIBLE") "Disponible" else "Agotado")
                     }
-                    Text(product.currentPrice.amountInSoles)
-                    product.offer?.let { offer ->
+                    Text((if (finishedOnly) product.price else product.currentPrice).amountInSoles)
+                    (if (finishedOnly) product.finishedOffer else product.offer)?.let { offer ->
                         Text(offer.name, style = MaterialTheme.typography.titleSmall)
                         Text(offer.description)
-                        Text("Ahorras ${(product.price - offer.price).amountInSoles}")
+                        Text(if (finishedOnly) "Finalizada · Precio anterior ${offer.price.amountInSoles}"
+                             else "Ahorras ${(product.price - offer.price).amountInSoles}")
                         Text("Vigencia del ${offer.startDate} al ${offer.endDate}")
                         Text(offer.conditions)
                     }
