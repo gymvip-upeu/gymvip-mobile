@@ -18,6 +18,8 @@ class GetCatalogUseCase(private val catalogRepository: CatalogRepository) {
         }
     }
 
+    suspend fun getThumbnail(path: String): ByteArray = catalogRepository.getThumbnail(path)
+
     suspend fun refresh(): Result<List<Product>> {
         return catalogRepository.refreshCatalog()
     }

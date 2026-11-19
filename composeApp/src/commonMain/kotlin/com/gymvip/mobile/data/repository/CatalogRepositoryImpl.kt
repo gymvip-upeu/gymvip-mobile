@@ -6,9 +6,7 @@ import com.gymvip.mobile.data.local.GymVipDatabase
 import com.gymvip.mobile.data.mapper.toDomain
 import com.gymvip.mobile.data.remote.api.CatalogApi
 import com.gymvip.mobile.data.remote.dto.AdminSupplementDto
-import com.gymvip.mobile.domain.model.MoneyPen
 import com.gymvip.mobile.domain.model.Product
-import com.gymvip.mobile.domain.model.ProductCategory
 import com.gymvip.mobile.domain.repository.CatalogRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -19,85 +17,6 @@ class CatalogRepositoryImpl(
     private val catalogApi: CatalogApi,
     private val database: GymVipDatabase
 ) : CatalogRepository {
-
-    init {
-        seedInitialCatalogIfNeeded()
-    }
-
-    private fun seedInitialCatalogIfNeeded() {
-        val existing = database.gymVipDatabaseQueries.selectAllProducts().executeAsList()
-        if (existing.isEmpty()) {
-            val now = Clock.System.now().toString()
-            val initial = listOf(
-                Product(
-                    id = "prod_plan_mensual",
-                    name = "Plan VIP Mensual",
-                    description = "Acceso ilimitado por 30 días continuos. Cero tolerancia.",
-                    category = ProductCategory.PLAN_MEMBRESIA,
-                    price = MoneyPen.fromSoles(120),
-                    isPromotion = false
-                ),
-                Product(
-                    id = "prod_plan_trimestral",
-                    name = "Plan VIP Trimestral",
-                    description = "90 días continuos con evaluación corporal incluida.",
-                    category = ProductCategory.PLAN_MEMBRESIA,
-                    price = MoneyPen.fromSoles(320),
-                    isPromotion = true,
-                    promotionDiscountPercent = 11
-                ),
-                Product(
-                    id = "prod_pase_diario",
-                    name = "Pase Diario VIP",
-                    description = "Acceso válido por una única jornada de entrenamiento.",
-                    category = ProductCategory.PLAN_MEMBRESIA,
-                    price = MoneyPen.fromSoles(25),
-                    isPromotion = false
-                ),
-                Product(
-                    id = "prod_whey_protein",
-                    name = "Proteína Whey Gold Standard 2lb",
-                    description = "Aislado de suero de alta pureza para recuperación muscular.",
-                    category = ProductCategory.SUPLEMENTO,
-                    price = MoneyPen.fromSoles(165),
-                    isPromotion = true,
-                    promotionDiscountPercent = 10
-                ),
-                Product(
-                    id = "prod_creatina_creapure",
-                    name = "Creatina Monohidratada 300g",
-                    description = "Fuerza y potencia muscular sin aditivos.",
-                    category = ProductCategory.SUPLEMENTO,
-                    price = MoneyPen.fromSoles(95),
-                    isPromotion = false
-                ),
-                Product(
-                    id = "prod_shaker_vip",
-                    name = "Shaker Metálico GYM VIP",
-                    description = "Acero inoxidable térmico edición dorada.",
-                    category = ProductCategory.MERCHANDISING,
-                    price = MoneyPen.fromSoles(45),
-                    isPromotion = false
-                )
-            )
-
-            database.gymVipDatabaseQueries.transaction {
-                initial.forEach { item ->
-                    database.gymVipDatabaseQueries.insertOrReplaceProduct(
-                        id = item.id,
-                        name = item.name,
-                        description = item.description,
-                        category = item.category.name,
-                        priceCents = item.price.cents,
-                        isPromotion = if (item.isPromotion) 1L else 0L,
-                        promotionDiscountPercent = item.promotionDiscountPercent?.toLong(),
-                        imageUrl = item.imageUrl,
-                        lastSyncedAt = now
-                    )
-                }
-            }
-        }
-    }
 
     override fun observeProducts(): Flow<List<Product>> {
         return database.gymVipDatabaseQueries
@@ -131,6 +50,8 @@ class CatalogRepositoryImpl(
             domainList
         }
     }
+
+    override suspend fun getThumbnail(path: String): ByteArray = catalogApi.getThumbnail(path)
 
     override suspend fun getProductById(id: String): Product? {
         return database.gymVipDatabaseQueries.selectProductById(id).executeAsOneOrNull()?.toDomain()

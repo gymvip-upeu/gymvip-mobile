@@ -338,7 +338,8 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                             MainTab.MEMBERSHIP -> MembershipScreen(viewModel = membershipViewModel)
                             MainTab.CATALOG -> CatalogScreen(
                                 catalogViewModel = catalogViewModel,
-                                favoritesViewModel = favoritesViewModel
+                                favoritesViewModel = favoritesViewModel,
+                                receptionWhatsAppNumber = AppContainer.configRepository.receptionWhatsAppNumber
                             )
                             MainTab.INBOX -> InboxScreen(viewModel = inboxViewModel)
                             MainTab.PROFILE -> profileViewModel?.let {

@@ -37,6 +37,17 @@ data class PaymentSummaryDto(
 )
 
 @Serializable
+data class CatalogOfferDto(
+    val id: String,
+    val name: String,
+    val description: String,
+    val conditions: String,
+    val pricePen: Double,
+    val startDate: String,
+    val endDate: String
+)
+
+@Serializable
 data class ProductDto(
     val id: String,
     val name: String,
@@ -45,7 +56,14 @@ data class ProductDto(
     val pricePen: Double,
     val isPromotion: Boolean = false,
     val promotionDiscountPercent: Int? = null,
-    val imageUrl: String? = null
+    val imageUrl: String? = null,
+    val brand: String? = null,
+    val availability: String? = null,
+    val presentation: String? = null,
+    val netContent: String? = null,
+    val flavor: String? = null,
+    val ingredients: String? = null,
+    val offer: CatalogOfferDto? = null
 )
 
 @Serializable

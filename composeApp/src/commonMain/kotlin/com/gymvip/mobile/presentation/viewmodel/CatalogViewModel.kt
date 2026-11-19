@@ -10,8 +10,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class CatalogUiState(
@@ -30,28 +29,12 @@ class CatalogViewModel(
     private val _uiState = MutableStateFlow(CatalogUiState())
     val uiState: StateFlow<CatalogUiState> = _uiState.asStateFlow()
 
-    init {
-        observeProducts()
-        refresh()
-    }
-
-    private fun observeProducts() {
-        getCatalogUseCase.observe(
-            categoryFilter = _uiState.value.selectedCategory,
-            onlyPromotions = _uiState.value.onlyPromotions
-        ).onEach { list ->
-            _uiState.value = _uiState.value.copy(products = list)
-        }.launchIn(scope)
-    }
-
     fun setCategoryFilter(category: ProductCategory?) {
-        _uiState.value = _uiState.value.copy(selectedCategory = category)
-        observeProducts()
+        _uiState.update { it.copy(selectedCategory = category) }
     }
 
     fun togglePromotionsOnly(onlyPromo: Boolean) {
-        _uiState.value = _uiState.value.copy(onlyPromotions = onlyPromo)
-        observeProducts()
+        _uiState.update { it.copy(onlyPromotions = onlyPromo) }
     }
 
     fun setSubTab(tab: Int) {
@@ -59,19 +42,24 @@ class CatalogViewModel(
     }
 
     fun refresh() {
+        if (_uiState.value.isLoading) return
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
         scope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
-            val result = getCatalogUseCase.refresh()
-            result.onFailure {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    errorMessage = "Mostrando catálogo offline local."
-                )
-            }.onSuccess {
-                _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = null)
-            }
+            getCatalogUseCase.refresh()
+                .onFailure {
+                    _uiState.update { state -> state.copy(
+                        isLoading = false,
+                        products = emptyList(),
+                        errorMessage = "No pudimos consultar el catálogo."
+                    ) }
+                }
+                .onSuccess { products ->
+                    _uiState.update { it.copy(isLoading = false, products = products, errorMessage = null) }
+                }
         }
     }
+
+    suspend fun getThumbnail(path: String): ByteArray = getCatalogUseCase.getThumbnail(path)
 
     fun onCleared() {
         scope.cancel()

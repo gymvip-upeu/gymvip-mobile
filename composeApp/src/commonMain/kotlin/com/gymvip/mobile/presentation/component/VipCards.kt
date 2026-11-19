@@ -200,7 +200,9 @@ fun PaymentItemCard(
 fun ProductItemCard(
     product: Product,
     onAddToFavorites: (Product) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onViewDetails: () -> Unit,
+    thumbnail: @Composable () -> Unit
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -208,6 +210,7 @@ fun ProductItemCard(
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            thumbnail()
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -227,7 +230,7 @@ fun ProductItemCard(
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = "-${product.promotionDiscountPercent ?: 10}% PROMO",
+                            text = "Promoción vigente",
                             color = MaterialTheme.colorScheme.accentForeground,
                             style = MaterialTheme.typography.labelSmall
                         )
@@ -242,6 +245,10 @@ fun ProductItemCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
+            product.brand?.let { Text(it, style = MaterialTheme.typography.labelMedium) }
+            product.availability?.let {
+                Text(if (it == "DISPONIBLE") "Disponible" else "Agotado")
+            }
             Spacer(modifier = Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -249,7 +256,7 @@ fun ProductItemCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = product.price.amountInSoles,
+                    text = product.currentPrice.amountInSoles,
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.accentForeground
                 )
@@ -267,6 +274,7 @@ fun ProductItemCard(
                     Text(text = "Guardar favorito", style = MaterialTheme.typography.labelLarge)
                 }
             }
+            androidx.compose.material3.TextButton(onClick = onViewDetails) { Text("Ver detalle") }
         }
     }
 }
