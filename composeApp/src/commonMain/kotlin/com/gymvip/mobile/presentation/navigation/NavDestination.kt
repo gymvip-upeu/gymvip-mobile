@@ -23,5 +23,7 @@ sealed class NavDestination {
     data object AdminScanner : NavDestination()
     data object MemberCheckInScanner : NavDestination()
     data object Permissions : NavDestination()
+    data object AccountSecurity : NavDestination()
+    data object ConfirmEmail : NavDestination()
     data class TermsAndPrivacy(val requiresAcceptance: Boolean = false) : NavDestination()
 }

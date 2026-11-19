@@ -34,6 +34,8 @@ import com.gymvip.mobile.presentation.screen.permissions.AppPermissionsScreen
 import com.gymvip.mobile.presentation.screen.preferences.PreferencesScreen
 import com.gymvip.mobile.presentation.screen.profile.EditProfileScreen
 import com.gymvip.mobile.presentation.screen.profile.ProfileScreen
+import com.gymvip.mobile.presentation.screen.settings.AccountSecurityScreen
+import com.gymvip.mobile.presentation.screen.settings.ConfirmEmailScreen
 import com.gymvip.mobile.presentation.screen.settings.SettingsScreen
 import com.gymvip.mobile.presentation.screen.services.ServicesScreen
 import com.gymvip.mobile.presentation.screen.splash.OnboardingScreen
@@ -82,7 +84,9 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
         val parentDestination = when (val destination = currentDestination) {
             NavDestination.Settings -> NavDestination.Main(MainTab.PROFILE)
             NavDestination.Faq, NavDestination.Services, NavDestination.MemberCheckInScanner -> NavDestination.Main(MainTab.HOME)
-            NavDestination.EditProfile, NavDestination.Preferences, NavDestination.Permissions -> NavDestination.Settings
+            NavDestination.EditProfile, NavDestination.Preferences, NavDestination.Permissions,
+            NavDestination.AccountSecurity -> NavDestination.Settings
+            NavDestination.ConfirmEmail -> NavDestination.AccountSecurity
             is NavDestination.TermsAndPrivacy -> if (destination.requiresAcceptance) null else NavDestination.Settings
             else -> null
         }
@@ -205,10 +209,28 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                 SettingsScreen(
                     onBack = { currentDestination = NavDestination.Main(MainTab.PROFILE) },
                     onEditProfile = { currentDestination = NavDestination.EditProfile },
+                    onAccountSecurity = { currentDestination = NavDestination.AccountSecurity },
                     onPermissions = { currentDestination = NavDestination.Permissions },
                     onAppearance = { currentDestination = NavDestination.Preferences },
                     onTermsAndPrivacy = { currentDestination = NavDestination.TermsAndPrivacy() },
                     onLogout = authViewModel::logout
+                )
+            }
+
+            is NavDestination.AccountSecurity -> {
+                profileViewModel?.let {
+                    AccountSecurityScreen(
+                        viewModel = it,
+                        onBack = { currentDestination = NavDestination.Settings },
+                        onChangePassword = { currentDestination = NavDestination.ConfirmEmail }
+                    )
+                }
+            }
+
+            is NavDestination.ConfirmEmail -> {
+                ConfirmEmailScreen(
+                    viewModel = authViewModel,
+                    onBack = { currentDestination = NavDestination.AccountSecurity }
                 )
             }
 

@@ -30,6 +30,7 @@ import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -86,6 +87,9 @@ fun InboxScreen(viewModel: InboxViewModel) {
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
+                    TextButton(onClick = viewModel::refresh, enabled = !state.isLoading) {
+                        Text(if (state.isLoading) "Actualizando…" else "Actualizar avisos", color = MaterialTheme.colorScheme.accentForeground)
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilterChip(
                             selected = !unreadOnly,
@@ -135,14 +139,13 @@ fun InboxScreen(viewModel: InboxViewModel) {
             items(visibleItems, key = { it.id }) { item ->
                 InboxCard(item = item, onOpen = {
                     selectedId = item.id
-                    if (!item.isRead) viewModel.markAsRead(item.id)
                 })
             }
         }
     }
 
     state.items.firstOrNull { it.id == selectedId }?.let { item ->
-        InboxDetail(item, onClose = { selectedId = null })
+        InboxDetail(item, state.readingId == item.id, state.readFailed, onMarkRead = { viewModel.markAsRead(item.id) }, onClose = { selectedId = null })
     }
 }
 
@@ -200,7 +203,7 @@ private fun InboxCard(item: InboxItem, onOpen: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun InboxDetail(item: InboxItem, onClose: () -> Unit) {
+private fun InboxDetail(item: InboxItem, reading: Boolean, readFailed: Boolean, onMarkRead: () -> Unit, onClose: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onClose) {
         Column(
             modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
@@ -219,6 +222,16 @@ private fun InboxDetail(item: InboxItem, onClose: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyLarge
             )
+            if (readFailed && !item.isRead) {
+                Text("No se pudo confirmar la lectura. Comprueba tu conexión y vuelve a intentarlo.", color = MaterialTheme.colorScheme.error)
+            }
+            if (item.isRead) {
+                Text("Leído", color = MaterialTheme.colorScheme.accentForeground)
+            } else {
+                Button(onClick = onMarkRead, enabled = !reading, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (reading) "Confirmando lectura…" else "Marcar como leído")
+                }
+            }
             TextButton(onClick = onClose, modifier = Modifier.align(Alignment.End)) {
                 Text("Volver a Avisos", color = MaterialTheme.colorScheme.accentForeground)
             }
