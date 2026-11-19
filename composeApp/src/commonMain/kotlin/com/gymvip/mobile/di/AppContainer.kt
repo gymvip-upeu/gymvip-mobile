@@ -1,6 +1,5 @@
 package com.gymvip.mobile.di
 
-import com.gymvip.mobile.data.remote.api.PickupOrdersApi
 import com.gymvip.mobile.data.local.DatabaseDriverFactory
 import com.gymvip.mobile.data.local.GymVipDatabase
 import com.gymvip.mobile.data.local.SecureTokenStore
@@ -42,9 +41,6 @@ object AppContainer : KoinComponent {
         private set
 
     lateinit var legalConsentRepository: LegalConsentRepository
-        private set
-
-    lateinit var pickupOrdersApi: PickupOrdersApi
         private set
 
     lateinit var configRepository: ConfigRepository
@@ -100,7 +96,6 @@ object AppContainer : KoinComponent {
         gymServiceRepository = get<GymServiceRepository>()
         legalConsentRepository = get<LegalConsentRepository>()
         configRepository = get<ConfigRepository>()
-        pickupOrdersApi = get<PickupOrdersApi>()
 
         loginUseCase = get<LoginUseCase>()
         activateAccountUseCase = get<ActivateAccountUseCase>()

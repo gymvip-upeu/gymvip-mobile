@@ -22,7 +22,6 @@ fun appModules(driverFactory: DatabaseDriverFactory, tokenStore: SecureTokenStor
         single { AuthApi(get()) }
         single { MemberApi(get()) }
         single { CatalogApi(get()) }
-        single { PickupOrdersApi(get()) }
         single { FavoriteApi(get()) }
         single { SyncQueueManager(get(), get()) }
     },

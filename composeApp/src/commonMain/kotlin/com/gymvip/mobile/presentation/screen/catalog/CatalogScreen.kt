@@ -49,7 +49,6 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.domain.model.Product
-import com.gymvip.mobile.data.remote.api.PickupOrdersApi
 import com.gymvip.mobile.presentation.screen.faq.receptionWhatsAppUrl
 import kotlinx.coroutines.CancellationException
 import com.gymvip.mobile.domain.model.ProductCategory
@@ -67,7 +66,6 @@ import com.gymvip.mobile.presentation.theme.vipOutlinedTextFieldColors
 fun CatalogScreen(
     catalogViewModel: CatalogViewModel,
     favoritesViewModel: FavoritesViewModel,
-    pickupOrdersApi: PickupOrdersApi,
     receptionWhatsAppNumber: String?
 ) {
     val catalogState by catalogViewModel.uiState.collectAsState()
@@ -122,7 +120,6 @@ fun CatalogScreen(
                 onFilterCategory = { catalogViewModel.setCategoryFilter(it) },
                 onFilterPromotions = catalogViewModel::togglePromotionsOnly,
                 onRefresh = catalogViewModel::refresh,
-                pickupOrdersApi = pickupOrdersApi,
                 loadThumbnail = catalogViewModel::getThumbnail,
                 receptionWhatsAppNumber = receptionWhatsAppNumber,
                 onAddToFavorites = { favoritesViewModel.openAddDialog(it) }
@@ -253,7 +250,6 @@ private fun CatalogTab(
     onFilterCategory: (ProductCategory?) -> Unit,
     onFilterPromotions: (Boolean) -> Unit,
     onRefresh: () -> Unit,
-    pickupOrdersApi: PickupOrdersApi,
     loadThumbnail: suspend (String) -> ByteArray,
     receptionWhatsAppNumber: String?,
     onAddToFavorites: (Product) -> Unit
@@ -263,8 +259,6 @@ private fun CatalogTab(
     var maxPrice by remember { mutableStateOf("") }
     var supplementCategory by remember { mutableStateOf<String?>(null) }
     var selectedId by remember { mutableStateOf<String?>(null) }
-    var showOrders by remember { mutableStateOf(false) }
-    var buying by remember { mutableStateOf<Product?>(null) }
     val categories = state.products.mapNotNull { it.catalogCategory }
         .filter { code -> ProductCategory.entries.none { it.name == code } }.distinct().sorted()
     val limit = maxPrice.trim().replace(',', '.').toDoubleOrNull()
@@ -281,9 +275,6 @@ private fun CatalogTab(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        androidx.compose.material3.TextButton(onClick = { showOrders = true }) {
-            Text("Mis pedidos")
-        }
         OutlinedTextField(
             value = query, onValueChange = { query = it },
             label = { Text("Nombre o marca") }, singleLine = true,
@@ -404,15 +395,7 @@ private fun CatalogTab(
                     if (contactFailed) Text("No se pudo abrir WhatsApp.")
                 }
             },
-            confirmButton = {
-                if (product.availability == "DISPONIBLE") {
-                    Button(onClick = { buying = product; selectedId = null; showOrders = true }) {
-                        Text("Comprar")
-                    }
-                } else {
-                    OutlinedButton(onClick = { selectedId = null }) { Text("Cerrar") }
-                }
-            },
+            confirmButton = { OutlinedButton(onClick = { selectedId = null }) { Text("Cerrar") } },
             dismissButton = {
                 if (whatsApp != null) {
                     OutlinedButton(onClick = {
@@ -421,12 +404,6 @@ private fun CatalogTab(
                 }
             }
         )
-    }
-    if (showOrders) {
-        PickupOrdersDialog(pickupOrdersApi, buying, onRefreshCatalog = onRefresh) {
-            showOrders = false
-            buying = null
-        }
     }
 }
 
