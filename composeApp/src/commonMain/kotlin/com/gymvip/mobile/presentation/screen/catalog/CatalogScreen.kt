@@ -264,15 +264,9 @@ private fun CatalogTab(
     val limit = maxPrice.trim().replace(',', '.').toDoubleOrNull()
         ?.takeIf { it.isFinite() && it >= 0 }
     val badLimit = maxPrice.isNotBlank() && limit == null
-    val visibleProducts = state.products.filter { product ->
-        val text = query.trim()
-        (state.selectedCategory == null || product.category == state.selectedCategory) &&
-            (supplementCategory == null || product.catalogCategory == supplementCategory) &&
-            (!state.onlyPromotions || product.isPromotion) &&
-            (product.name.contains(text, ignoreCase = true) ||
-                product.brand?.contains(text, ignoreCase = true) == true) &&
-            !badLimit && (limit == null || product.currentPrice.cents / 100.0 <= limit)
-    }
+    val visibleProducts = if (badLimit) emptyList() else state.products.filterCatalog(
+        query, state.selectedCategory, supplementCategory, state.onlyPromotions, limit
+    )
 
     Column(modifier = Modifier.fillMaxSize()) {
         OutlinedTextField(
@@ -389,6 +383,7 @@ private fun CatalogTab(
                     product.offer?.let { offer ->
                         Text(offer.name, style = MaterialTheme.typography.titleSmall)
                         Text(offer.description)
+                        Text("Ahorras ${(product.price - offer.price).amountInSoles}")
                         Text("Vigencia del ${offer.startDate} al ${offer.endDate}")
                         Text(offer.conditions)
                     }
