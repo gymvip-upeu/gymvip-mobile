@@ -89,9 +89,10 @@ class InboxRepositoryImpl(
     }
 
     override suspend fun markAsRead(accountId: String, itemId: String): Result<Unit> {
-        database.gymVipDatabaseQueries.markInboxAsRead(itemId, accountId)
         val remote = memberApi.markInboxAsRead(itemId)
-        return if (remote.isSuccess) Result.success(Unit) else Result.success(Unit)
+        if (remote.isFailure) return Result.failure(remote.exceptionOrNull() ?: Exception("No se pudo confirmar la lectura"))
+        database.gymVipDatabaseQueries.markInboxAsRead(itemId, accountId)
+        return Result.success(Unit)
     }
 
     override suspend fun refreshInbox(accountId: String): Result<List<InboxItem>> {

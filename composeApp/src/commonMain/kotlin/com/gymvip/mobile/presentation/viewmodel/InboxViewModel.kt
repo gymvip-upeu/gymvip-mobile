@@ -18,7 +18,9 @@ import kotlinx.coroutines.launch
 data class InboxUiState(
     val isLoading: Boolean = true,
     val items: List<InboxItem> = emptyList(),
-    val loadFailed: Boolean = false
+    val loadFailed: Boolean = false,
+    val readingId: String? = null,
+    val readFailed: Boolean = false
 ) {
     val unreadCount: Int get() = items.count { !it.isRead }
 }
@@ -50,8 +52,11 @@ class InboxViewModel(
     }
 
     fun markAsRead(itemId: String) {
+        if (_uiState.value.readingId != null) return
         scope.launch {
-            getInboxUseCase.markAsRead(accountId, itemId)
+            _uiState.update { it.copy(readingId = itemId, readFailed = false) }
+            val result = getInboxUseCase.markAsRead(accountId, itemId)
+            _uiState.update { it.copy(readingId = null, readFailed = result.isFailure) }
         }
     }
 
