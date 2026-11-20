@@ -27,4 +27,7 @@ gymvip.db*
 *.apk
 apks-instalables/
 *google-services*.json
+*.jks
+*.keystore
+keystore.properties
 
