@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.domain.model.Product
+import com.gymvip.mobile.presentation.component.ContextualHelpCard
 import com.gymvip.mobile.presentation.screen.faq.receptionWhatsAppUrl
 import kotlinx.coroutines.CancellationException
 import com.gymvip.mobile.domain.model.ProductCategory
@@ -80,6 +81,12 @@ fun CatalogScreen(
         OfflineBanner(
             isOffline = catalogState.errorMessage != null,
             pendingSyncCount = favoritesState.pendingCount
+        )
+
+        ContextualHelpCard(
+            screenKey = "catalog_help",
+            title = "Catálogo y Suplementos",
+            description = "Explore suplementos, promociones vigentes y planes. Puede guardar favoritos para consultarlos sin conexión o contactar a recepción por WhatsApp."
         )
 
         TabRow(

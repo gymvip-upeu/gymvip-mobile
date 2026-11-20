@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.gymvip.mobile.presentation.component.ContextualHelpCard
 import com.gymvip.mobile.presentation.component.MembershipStatusCard
 import com.gymvip.mobile.presentation.component.OfflineBanner
 import com.gymvip.mobile.presentation.component.navigationIcon
@@ -101,7 +102,15 @@ fun HomeScreen(
                     color = MaterialTheme.colorScheme.onBackground
                 )
             }
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            ContextualHelpCard(
+                screenKey = "home_checkin_help",
+                title = "Asistencia y Acceso Rápido",
+                description = "Para ingresar a la sala, use 'Escanear Asistencia' y apunte al código QR dinámico mostrado en el mostrador de recepción."
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Banner informativo (Firebase Remote Config acotado con fallback local)
             if (!state.remoteNoticeBanner.isNullOrBlank()) {

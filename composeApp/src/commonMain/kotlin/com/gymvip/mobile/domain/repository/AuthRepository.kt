@@ -15,6 +15,7 @@ interface AuthRepository {
     fun getAuthState(): Flow<AuthState>
     suspend fun login(email: String, password: String): Result<MemberProfile>
     suspend fun logout(): Result<Unit>
+    suspend fun revokeOtherSessions(): Result<Unit>
     suspend fun activateAccount(token: String, newPassword: String): Result<Unit>
     suspend fun requestPasswordReset(email: String): Result<String>
     suspend fun confirmPasswordReset(token: String, newPassword: String): Result<String>

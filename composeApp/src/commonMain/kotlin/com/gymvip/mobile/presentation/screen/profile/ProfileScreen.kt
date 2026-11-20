@@ -1,6 +1,9 @@
 package com.gymvip.mobile.presentation.screen.profile
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,31 +13,50 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.gymvip.mobile.di.AppContainer
+import com.gymvip.mobile.presentation.component.AvatarSelectionDialog
+import com.gymvip.mobile.presentation.component.UserAvatar
 import com.gymvip.mobile.presentation.theme.DangerRed
 import com.gymvip.mobile.presentation.theme.GoldOnPrimary
 import com.gymvip.mobile.presentation.theme.GoldPrimary
 import com.gymvip.mobile.presentation.theme.LocalGymVipSystemTheme
 import com.gymvip.mobile.presentation.theme.SuccessGreen
+import com.gymvip.mobile.presentation.theme.accentForeground
 import com.gymvip.mobile.presentation.viewmodel.ProfileViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun ProfileScreen(
@@ -48,6 +70,38 @@ fun ProfileScreen(
     val onAccent = if (followsSystem) MaterialTheme.colorScheme.onPrimary else GoldOnPrimary
     val state by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
+
+    val profile = state.profile
+    val accountId = profile?.accountId.orEmpty()
+
+    var avatarSeed by remember { mutableStateOf(accountId.ifBlank { "atleta_vip" }) }
+    var showAvatarDialog by remember { mutableStateOf(false) }
+    var showTechnicalDetails by remember { mutableStateOf(false) }
+
+    // Cargar la semilla del avatar persistida por cuenta
+    LaunchedEffect(accountId) {
+        if (accountId.isNotBlank()) {
+            val savedSeed = AppContainer.configRepository.getAvatarSeed(accountId)
+            avatarSeed = savedSeed
+        }
+    }
+
+    if (showAvatarDialog) {
+        AvatarSelectionDialog(
+            currentSeed = avatarSeed,
+            onSelectAvatar = { newSeed ->
+                avatarSeed = newSeed
+                showAvatarDialog = false
+                if (accountId.isNotBlank()) {
+                    coroutineScope.launch {
+                        AppContainer.configRepository.setAvatarSeed(accountId, newSeed)
+                    }
+                }
+            },
+            onDismiss = { showAvatarDialog = false }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -56,13 +110,14 @@ fun ProfileScreen(
             .verticalScroll(scrollState)
             .padding(16.dp)
     ) {
-        val profile = state.profile
         val roles = userRoles.ifEmpty { profile?.roles.orEmpty() }
+        val isAdminOrReception = roles.any {
+            it.contains("ADMIN", ignoreCase = true) || it.contains("RECEPCION", ignoreCase = true)
+        }
         val accountType = when {
-            roles.any { it.contains("ADMIN", ignoreCase = true) } -> "Administrador"
-            roles.any { it.contains("RECEPCION", ignoreCase = true) } -> "Personal de recepción"
-            roles.any { it.contains("CLIENT", ignoreCase = true) || it.contains("SOCIO", ignoreCase = true) || it.contains("MEMBER", ignoreCase = true) } -> "Socio / miembro"
-            else -> "Socio / miembro"
+            roles.any { it.contains("ADMIN", ignoreCase = true) } -> "Administrador del Sistema"
+            roles.any { it.contains("RECEPCION", ignoreCase = true) } -> "Personal de Recepción"
+            else -> "Socio Titular VIP"
         }
         val accountStatus = when (profile?.status?.name) {
             "BLOQUEADO" -> "CUENTA BLOQUEADA"
@@ -70,7 +125,7 @@ fun ProfileScreen(
             else -> "CUENTA ACTIVA"
         }
 
-        // Header con Avatar VIP
+        // Header con Avatar Creativo Local
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -82,52 +137,78 @@ fun ProfileScreen(
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(CircleShape)
-                        .background(accent),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = profile?.firstName?.take(1)?.uppercase() ?: "S",
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = if (followsSystem) onAccent else Color.Black
+                Box(contentAlignment = Alignment.BottomEnd) {
+                    UserAvatar(
+                        seed = avatarSeed,
+                        size = 84.dp,
+                        onClick = { showAvatarDialog = true }
                     )
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(accent)
+                            .clickable { showAvatarDialog = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Edit,
+                            contentDescription = "Cambiar avatar",
+                            tint = onAccent,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
+
                 Text(
-                    text = profile?.fullName ?: "Socio GYM VIP",
+                    text = profile?.fullName?.takeIf { it.isNotBlank() } ?: "Socio GYM VIP",
                     style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold
                 )
+
                 Text(
-                    text = profile?.email ?: "",
+                    text = profile?.email?.takeIf { it.isNotBlank() } ?: "Correo no registrado",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(SuccessGreen.copy(alpha = 0.2f))
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = accountStatus,
-                        color = if (accountStatus == "CUENTA ACTIVA") SuccessGreen else DangerRed,
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                }
-
                 Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = "Tipo de cuenta: $accountType",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = accentForeground
-                )
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (accountStatus == "CUENTA ACTIVA") SuccessGreen.copy(alpha = 0.2f) else DangerRed.copy(alpha = 0.2f))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = accountStatus,
+                            color = if (accountStatus == "CUENTA ACTIVA") SuccessGreen else DangerRed,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(accent.copy(alpha = 0.15f))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = accountType,
+                            color = accentForeground,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
             }
         }
 
@@ -137,7 +218,8 @@ fun ProfileScreen(
         Text(
             text = "DATOS DEL TITULAR",
             style = MaterialTheme.typography.labelLarge,
-            color = accentForeground
+            color = accentForeground,
+            fontWeight = FontWeight.Bold
         )
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -147,17 +229,22 @@ fun ProfileScreen(
             shape = RoundedCornerShape(12.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                ProfileDataRow("Documento:", "${profile?.documentType ?: "DNI"} ${profile?.documentNumber ?: "—"}")
-                ProfileDataRow("Teléfono de contacto:", profile?.phone ?: "No registrado")
-                ProfileDataRow("Identificador de cuenta:", profile?.accountId ?: "—")
-                ProfileDataRow("Última sincronización:", profile?.lastSyncedAt?.take(19) ?: "Hoy")
+                ProfileDataRow("Documento de Identidad:", "${profile?.documentType ?: "DNI"} ${profile?.documentNumber?.takeIf { it.isNotBlank() } ?: "No registrado"}")
+                ProfileDataRow("Teléfono de contacto:", profile?.phone?.takeIf { it.isNotBlank() } ?: "No registrado")
+                ProfileDataRow("Última sincronización:", formatSyncDate(profile?.lastSyncedAt))
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        val isAdminOrReception = roles.any { it.contains("ADMIN", ignoreCase = true) || it.contains("RECEPCION", ignoreCase = true) }
+        // Acciones exclusivas para roles de gestión
         if (isAdminOrReception) {
+            Spacer(modifier = Modifier.height(20.dp))
+            Text(
+                text = "HERRAMIENTAS DE GESTIÓN",
+                style = MaterialTheme.typography.labelLarge,
+                color = accentForeground,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
             Button(
                 onClick = onNavigateAdminScanner,
                 colors = ButtonDefaults.buttonColors(
@@ -169,12 +256,63 @@ fun ProfileScreen(
                     .fillMaxWidth()
                     .height(48.dp)
             ) {
-                Text(text = "Abrir escáner de productos (admin)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Icon(Icons.Outlined.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = "Abrir Escáner de Productos y Stock", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
-            Spacer(modifier = Modifier.height(14.dp))
         }
 
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Sección Colapsable: Detalles Técnicos y Soporte
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showTechnicalDetails = !showTechnicalDetails },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.AutoMirrored.Outlined.HelpOutline, contentDescription = null, tint = accentForeground, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Detalles Técnicos y Soporte",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Icon(
+                        imageVector = if (showTechnicalDetails) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                AnimatedVisibility(visible = showTechnicalDetails) {
+                    Column(modifier = Modifier.padding(top = 12.dp)) {
+                        ProfileDataRow("Identificador de cuenta (UUID):", profile?.accountId?.takeIf { it.isNotBlank() } ?: "No disponible")
+                        ProfileDataRow("Versión de aplicación:", "GYM VIP Móvil v1.1.1 (Build 3)")
+                        ProfileDataRow("Entorno de servidor:", "Producción Oficial (Render Cloud HTTPS)")
+                        ProfileDataRow("Zona horaria oficial:", "America/Lima (UTC-5)")
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
     }
+}
+
+private fun formatSyncDate(dateString: String?): String {
+    if (dateString.isNullOrBlank()) return "Hoy"
+    val clean = dateString.replace("T", " ").take(16)
+    return "$clean (America/Lima)"
 }
 
 @Composable
@@ -182,7 +320,7 @@ private fun ProfileDataRow(label: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
+            .padding(vertical = 6.dp)
     ) {
         Text(
             text = label,
@@ -193,7 +331,8 @@ private fun ProfileDataRow(label: String, value: String) {
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.SemiBold
         )
     }
 }

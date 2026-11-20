@@ -241,6 +241,10 @@ class AuthRepositoryImpl(
         return Result.success(Unit)
     }
 
+    override suspend fun revokeOtherSessions(): Result<Unit> {
+        return authApi.revokeOtherSessions()
+    }
+
     override suspend fun activateAccount(token: String, newPassword: String): Result<Unit> {
         return authApi.activateAccount(ActivationRequestDto(token, newPassword))
     }

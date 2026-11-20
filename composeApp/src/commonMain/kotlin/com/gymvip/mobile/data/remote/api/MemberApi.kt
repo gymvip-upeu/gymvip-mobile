@@ -244,4 +244,19 @@ class MemberApi(
             throw GymVipHttpClient.parseResponseError(response)
         }
     }
+
+    /**
+     * Solicitud de supresión de cuenta bajo LPDP Ley 29733 (POST /api/v1/member-app/delete-account).
+     */
+    suspend fun requestAccountDeletion(reason: String = "Solicitud voluntaria del titular"): Result<AccountDeletionResultDto> = GymVipHttpClient.safeApiCall {
+        val response = client.post("$baseUrl/api/v1/member-app/delete-account") {
+            contentType(ContentType.Application.Json)
+            setBody(mapOf("reason" to reason))
+        }
+        if (response.status == HttpStatusCode.OK) {
+            response.body<AccountDeletionResultDto>()
+        } else {
+            throw GymVipHttpClient.parseResponseError(response)
+        }
+    }
 }

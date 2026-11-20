@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.domain.model.InboxCategory
 import com.gymvip.mobile.domain.model.InboxItem
+import com.gymvip.mobile.presentation.component.ContextualHelpCard
 import com.gymvip.mobile.presentation.component.EmptyView
 import com.gymvip.mobile.presentation.component.ErrorRetryView
 import com.gymvip.mobile.presentation.component.LoadingView
@@ -76,6 +77,13 @@ fun InboxScreen(viewModel: InboxViewModel) {
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            item {
+                ContextualHelpCard(
+                    screenKey = "inbox_help",
+                    title = "Bandeja de Avisos",
+                    description = "Aquí recibirá comunicados oficiales, recordatorios de vencimiento y novedades de GYM VIP. Puede filtrar por avisos leídos o pendientes."
+                )
+            }
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(

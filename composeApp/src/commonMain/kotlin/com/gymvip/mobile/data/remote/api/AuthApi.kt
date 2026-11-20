@@ -52,6 +52,13 @@ class AuthApi(
         }
     }
 
+    suspend fun revokeOtherSessions(): Result<Unit> = runCatching {
+        val response = client.post("$baseUrl/api/v1/auth/revoke-other-sessions")
+        if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.NoContent) {
+            throw GymVipHttpClient.parseResponseError(response)
+        }
+    }
+
     suspend fun activateAccount(request: ActivationRequestDto): Result<Unit> = runCatching {
         val response = client.post("$baseUrl/api/v1/auth/activate") {
             contentType(ContentType.Application.Json)

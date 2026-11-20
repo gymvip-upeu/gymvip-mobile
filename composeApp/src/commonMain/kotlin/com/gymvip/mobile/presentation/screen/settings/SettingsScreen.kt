@@ -14,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Badge
@@ -30,10 +31,17 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.gymvip.mobile.di.AppContainer
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun SettingsPage(
@@ -83,6 +91,35 @@ internal fun SettingsScreen(
         }
         SettingsSection("Apariencia") {
             SettingsRow("Tema de la aplicación", Icons.Outlined.Palette, onAppearance)
+        }
+        val scope = rememberCoroutineScope()
+        var resetHelpFeedback by remember { mutableStateOf<String?>(null) }
+        SettingsSection("Ayuda y tutoriales") {
+            SettingsRow("Restablecer guías y ayudas contextuales", Icons.AutoMirrored.Outlined.HelpOutline) {
+                scope.launch {
+                    listOf(
+                        "login_help",
+                        "activation_help",
+                        "membership_help",
+                        "home_checkin_help",
+                        "catalog_help",
+                        "inbox_help",
+                        "onboarding_completed",
+                        "permissions_explainer_completed"
+                    ).forEach { key ->
+                        AppContainer.configRepository.setBooleanPreference(key, false)
+                    }
+                    resetHelpFeedback = "Guías y ayudas restablecidas. Se volverán a mostrar al ingresar a cada sección."
+                }
+            }
+            if (resetHelpFeedback != null) {
+                Text(
+                    text = resetHelpFeedback.orEmpty(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
         }
         SettingsSection("Legal") {
             SettingsRow("Términos y privacidad", Icons.Outlined.Description, onTermsAndPrivacy)

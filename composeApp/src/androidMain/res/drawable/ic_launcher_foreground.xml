@@ -5,38 +5,37 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     
-    <!-- Aro exterior dorado GYM VIP -->
+    <!-- Aro exterior dorado/cian GYM VIP con proporción adaptativa -->
+    <path
+        android:strokeColor="#008DDA"
+        android:strokeWidth="2.5"
+        android:pathData="M54,54m-28,0a28,28 0,1 1,56 0a28,28 0,1 1,-56 0" />
+
+    <!-- Aro interior fino de prestigio -->
     <path
         android:strokeColor="#D4AF37"
-        android:strokeWidth="2.2"
-        android:pathData="M54,54m-29,0a29,29 0,1 1,58 0a29,29 0,1 1,-58 0" />
+        android:strokeWidth="1.0"
+        android:strokeAlpha="0.75"
+        android:pathData="M54,54m-25,0a25,25 0,1 1,50 0a25,25 0,1 1,-50 0" />
 
-    <!-- Aro interno fino de acento -->
+    <!-- Monograma G nítido simétrico -->
     <path
-        android:strokeColor="#F59E0B"
-        android:strokeWidth="0.8"
-        android:strokeAlpha="0.6"
-        android:pathData="M54,54m-26,0a26,26 0,1 1,52 0a26,26 0,1 1,-52 0" />
-
-    <!-- Letra G dorada con trazo premium -->
-    <path
-        android:strokeColor="#F59E0B"
-        android:strokeWidth="3.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.6"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:pathData="M47,43 C44,40.5 40,39.5 36.5,42 C32,45.5 32,60.5 36.5,64 C40,66.8 45,66 48,62.5 L48,54 L41.5,54" />
+        android:pathData="M48,42 C44,39 39,39 35.5,42.5 C31,47 31,61 35.5,65.5 C39.5,69 45,68 48.5,64.5 L48.5,54 L41,54" />
 
-    <!-- Letra V dorada simétrica -->
+    <!-- Monograma V nítido simétrico -->
     <path
-        android:strokeColor="#F59E0B"
-        android:strokeWidth="3.5"
+        android:strokeColor="#008DDA"
+        android:strokeWidth="3.6"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:pathData="M55,42.5 L64.5,65 L74,42.5" />
+        android:pathData="M54.5,42 L63.5,66 L72.5,42" />
 
     <!-- Estrella VIP de prestigio inferior -->
     <path
         android:fillColor="#D4AF37"
-        android:pathData="M54,71.5 L55.2,73.8 L57.5,73.8 L55.7,75.2 L56.4,77.5 L54,76 L51.6,77.5 L52.3,75.2 L50.5,73.8 L52.8,73.8 Z" />
+        android:pathData="M54,72.5 L55.3,74.6 L57.6,74.6 L55.8,76.0 L56.5,78.2 L54,76.8 L51.5,78.2 L52.2,76.0 L50.4,74.6 L52.7,74.6 Z" />
 </vector>
-

@@ -44,6 +44,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.gymvip.mobile.presentation.component.ContextualHelpCard
+import com.gymvip.mobile.presentation.component.GymVipLogo
 import com.gymvip.mobile.presentation.viewmodel.AuthViewModel
 import com.gymvip.mobile.presentation.theme.accentForeground
 import com.gymvip.mobile.presentation.theme.vipOutlinedTextFieldColors
@@ -80,12 +82,7 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Box(
-                modifier = Modifier.size(64.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("V", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.headlineLarge)
-            }
+            GymVipLogo(size = 72.dp)
 
             Spacer(modifier = Modifier.height(16.dp))
             Text(
@@ -99,7 +96,15 @@ fun LoginScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            ContextualHelpCard(
+                screenKey = "login_help",
+                title = "Acceso a GYM VIP",
+                description = "Ingrese con su correo o código de socio. Si se inscribió recientemente en recepción, presione 'Activar cuenta' para configurar su contraseña."
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },

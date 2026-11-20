@@ -1,8 +1,7 @@
 package com.gymvip.mobile.presentation.screen.splash
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,8 +16,17 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.FitnessCenter
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.QrCodeScanner
+import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -29,155 +37,266 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.gymvip.mobile.presentation.theme.GoldPrimary
+import androidx.compose.ui.unit.sp
+import com.gymvip.mobile.presentation.component.GymVipLogo
 import com.gymvip.mobile.presentation.theme.LocalGymVipSystemTheme
-import gymvip_mobile.composeapp.generated.resources.Res
-import gymvip_mobile.composeapp.generated.resources.bg_athlete
-import gymvip_mobile.composeapp.generated.resources.club_training
-import org.jetbrains.compose.resources.painterResource
+
+data class OnboardingPageData(
+    val title: String,
+    val subtitle: String,
+    val description: String,
+    val icon: ImageVector
+)
 
 @Composable
 fun OnboardingScreen(
-    onLogin: () -> Unit,
-    onActivate: () -> Unit
+    onLogin: () -> Unit = {},
+    onActivate: () -> Unit = {},
+    onFinish: () -> Unit = onLogin,
+    onLoginDirect: () -> Unit = onLogin,
+    onActivateDirect: () -> Unit = onActivate
 ) {
-    var page by remember { mutableIntStateOf(0) }
     val followsSystem = LocalGymVipSystemTheme.current
-    val accent = if (followsSystem) Color.White else GoldPrimary
-    val titles = listOf("Tu membresía.\nSiempre clara.", "Entrena informado.\nDecide mejor.")
-    val descriptions = listOf(
-        "Consulta vigencia, pagos registrados y novedades sin trámites innecesarios.",
-        "Revisa el catálogo, las promociones y los avisos oficiales de VIP Center Fit."
-    )
+    val accent = if (followsSystem) Color(0xFF008DDA) else Color(0xFFD4AF37)
+
+    val pages = remember {
+        listOf(
+            OnboardingPageData(
+                title = "Bienvenido a GYM VIP",
+                subtitle = "TU CLUB DIGITAL",
+                description = "Gestiona tu membresía, días de vigencia y pagos registrados en el club con total transparencia y rapidez.",
+                icon = Icons.Outlined.FitnessCenter
+            ),
+            OnboardingPageData(
+                title = "Acceso Rápido con QR",
+                subtitle = "CONTROL DE ASISTENCIA",
+                description = "Ingresa al gimnasio escaneando el código QR en la pantalla de recepción directamente desde tu cámara.",
+                icon = Icons.Outlined.QrCodeScanner
+            ),
+            OnboardingPageData(
+                title = "Catálogo y Suplementos",
+                subtitle = "NUTRICIÓN Y EQUIPAMIENTO",
+                description = "Explora suplementos deportivos oficiales, consulta stock, precios vigentes y guarda tus productos favoritos.",
+                icon = Icons.Outlined.ShoppingBag
+            ),
+            OnboardingPageData(
+                title = "Avisos y Comunidad",
+                subtitle = "SIEMPRE INFORMADO",
+                description = "Recibe notificaciones de renovación, comunicados oficiales de la sede y resuelve tus dudas en la sección de preguntas frecuentes.",
+                icon = Icons.Outlined.NotificationsActive
+            )
+        )
+    }
+
+    var currentPage by remember { mutableIntStateOf(0) }
+    val isLastPage = currentPage == pages.size - 1
 
     Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        Image(
-            painter = painterResource(if (followsSystem) Res.drawable.club_training else Res.drawable.bg_athlete),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            alignment = if (followsSystem) BiasAlignment(0.45f, 0f) else Alignment.Center,
-            modifier = Modifier.fillMaxSize()
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = if (followsSystem) listOf(
-                            Color(0xCC14171C),
-                            Color(0x2216263C),
-                            MaterialTheme.colorScheme.background,
-                            MaterialTheme.colorScheme.surface
-                        ) else listOf(
-                            Color(0xDF090B10),
-                            Color(0xF0111722),
-                            Color(0xFA090B10)
-                        )
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF0B1320),
+                        Color(0xFF142033),
+                        Color(0xFF0B1320)
                     )
                 )
-        )
-        Box(
+            )
+            .systemBarsPadding()
+    ) {
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .systemBarsPadding()
-                .padding(horizontal = 24.dp, vertical = 18.dp)
+                .padding(24.dp)
         ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+            // Barra Superior: Logo GV y Botón Saltar
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    GymVipLogo(size = 38.dp, useGoldVariant = !followsSystem)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "GYM VIP",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                }
+
+                if (!isLastPage) {
+                    TextButton(onClick = onFinish) {
+                        Text(
+                            text = "Saltar",
+                            color = Color(0xFF94A3B8),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.weight(0.15f))
+
+            // Contenido de la Pantalla Actual
+            val current = pages[currentPage]
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
                     modifier = Modifier
-                        .size(42.dp)
+                        .size(96.dp)
                         .clip(CircleShape)
-                        .border(1.dp, accent, CircleShape),
+                        .background(accent.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("GV", color = accent, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Icon(
+                        imageVector = current.icon,
+                        contentDescription = null,
+                        tint = accent,
+                        modifier = Modifier.size(48.dp)
+                    )
                 }
-                Spacer(modifier = Modifier.width(12.dp))
-                Text("GYM VIP", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.weight(1f))
-                TextButton(onClick = onLogin) {
-                    Text("Saltar", color = Color.White.copy(alpha = 0.82f))
-                }
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                Text(
+                    text = current.subtitle,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = accent,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = current.title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Text(
+                    text = current.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFFCBD5E1),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 22.sp
+                )
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.weight(0.2f))
 
-            Text(
-                text = if (page == 0) "TU EXPERIENCIA, EN UN SOLO LUGAR" else "INFORMACIÓN CONFIABLE",
-                color = accent,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(14.dp))
-            Text(
-                text = titles[page],
-                color = Color.White,
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(modifier = Modifier.height(14.dp))
-            Text(
-                text = descriptions[page],
-                color = Color(0xFFD1D5DB),
-                style = MaterialTheme.typography.bodyLarge
-            )
-
-            Spacer(modifier = Modifier.height(26.dp))
+            // Indicador de Puntos (Dots Indicator interactivo)
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                repeat(2) { index ->
+                pages.indices.forEach { index ->
+                    val isSelected = index == currentPage
                     Box(
                         modifier = Modifier
-                            .width(if (index == page) 24.dp else 8.dp)
-                            .height(8.dp)
-                            .clip(CircleShape)
-                            .background(if (index == page) accent else Color(0xFF59606B))
+                            .padding(horizontal = 4.dp)
+                            .size(width = if (isSelected) 24.dp else 8.dp, height = 8.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(if (isSelected) accent else Color(0xFF475569))
+                            .clickable { currentPage = index }
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
-            Button(
-                onClick = { if (page == 0) page = 1 else onLogin() },
-                modifier = Modifier.fillMaxWidth().height(58.dp),
-                shape = RoundedCornerShape(30.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (followsSystem) MaterialTheme.colorScheme.primary else accent,
-                    contentColor = if (followsSystem) MaterialTheme.colorScheme.onPrimary else Color(0xFF17130A)
-                )
-            ) {
-                Text(if (page == 0) "Continuar" else "Iniciar sesión", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            }
+            Spacer(modifier = Modifier.height(32.dp))
 
-            if (page == 1) {
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedButton(
-                    onClick = onActivate,
-                    modifier = Modifier.fillMaxWidth().height(58.dp),
-                    shape = RoundedCornerShape(30.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF3A4250)),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+            // Botones de Navegación Accesibles (Funcionan con y sin gestos)
+            if (!isLastPage) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("Activar mi acceso", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    if (currentPage > 0) {
+                        OutlinedButton(
+                            onClick = { currentPage -= 1 },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp)
+                        ) {
+                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Atrás")
+                        }
+                    }
+
+                    Button(
+                        onClick = { currentPage += 1 },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = accent,
+                            contentColor = Color.White
+                        ),
+                        modifier = Modifier
+                            .weight(if (currentPage > 0) 1f else 2f)
+                            .height(48.dp)
+                    ) {
+                        Text("Continuar", fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+                    }
+                }
+            } else {
+                // Última página: Opciones directas de entrada
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Button(
+                        onClick = onLoginDirect,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = accent,
+                            contentColor = Color.White
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                    ) {
+                        Icon(Icons.Outlined.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Iniciar Sesión", fontWeight = FontWeight.Bold)
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    OutlinedButton(
+                        onClick = onActivateDirect,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                    ) {
+                        Text("Activar Cuenta de Socio", fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
         }
     }
-}
 }

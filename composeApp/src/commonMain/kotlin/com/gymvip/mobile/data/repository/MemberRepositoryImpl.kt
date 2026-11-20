@@ -209,6 +209,10 @@ class MemberRepositoryImpl(
         }
     }
 
+    override suspend fun requestAccountDeletion(reason: String): Result<com.gymvip.mobile.data.remote.dto.AccountDeletionResultDto> {
+        return memberApi.requestAccountDeletion(reason)
+    }
+
     override suspend fun clearLocalData(accountId: String) {
         database.gymVipDatabaseQueries.transaction {
             database.gymVipDatabaseQueries.deleteProfileByAccountId(accountId)

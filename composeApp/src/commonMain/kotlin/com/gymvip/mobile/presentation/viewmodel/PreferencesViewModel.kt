@@ -10,12 +10,15 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 data class PreferencesUiState(
-    val currentTheme: String = "SYSTEM", // SYSTEM, DARK, LIGHT
+    val currentTheme: String = "SYSTEM", // SYSTEM, DARK, LIGHT, DARK_GOLD
+    val fontScale: Float = 1.0f,
+    val highContrast: Boolean = false,
+    val reduceMotion: Boolean = false,
     val currentServer: String = GymVipHttpClient.baseUrl
 )
 
@@ -27,14 +30,49 @@ class PreferencesViewModel(
     val uiState: StateFlow<PreferencesUiState> = _uiState.asStateFlow()
 
     init {
-        configRepository.getThemePreference().onEach { theme ->
-            _uiState.value = _uiState.value.copy(currentTheme = theme, currentServer = GymVipHttpClient.baseUrl)
+        combine(
+            configRepository.getThemePreference(),
+            configRepository.getFontScale(),
+            configRepository.getHighContrast(),
+            configRepository.getReduceMotion()
+        ) { theme, fontScale, highContrast, reduceMotion ->
+            _uiState.value = _uiState.value.copy(
+                currentTheme = theme,
+                fontScale = fontScale,
+                highContrast = highContrast,
+                reduceMotion = reduceMotion,
+                currentServer = GymVipHttpClient.baseUrl
+            )
         }.launchIn(scope)
     }
 
     fun setTheme(theme: String) {
         scope.launch {
             configRepository.setThemePreference(theme)
+        }
+    }
+
+    fun setFontScale(scale: Float) {
+        scope.launch {
+            configRepository.setFontScale(scale)
+        }
+    }
+
+    fun setHighContrast(enabled: Boolean) {
+        scope.launch {
+            configRepository.setHighContrast(enabled)
+        }
+    }
+
+    fun setReduceMotion(enabled: Boolean) {
+        scope.launch {
+            configRepository.setReduceMotion(enabled)
+        }
+    }
+
+    fun resetToDefaults() {
+        scope.launch {
+            configRepository.resetAllPreferences()
         }
     }
 

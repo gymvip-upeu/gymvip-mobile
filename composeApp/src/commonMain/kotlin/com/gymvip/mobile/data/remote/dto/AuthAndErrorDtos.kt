@@ -55,6 +55,17 @@ data class PasswordResetConfirmResponseDto(
 )
 
 @Serializable
+data class AccountDeletionResultDto(
+    val trackingCode: String,
+    val status: String,
+    val message: String,
+    val legalTerm: String,
+    val registeredAtUtc: String? = null,
+    val accessRevoked: Boolean = true,
+    val sessionsPurged: Boolean = true
+)
+
+@Serializable
 data class ErrorResponseDto(
     val timestamp: String? = null,
     val status: Int? = null,
