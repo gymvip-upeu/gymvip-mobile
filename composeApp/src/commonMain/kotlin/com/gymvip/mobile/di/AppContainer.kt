@@ -19,6 +19,9 @@ object AppContainer : KoinComponent {
     lateinit var secureTokenStore: SecureTokenStore
         private set
 
+    lateinit var memberApi: com.gymvip.mobile.data.remote.api.MemberApi
+        private set
+
     lateinit var authRepository: AuthRepository
         private set
 
@@ -86,6 +89,7 @@ object AppContainer : KoinComponent {
 
         database = get<GymVipDatabase>()
         secureTokenStore = get<SecureTokenStore>()
+        memberApi = get<com.gymvip.mobile.data.remote.api.MemberApi>()
 
         authRepository = get<AuthRepository>()
         memberRepository = get<MemberRepository>()

@@ -259,4 +259,34 @@ class MemberApi(
             throw GymVipHttpClient.parseResponseError(response)
         }
     }
+
+    /**
+     * Registra token FCM del dispositivo para avisos push (POST /api/v1/member-app/devices).
+     */
+    suspend fun registerDevice(token: String, platform: String = "ANDROID", model: String = ""): Result<Unit> = GymVipHttpClient.safeApiCall {
+        val response = client.post("$baseUrl/api/v1/member-app/devices") {
+            contentType(ContentType.Application.Json)
+            setBody(mapOf("token" to token, "platform" to platform, "deviceModel" to model))
+        }
+        if (response.status == HttpStatusCode.OK) {
+            Unit
+        } else {
+            throw GymVipHttpClient.parseResponseError(response)
+        }
+    }
+
+    /**
+     * Desregistra token FCM del dispositivo al cerrar sesión (POST /api/v1/member-app/devices/unregister).
+     */
+    suspend fun unregisterDevice(token: String): Result<Unit> = GymVipHttpClient.safeApiCall {
+        val response = client.post("$baseUrl/api/v1/member-app/devices/unregister") {
+            contentType(ContentType.Application.Json)
+            setBody(mapOf("token" to token))
+        }
+        if (response.status == HttpStatusCode.OK) {
+            Unit
+        } else {
+            throw GymVipHttpClient.parseResponseError(response)
+        }
+    }
 }

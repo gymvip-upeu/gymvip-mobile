@@ -18,18 +18,21 @@ class ConfigRepositoryImpl : ConfigRepository {
     private val avatarStore = mutableMapOf<String, String>()
 
     private val localDefaults = mapOf(
-        "notice_banner_text" to "Horario especial por feriado: atención de 7:00 a.m. a 2:00 p.m.",
         "feature_promotions_highlight" to true,
         "feature_favorites_notes_enabled" to true
     )
 
     override suspend fun fetchNoticeBanner(): String? {
-        return localDefaults["notice_banner_text"] as? String
+        // Los avisos operativos reales provienen de la bandeja oficial del backend (/api/v1/member-app/inbox).
+        // Se evita cualquier banner estático no administrable de feriado.
+        val remoteNotice = com.gymvip.mobile.config.SafeRemoteConfig.getString("notice_banner_text", "")
+        return if (remoteNotice.isNotBlank()) remoteNotice else null
     }
 
     override suspend fun isFeatureEnabled(featureKey: String, defaultValue: Boolean): Boolean {
-        val value = localDefaults[featureKey]
-        return if (value is Boolean) value else defaultValue
+        val remoteValue = com.gymvip.mobile.config.SafeRemoteConfig.getBoolean(featureKey, defaultValue)
+        val value = booleanStore[featureKey] ?: localDefaults[featureKey]
+        return if (value is Boolean) value else remoteValue
     }
 
     override fun getThemePreference(): Flow<String> = _themePreference.asStateFlow()

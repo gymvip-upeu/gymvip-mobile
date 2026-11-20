@@ -7,6 +7,9 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.sqldelight)
+    alias(libs.plugins.googleServices)
+    alias(libs.plugins.firebaseCrashlytics)
+    alias(libs.plugins.firebasePerf)
 }
 
 kotlin {
@@ -56,7 +59,6 @@ kotlin {
 
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
-            implementation(libs.firebase.remote.config)
         }
 
         androidMain.dependencies {
@@ -70,6 +72,16 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.sqldelight.android.driver)
             implementation(libs.kotlinx.coroutines.android)
+
+            // Firebase BoM & Official Services
+            implementation(project.dependencies.platform(libs.firebase.bom))
+            implementation(libs.firebase.analytics)
+            implementation(libs.firebase.crashlytics)
+            implementation(libs.firebase.perf)
+            implementation(libs.firebase.messaging)
+            implementation(libs.firebase.config)
+            implementation(libs.firebase.appcheck.playintegrity)
+            implementation(libs.firebase.appcheck.debug)
         }
 
         iosMain.dependencies {

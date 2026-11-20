@@ -95,6 +95,22 @@ object GymVipHttpClient {
                 install(session)
             }
 
+            val perfPlugin = createClientPlugin("GymVipPerfTracking") {
+                val traceKey = io.ktor.util.AttributeKey<com.gymvip.mobile.telemetry.NetworkTraceHandle>("GymVipNetworkTrace")
+                onRequest { request, _ ->
+                    val url = request.url.build().toString()
+                    val method = request.method.value
+                    val trace = com.gymvip.mobile.telemetry.GlobalNetworkTracker.startTrace(url, method)
+                    request.attributes.put(traceKey, trace)
+                }
+                onResponse { response ->
+                    val trace = response.call.attributes.getOrNull(traceKey)
+                    val len = try { response.headers[io.ktor.http.HttpHeaders.ContentLength]?.toLongOrNull() ?: 0L } catch (_: Throwable) { 0L }
+                    trace?.stop(response.status.value, len)
+                }
+            }
+            install(perfPlugin)
+
             if (enableLogging) {
                 install(Logging) {
                     level = if (isDevelopmentBuild) LogLevel.INFO else LogLevel.NONE
