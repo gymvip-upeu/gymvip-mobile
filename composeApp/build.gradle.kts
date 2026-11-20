@@ -148,25 +148,27 @@ android {
                 ?: "release.keystore"
             val resolvedFile = if (file(rawPath).isAbsolute) file(rawPath) else rootProject.file(rawPath)
 
-            if (resolvedFile.exists()) {
-                storeFile = resolvedFile
-                storePassword = System.getenv("GYMVIP_KEYSTORE_PASSWORD")
-                    ?: keystoreProps.getProperty("storePassword")
-                keyAlias = System.getenv("GYMVIP_KEY_ALIAS")
-                    ?: keystoreProps.getProperty("keyAlias")
-                keyPassword = System.getenv("GYMVIP_KEY_PASSWORD")
-                    ?: keystoreProps.getProperty("keyPassword")
-                enableV1Signing = true
-                enableV2Signing = true
-            } else {
-                val debugConfig = getByName("debug")
-                storeFile = debugConfig.storeFile
-                storePassword = debugConfig.storePassword
-                keyAlias = debugConfig.keyAlias
-                keyPassword = debugConfig.keyPassword
-                enableV1Signing = true
-                enableV2Signing = true
+            if (!resolvedFile.exists()) {
+                throw GradleException("ERROR DE SEGURIDAD CRÍTICO: No se encontró el archivo keystore de producción en '${resolvedFile.absolutePath}'. El fallback a debug ha sido revocado permanentemente.")
             }
+
+            val storePwd = System.getenv("GYMVIP_KEYSTORE_PASSWORD")
+                ?: keystoreProps.getProperty("storePassword")
+            val keyAliasProp = System.getenv("GYMVIP_KEY_ALIAS")
+                ?: keystoreProps.getProperty("keyAlias")
+            val keyPwd = System.getenv("GYMVIP_KEY_PASSWORD")
+                ?: keystoreProps.getProperty("keyPassword")
+
+            if (storePwd.isNullOrBlank() || keyAliasProp.isNullOrBlank() || keyPwd.isNullOrBlank()) {
+                throw GradleException("ERROR DE SEGURIDAD CRÍTICO: Credenciales de firma de release incompletas (storePassword, keyAlias o keyPassword ausentes).")
+            }
+
+            storeFile = resolvedFile
+            storePassword = storePwd
+            keyAlias = keyAliasProp
+            keyPassword = keyPwd
+            enableV1Signing = true
+            enableV2Signing = true
         }
     }
 
