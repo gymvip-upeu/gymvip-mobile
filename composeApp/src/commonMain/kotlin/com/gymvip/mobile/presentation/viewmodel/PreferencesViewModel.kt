@@ -2,6 +2,7 @@ package com.gymvip.mobile.presentation.viewmodel
 
 import com.gymvip.mobile.data.remote.api.GymVipHttpClient
 import com.gymvip.mobile.domain.repository.ConfigRepository
+import com.gymvip.mobile.util.isDevelopmentBuild
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -38,8 +39,10 @@ class PreferencesViewModel(
     }
 
     fun setServer(serverUrl: String) {
-        GymVipHttpClient.baseUrl = serverUrl
-        _uiState.value = _uiState.value.copy(currentServer = serverUrl)
+        if (isDevelopmentBuild) {
+            GymVipHttpClient.baseUrl = serverUrl
+            _uiState.value = _uiState.value.copy(currentServer = serverUrl)
+        }
     }
 
     fun onCleared() {

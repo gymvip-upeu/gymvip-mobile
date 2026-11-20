@@ -27,6 +27,8 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.FlashOff
+import androidx.compose.material.icons.outlined.FlashOn
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Refresh
@@ -42,6 +44,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,12 +53,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.domain.model.MemberCheckInResult
 import com.gymvip.mobile.domain.repository.MemberRepository
+import com.gymvip.mobile.presentation.components.BarcodeScanFormat
+import com.gymvip.mobile.presentation.components.CameraBarcodeScanner
 import com.gymvip.mobile.presentation.permission.rememberNativePermissionRequester
 import com.gymvip.mobile.presentation.theme.DangerRed
 import com.gymvip.mobile.presentation.theme.GoldOnPrimary
@@ -84,10 +90,13 @@ fun MemberCheckInScannerScreen(
     val coroutineScope = rememberCoroutineScope()
 
     var cameraGranted by remember { mutableStateOf(false) }
+    var isTorchEnabled by remember { mutableStateOf(false) }
     val permissionRequester = rememberNativePermissionRequester { results ->
-        cameraGranted = results["android.Manifest.permission.CAMERA"] ?: true
+        cameraGranted = results["android.permission.CAMERA"] ?: results["android.Manifest.permission.CAMERA"] ?: false
     }
-    cameraGranted = permissionRequester.isCameraGranted()
+    LaunchedEffect(Unit) {
+        cameraGranted = permissionRequester.isCameraGranted()
+    }
 
     var manualCodeInput by remember { mutableStateOf("") }
     var uiState by remember { mutableStateOf<CheckInScanUiState>(CheckInScanUiState.Idle) }
@@ -448,32 +457,63 @@ fun MemberCheckInScannerScreen(
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // Visor simulado / marco dorado del escáner
+                        // Visor de Cámara Real con CameraX y Google ML Kit
                         Box(
                             modifier = Modifier
-                                .size(240.dp)
+                                .fillMaxWidth()
+                                .height(280.dp)
                                 .clip(RoundedCornerShape(18.dp))
-                                .background(MaterialTheme.colorScheme.background)
+                                .background(Color.Black)
                                 .border(2.dp, accent, RoundedCornerShape(18.dp)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.QrCodeScanner,
-                                    contentDescription = "Visor QR",
-                                    tint = accent,
-                                    modifier = Modifier.size(72.dp)
+                            if (cameraGranted) {
+                                CameraBarcodeScanner(
+                                    modifier = Modifier.fillMaxSize(),
+                                    scanFormat = BarcodeScanFormat.QR_CODE,
+                                    torchEnabled = isTorchEnabled,
+                                    isScanningEnabled = (uiState is CheckInScanUiState.Idle),
+                                    onBarcodeScanned = { qr ->
+                                        processChallenge(qr)
+                                    }
                                 )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text(
-                                    text = if (cameraGranted) "Cámara activa\nBuscando código..." else "Permiso de cámara requerido",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = if (cameraGranted) accent else DangerRed,
-                                    textAlign = TextAlign.Center
-                                )
+
+                                // Botón flotante para encender/apagar linterna
+                                IconButton(
+                                    onClick = { isTorchEnabled = !isTorchEnabled },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(12.dp)
+                                        .size(40.dp)
+                                        .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isTorchEnabled) Icons.Outlined.FlashOn else Icons.Outlined.FlashOff,
+                                        contentDescription = "Linterna",
+                                        tint = if (isTorchEnabled) accent else Color.White,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            } else {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center,
+                                    modifier = Modifier.padding(20.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.QrCodeScanner,
+                                        contentDescription = "Visor QR",
+                                        tint = accent,
+                                        modifier = Modifier.size(64.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text(
+                                        text = "Permiso de cámara requerido para escanear el QR del mostrador",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = DangerRed,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
                             }
                         }
 

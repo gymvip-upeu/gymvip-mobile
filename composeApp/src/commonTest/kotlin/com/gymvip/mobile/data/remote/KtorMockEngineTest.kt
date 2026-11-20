@@ -405,4 +405,39 @@ class KtorMockEngineTest {
         client.get("https://attacker-gymvip.com/api/v1/steal")
         assertNull(capturedAuthHeader)
     }
+
+    @Test
+    fun testNetworkExceptionMappingDistinguesErrorTypes() {
+        val timeoutErr = GymVipHttpClient.mapThrowableToAppError(
+            io.ktor.client.plugins.HttpRequestTimeoutException("https://gymvip-backend.onrender.com", 60_000L)
+        )
+        assertTrue(timeoutErr is AppError.Network)
+        assertTrue(timeoutErr.messageDetail.contains("Timeout", ignoreCase = true))
+
+        val dnsErr = GymVipHttpClient.mapThrowableToAppError(
+            java.net.UnknownHostException("gymvip-backend.onrender.com")
+        )
+        assertTrue(dnsErr is AppError.Network)
+        assertTrue(dnsErr.messageDetail.contains("DNS", ignoreCase = true))
+
+        val sslErr = GymVipHttpClient.mapThrowableToAppError(
+            javax.net.ssl.SSLException("Handshake failed")
+        )
+        assertTrue(sslErr is AppError.Network)
+        assertTrue(sslErr.messageDetail.contains("TLS/SSL", ignoreCase = true))
+    }
+
+    @Test
+    fun testSafeApiCallPreservesCancellationException() = runTest {
+        var threwCancellation = false
+        try {
+            GymVipHttpClient.safeApiCall<String> {
+                throw kotlinx.coroutines.CancellationException("Job was cancelled")
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            threwCancellation = true
+            assertEquals("Job was cancelled", e.message)
+        }
+        assertTrue(threwCancellation, "CancellationException debe ser relanzada y no capturada como AppError")
+    }
 }

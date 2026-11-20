@@ -1,6 +1,7 @@
 package com.gymvip.mobile.presentation.screen.catalog
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -22,10 +24,14 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.FlashOff
+import androidx.compose.material.icons.outlined.FlashOn
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.QrCode
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Videocam
+import androidx.compose.material.icons.outlined.VideocamOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -38,6 +44,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,11 +53,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.data.remote.dto.AdminSupplementDto
 import com.gymvip.mobile.domain.repository.CatalogRepository
+import com.gymvip.mobile.presentation.components.BarcodeScanFormat
+import com.gymvip.mobile.presentation.components.CameraBarcodeScanner
 import com.gymvip.mobile.presentation.permission.rememberNativePermissionRequester
 import com.gymvip.mobile.presentation.theme.DangerRed
 import com.gymvip.mobile.presentation.theme.GoldOnPrimary
@@ -76,10 +86,14 @@ fun AdminProductScannerScreen(
     }
 
     var cameraGranted by remember { mutableStateOf(false) }
+    var isTorchEnabled by remember { mutableStateOf(false) }
+    var showCameraView by remember { mutableStateOf(true) }
     val permissionRequester = rememberNativePermissionRequester { results ->
-        cameraGranted = results["android.Manifest.permission.CAMERA"] ?: true
+        cameraGranted = results["android.permission.CAMERA"] ?: results["android.Manifest.permission.CAMERA"] ?: false
     }
-    cameraGranted = permissionRequester.isCameraGranted()
+    LaunchedEffect(Unit) {
+        cameraGranted = permissionRequester.isCameraGranted()
+    }
 
     var scannedCodeInput by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
@@ -97,6 +111,11 @@ fun AdminProductScannerScreen(
             errorMessage = "Ingresa un código de barras o SKU para buscar"
             return
         }
+        // Seguridad: no abrir enlaces URL automáticamente
+        if (trimmed.startsWith("http://", ignoreCase = true) || trimmed.startsWith("https://", ignoreCase = true)) {
+            errorMessage = "El código detectado es un enlace URL ($trimmed). Por favor escanee el código de barras comercial o SKU del producto."
+            return
+        }
 
         coroutineScope.launch {
             isLoading = true
@@ -112,7 +131,7 @@ fun AdminProductScannerScreen(
                 },
                 onFailure = { err ->
                     foundProduct = null
-                    errorMessage = err.message ?: "No se encontró ningún producto con el código '$trimmed'"
+                    errorMessage = err.message ?: "No se encontró ningún producto con el código '$trimmed'. Solo personal de administración o recepción puede asociar este código."
                 }
             )
         }
@@ -259,54 +278,89 @@ fun AdminProductScannerScreen(
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = accentForeground),
                         onClick = { permissionRequester.requestAppPermissions() },
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth().height(38.dp)
+                        modifier = Modifier.fillMaxWidth().height(42.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.CameraAlt,
                             contentDescription = "Cámara",
                             tint = accentForeground,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(20.dp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Habilitar / Conceder permiso de Cámara",
+                            text = "Habilitar Permiso de Cámara para Escaneo Óptico",
                             style = MaterialTheme.typography.bodySmall,
                             color = accentForeground,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
-                }
-
-                // Códigos de muestra para pruebas de escritorio o desarrollo
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "Códigos de prueba rápida:",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    OutlinedButton(
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = accentForeground),
-                        onClick = {
-                            scannedCodeInput = "7751234567890"
-                            performScan("7751234567890")
-                        },
-                        shape = RoundedCornerShape(6.dp),
-                        modifier = Modifier.height(34.dp)
+                } else {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("7751234567890", style = MaterialTheme.typography.labelSmall)
+                        Text(
+                            text = "CÁMARA / ESCÁNER ÓPTICO",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = accentForeground,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            IconButton(
+                                onClick = { showCameraView = !showCameraView },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (showCameraView) Icons.Outlined.Videocam else Icons.Outlined.VideocamOff,
+                                    contentDescription = "Alternar Visor",
+                                    tint = accentForeground,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
                     }
-                    OutlinedButton(
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = accentForeground),
-                        onClick = {
-                            scannedCodeInput = "PROD-WHEY-01"
-                            performScan("PROD-WHEY-01")
-                        },
-                        shape = RoundedCornerShape(6.dp),
-                        modifier = Modifier.height(34.dp)
-                    ) {
-                        Text("PROD-WHEY-01", style = MaterialTheme.typography.labelSmall)
+
+                    if (showCameraView) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(220.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.Black)
+                                .border(1.5.dp, accent, RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CameraBarcodeScanner(
+                                modifier = Modifier.fillMaxSize(),
+                                scanFormat = BarcodeScanFormat.ALL_FORMATS,
+                                torchEnabled = isTorchEnabled,
+                                isScanningEnabled = !isLoading,
+                                onBarcodeScanned = { code ->
+                                    scannedCodeInput = code
+                                    performScan(code)
+                                }
+                            )
+
+                            // Botón de Linterna (Torch)
+                            IconButton(
+                                onClick = { isTorchEnabled = !isTorchEnabled },
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(8.dp)
+                                    .size(36.dp)
+                                    .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                            ) {
+                                Icon(
+                                    imageVector = if (isTorchEnabled) Icons.Outlined.FlashOn else Icons.Outlined.FlashOff,
+                                    contentDescription = "Linterna",
+                                    tint = if (isTorchEnabled) accent else Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }

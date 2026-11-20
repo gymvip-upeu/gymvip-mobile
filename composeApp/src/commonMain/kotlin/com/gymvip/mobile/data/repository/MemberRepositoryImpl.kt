@@ -13,12 +13,74 @@ import com.gymvip.mobile.domain.repository.MemberRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 
 class MemberRepositoryImpl(
     private val memberApi: MemberApi,
     private val database: GymVipDatabase
 ) : MemberRepository {
+
+    private val syncMutex = Mutex()
+    private var lastWorkspaceSyncTime: Long = 0L
+    private val syncCooldownMillis: Long = 5_000L // 5 segundos de reutilización coherente
+
+    private suspend fun syncWorkspaceIfStale(accountId: String): Result<Unit> = syncMutex.withLock {
+        val nowMillis = Clock.System.now().toEpochMilliseconds()
+        if (nowMillis - lastWorkspaceSyncTime < syncCooldownMillis) {
+            return Result.success(Unit)
+        }
+
+        val workspaceResult = memberApi.getWorkspace()
+        return workspaceResult.map { workspace ->
+            val nowStr = Clock.System.now().toString()
+            val profile = workspace.toProfileDto().toDomain(nowStr)
+            val membership = workspace.toMembershipDto().toDomain(accountId, nowStr)
+            val payments = workspace.toPaymentsDto().map { it.toDomain(accountId, nowStr) }
+
+            database.gymVipDatabaseQueries.transaction {
+                database.gymVipDatabaseQueries.insertOrReplaceProfile(
+                    accountId = profile.accountId,
+                    email = profile.email,
+                    firstName = profile.firstName,
+                    lastName = profile.lastName,
+                    documentType = profile.documentType,
+                    documentNumber = profile.documentNumber,
+                    phone = profile.phone,
+                    status = profile.status.name,
+                    lastSyncedAt = profile.lastSyncedAt
+                )
+
+                database.gymVipDatabaseQueries.insertOrReplaceMembership(
+                    id = membership.id,
+                    accountId = accountId,
+                    planName = membership.planName,
+                    startDate = membership.startDate,
+                    endDate = membership.endDate,
+                    status = membership.status.name,
+                    daysRemaining = membership.daysRemaining.toLong(),
+                    lastSyncedAt = membership.lastSyncedAt
+                )
+
+                database.gymVipDatabaseQueries.deletePaymentsByAccountId(accountId)
+                payments.forEach { payment ->
+                    database.gymVipDatabaseQueries.insertOrReplacePayment(
+                        id = payment.id,
+                        accountId = accountId,
+                        membershipId = payment.membershipId,
+                        amountCents = payment.amount.cents,
+                        paymentMethod = payment.paymentMethod.name,
+                        externalReference = payment.externalReference,
+                        paidAt = payment.paidAt,
+                        notes = payment.notes,
+                        lastSyncedAt = payment.lastSyncedAt
+                    )
+                }
+            }
+            lastWorkspaceSyncTime = nowMillis
+        }
+    }
 
     override fun observeProfile(accountId: String): Flow<MemberProfile?> {
         return database.gymVipDatabaseQueries
@@ -45,10 +107,19 @@ class MemberRepositoryImpl(
     }
 
     override suspend fun refreshProfile(accountId: String): Result<MemberProfile> {
+        val syncResult = syncWorkspaceIfStale(accountId)
+        if (syncResult.isSuccess) {
+            val local = database.gymVipDatabaseQueries.selectProfileByAccountId(accountId).executeAsOneOrNull()
+            if (local != null) {
+                return Result.success(local.toDomain())
+            }
+        }
+
+        // Si falló la sincronización unificada o no hay dato local, recurrir al método puntual
         val result = memberApi.getProfile(accountId)
         return result.map { dto ->
             val now = Clock.System.now().toString()
-            val domain = (dto as com.gymvip.mobile.data.remote.dto.MemberProfileDto).toDomain(now)
+            val domain = dto.toDomain(now)
             database.gymVipDatabaseQueries.insertOrReplaceProfile(
                 accountId = domain.accountId,
                 email = domain.email,
@@ -65,10 +136,18 @@ class MemberRepositoryImpl(
     }
 
     override suspend fun refreshMembership(accountId: String): Result<MembershipSummary> {
+        val syncResult = syncWorkspaceIfStale(accountId)
+        if (syncResult.isSuccess) {
+            val local = database.gymVipDatabaseQueries.selectMembershipByAccountId(accountId).executeAsOneOrNull()
+            if (local != null) {
+                return Result.success(local.toDomain())
+            }
+        }
+
         val result = memberApi.getMembership(accountId)
         return result.map { dto ->
             val now = Clock.System.now().toString()
-            val domain = (dto as com.gymvip.mobile.data.remote.dto.MembershipSummaryDto).toDomain(accountId, now)
+            val domain = dto.toDomain(accountId, now)
             database.gymVipDatabaseQueries.insertOrReplaceMembership(
                 id = domain.id,
                 accountId = accountId,
@@ -84,10 +163,18 @@ class MemberRepositoryImpl(
     }
 
     override suspend fun refreshPayments(accountId: String): Result<List<PaymentSummary>> {
+        val syncResult = syncWorkspaceIfStale(accountId)
+        if (syncResult.isSuccess) {
+            val local = database.gymVipDatabaseQueries.selectPaymentsByAccountId(accountId).executeAsList()
+            if (local.isNotEmpty()) {
+                return Result.success(local.map { it.toDomain() })
+            }
+        }
+
         val result = memberApi.getPayments(accountId)
         return result.map { list ->
             val now = Clock.System.now().toString()
-            val domainList = list.map { (it as com.gymvip.mobile.data.remote.dto.PaymentSummaryDto).toDomain(accountId, now) }
+            val domainList = list.map { it.toDomain(accountId, now) }
             database.gymVipDatabaseQueries.transaction {
                 database.gymVipDatabaseQueries.deletePaymentsByAccountId(accountId)
                 domainList.forEach { payment ->

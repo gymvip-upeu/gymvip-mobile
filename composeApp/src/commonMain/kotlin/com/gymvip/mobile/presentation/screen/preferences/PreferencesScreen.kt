@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.presentation.screen.settings.SettingsPage
 import com.gymvip.mobile.presentation.viewmodel.PreferencesViewModel
 import com.gymvip.mobile.presentation.theme.accentForeground
+import com.gymvip.mobile.util.isDevelopmentBuild
 
 @Composable
 fun PreferencesScreen(
@@ -66,36 +67,39 @@ fun PreferencesScreen(
         }
 
 
-        Text(
-            text = "ENTORNO / SERVIDOR API",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.accentForeground
-        )
+        if (isDevelopmentBuild) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "ENTORNO / SERVIDOR API (Desarrollo)",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.accentForeground
+            )
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                ThemeOptionRow(
-                    label = "Servidor Render (Nube)",
-                    subtitle = "https://gymvip-backend.onrender.com",
-                    selected = state.currentServer.contains("onrender.com"),
-                    onClick = { viewModel.setServer("https://gymvip-backend.onrender.com") }
-                )
-                ThemeOptionRow(
-                    label = "Emulador Android (Local)",
-                    subtitle = "http://10.0.2.2:8081",
-                    selected = state.currentServer.contains("10.0.2.2"),
-                    onClick = { viewModel.setServer("http://10.0.2.2:8081") }
-                )
-                ThemeOptionRow(
-                    label = "Host Local / Red Local",
-                    subtitle = "http://localhost:8081",
-                    selected = state.currentServer.contains("localhost"),
-                    onClick = { viewModel.setServer("http://localhost:8081") }
-                )
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    ThemeOptionRow(
+                        label = "Servidor Render (Nube)",
+                        subtitle = "https://gymvip-backend.onrender.com",
+                        selected = state.currentServer.contains("onrender.com"),
+                        onClick = { viewModel.setServer("https://gymvip-backend.onrender.com") }
+                    )
+                    ThemeOptionRow(
+                        label = "Emulador Android (Local)",
+                        subtitle = "http://10.0.2.2:8081",
+                        selected = state.currentServer.contains("10.0.2.2"),
+                        onClick = { viewModel.setServer("http://10.0.2.2:8081") }
+                    )
+                    ThemeOptionRow(
+                        label = "Host Local / Red Local",
+                        subtitle = "http://localhost:8081",
+                        selected = state.currentServer.contains("localhost"),
+                        onClick = { viewModel.setServer("http://localhost:8081") }
+                    )
+                }
             }
         }
 

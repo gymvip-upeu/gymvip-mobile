@@ -117,22 +117,11 @@ class AuthRepositoryImpl(
                 return true
             }
 
-            // Si hay token pero falló la red sin perfil previo: preservar sesión local temporal
-            val now = Clock.System.now().toString()
-            val fallbackProfile = MemberProfile(
-                accountId = accountId,
-                email = secureTokenStore.getRememberedIdentifier().orEmpty().ifBlank { "socio@gymvip.local" },
-                firstName = "Socio",
-                lastName = "VIP",
-                documentType = "DNI",
-                documentNumber = "",
-                phone = null,
-                status = AccountStatus.ACTIVO,
-                lastSyncedAt = now,
-                roles = accountRoles
-            )
-            _authState.value = AuthState.Authenticated(fallbackProfile, isCachedOffline = true)
-            return true
+            // Si falló la red y no hay ningún perfil previamente persistido en caché para esta cuenta,
+            // no asumimos sesión válida ni fabricamos perfiles provisionales no autorizados:
+            secureTokenStore.clear()
+            _authState.value = AuthState.Unauthenticated
+            return false
         }
         _authState.value = AuthState.Unauthenticated
         return false
