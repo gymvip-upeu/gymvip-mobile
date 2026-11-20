@@ -2,11 +2,12 @@ package com.gymvip.mobile.data.remote.api
 
 import com.gymvip.mobile.data.local.SecureTokenStore
 import com.gymvip.mobile.domain.error.AppError
+import com.gymvip.mobile.util.isDevelopmentBuild
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.HttpTimeout
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.api.createClientPlugin
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
@@ -16,12 +17,44 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 
 object GymVipHttpClient {
 
-    // Configuración de URL base: Android Emulador: http://10.0.2.2:8080, PC/Render/Dispositivo físico según entorno
-    var baseUrl: String = "https://gymvip-backend.onrender.com"
+    const val PRODUCTION_SERVER_URL = "https://gymvip-backend.onrender.com"
+
+    private var _customBaseUrl: String? = null
+
+    /**
+     * URL base del backend central.
+     * En compilaciones de producción (Release), está bloqueada estrictamente al servidor HTTPS aprobado.
+     * En desarrollo (Debug), permite alternar entre emulador, host local o Render.
+     */
+    var baseUrl: String
+        get() = if (!isDevelopmentBuild) PRODUCTION_SERVER_URL else (_customBaseUrl ?: PRODUCTION_SERVER_URL)
+        set(value) {
+            if (isDevelopmentBuild) {
+                val clean = value.trim().removeSuffix("/")
+                _customBaseUrl = clean
+            }
+        }
+
+    /**
+     * Valida si el destino de la petición corresponde al backend autorizado.
+     * Previene fuga de tokens JWT a hosts de terceros no confiables.
+     */
+    fun isAuthorizedOrigin(requestUrl: Url, configuredBaseUrl: String = baseUrl): Boolean {
+        if (!isDevelopmentBuild) {
+            val official = Url(PRODUCTION_SERVER_URL)
+            return requestUrl.protocol.name.equals("https", ignoreCase = true) &&
+                    requestUrl.host.equals(official.host, ignoreCase = true)
+        }
+        val server = Url(configuredBaseUrl)
+        return requestUrl.protocol == server.protocol &&
+                requestUrl.host.equals(server.host, ignoreCase = true) &&
+                requestUrl.port == server.port
+    }
 
     fun create(
         engine: HttpClientEngine = getPlatformHttpEngine(),
@@ -41,27 +74,46 @@ object GymVipHttpClient {
             }
 
             install(HttpTimeout) {
-                requestTimeoutMillis = 15_000
-                connectTimeoutMillis = 10_000
-                socketTimeoutMillis = 15_000
+                requestTimeoutMillis = 60_000
+                connectTimeoutMillis = 30_000
+                socketTimeoutMillis = 60_000
             }
 
             if (tokenStore != null) {
                 val session = createClientPlugin("GymVipSession") {
                     onRequest { request, _ ->
-                        val server = Url(baseUrl)
                         val target = request.url.build()
-                        if (target.protocol == server.protocol && target.host == server.host && target.port == server.port) {
-                            tokenStore.getAccessToken()?.let { request.bearerAuth(it) }
+                        if (isAuthorizedOrigin(target, baseUrl)) {
+                            tokenStore.getAccessToken()?.let { token ->
+                                if (token.isNotBlank()) {
+                                    request.bearerAuth(token)
+                                }
+                            }
                         }
                     }
                 }
                 install(session)
             }
 
+            val perfPlugin = createClientPlugin("GymVipPerfTracking") {
+                val traceKey = io.ktor.util.AttributeKey<com.gymvip.mobile.telemetry.NetworkTraceHandle>("GymVipNetworkTrace")
+                onRequest { request, _ ->
+                    val url = request.url.build().toString()
+                    val method = request.method.value
+                    val trace = com.gymvip.mobile.telemetry.GlobalNetworkTracker.startTrace(url, method)
+                    request.attributes.put(traceKey, trace)
+                }
+                onResponse { response ->
+                    val trace = response.call.attributes.getOrNull(traceKey)
+                    val len = try { response.headers[io.ktor.http.HttpHeaders.ContentLength]?.toLongOrNull() ?: 0L } catch (_: Throwable) { 0L }
+                    trace?.stop(response.status.value, len)
+                }
+            }
+            install(perfPlugin)
+
             if (enableLogging) {
                 install(Logging) {
-                    level = LogLevel.INFO
+                    level = if (isDevelopmentBuild) LogLevel.INFO else LogLevel.NONE
                     logger = object : Logger {
                         override fun log(message: String) {
                             // Sanitizar tokens y credenciales sensibles para evitar filtrado en logs
@@ -76,20 +128,79 @@ object GymVipHttpClient {
         }
     }
 
+    /**
+     * Mapea respuestas HTTP distinguiendo 401, 403, 404, 409, 400 y errores 5xx.
+     * Nunca convierte errores de servidor en modo sin conexión.
+     */
     suspend fun parseResponseError(response: HttpResponse): AppError {
         val status = response.status
         val body = try { response.bodyAsText() } catch (_: Exception) { "" }
 
         return when (status) {
             HttpStatusCode.Unauthorized -> AppError.Unauthorized("Credenciales inválidas o sesión expirada")
-            HttpStatusCode.Forbidden -> AppError.Forbidden("No cuenta con permisos de socio para esta acción")
-            HttpStatusCode.NotFound -> AppError.NotFound("El recurso solicitado no fue encontrado")
+            HttpStatusCode.Forbidden -> {
+                if (body.contains("contraseña", ignoreCase = true) || body.contains("temporal", ignoreCase = true)) {
+                    AppError.Forbidden("Debe cambiar su contraseña temporal antes de continuar")
+                } else {
+                    AppError.Forbidden("No cuenta con permisos de socio para esta acción")
+                }
+            }
+            HttpStatusCode.NotFound -> AppError.NotFound("El recurso solicitado no fue encontrado en el servidor")
             HttpStatusCode.Conflict -> AppError.Conflict("CONFLICT", "Conflicto con el estado actual del servidor: $body")
             HttpStatusCode.BadRequest -> AppError.Validation("Datos de solicitud inválidos: $body")
-            HttpStatusCode.InternalServerError, HttpStatusCode.BadGateway, HttpStatusCode.ServiceUnavailable -> {
-                AppError.Server(status.value, "Error temporal del servidor del gimnasio (${status.value})")
+            HttpStatusCode.GatewayTimeout, HttpStatusCode.RequestTimeout -> {
+                AppError.Server(status.value, "Tiempo de espera agotado. El servidor se está iniciando, por favor reintente.")
             }
-            else -> AppError.Server(status.value, "Respuesta inesperada del servidor: ${status.value}")
+            HttpStatusCode.InternalServerError, HttpStatusCode.BadGateway, HttpStatusCode.ServiceUnavailable -> {
+                AppError.Server(status.value, "Servidor del gimnasio no disponible temporalmente (${status.value}). Reintentando...")
+            }
+            else -> AppError.Server(status.value, "Respuesta del servidor (${status.value}): $body")
+        }
+    }
+
+    /**
+     * Mapea excepciones de bajo nivel distinguiendo DNS, TLS, Timeout y Conexión.
+     * Conserva CancellationException relanzándola inmediatamente.
+     */
+    fun mapThrowableToAppError(e: Throwable): AppError {
+        if (e is CancellationException) throw e
+        if (e is AppError) return e
+
+        val msg = e.message ?: ""
+        val className = e::class.simpleName ?: ""
+
+        return when {
+            className.contains("Timeout", ignoreCase = true) || msg.contains("timed out", ignoreCase = true) -> {
+                AppError.Network("Tiempo de espera agotado al comunicar con el servidor (Timeout). Verifique su conexión.")
+            }
+            className.contains("UnknownHost", ignoreCase = true) || msg.contains("Unable to resolve host", ignoreCase = true) -> {
+                AppError.Network("Error de resolución DNS: no se pudo encontrar la dirección del servidor.")
+            }
+            className.contains("SSL", ignoreCase = true) || className.contains("Cert", ignoreCase = true) -> {
+                AppError.Network("Error de seguridad TLS/SSL al negociar la conexión con el servidor.")
+            }
+            className.contains("Connect", ignoreCase = true) || msg.contains("Connection refused", ignoreCase = true) -> {
+                AppError.Network("No se pudo conectar al servidor del gimnasio. Verifique su red.")
+            }
+            else -> {
+                AppError.Network(if (msg.isNotBlank()) msg else "Fallo de comunicación de red con el servidor")
+            }
+        }
+    }
+
+    /**
+     * Ejecuta una llamada de red segura garantizando que CancellationException
+     * no sea capturada erróneamente ni tragada en los flujos de corrutinas.
+     */
+    suspend inline fun <T> safeApiCall(crossinline block: suspend () -> T): Result<T> {
+        return try {
+            Result.success(block())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: AppError) {
+            Result.failure(e)
+        } catch (e: Throwable) {
+            Result.failure(mapThrowableToAppError(e))
         }
     }
 }

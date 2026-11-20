@@ -1,0 +1,35 @@
+name: CI Mobile KMP GymVIP
+
+on:
+  push:
+    branches:
+      - S2-REVISION-QA
+      - 'feature/**'
+      - main
+  pull_request:
+    branches:
+      - S2-REVISION-QA
+      - main
+
+jobs:
+  test:
+    name: Test Kotlin Multiplatform
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Código Fuente
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Ejecutar Pruebas Unitarias de Dominio y Carrito KMP
+        run: |
+          chmod +x ./gradlew
+          ./gradlew test --stacktrace

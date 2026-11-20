@@ -1,4 +1,5 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -7,7 +8,26 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.sqldelight)
+    alias(libs.plugins.googleServices) apply false
+    alias(libs.plugins.firebaseCrashlytics) apply false
+    alias(libs.plugins.firebasePerf) apply false
 }
+
+// Shared build: Firebase is optional for local debug; real configurations stay outside Git.
+val firebaseConfigPresent = listOf("google-services.json", "src/debug/google-services.json", "src/release/google-services.json").any { file(it).isFile }
+val firebaseEnabled = providers.gradleProperty("gymvip.firebase").orNull?.toBooleanStrictOrNull() ?: firebaseConfigPresent
+if (firebaseEnabled) {
+    require(firebaseConfigPresent) { "Firebase requiere google-services.json del proyecto del equipo." }
+    apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
+    apply(plugin = "com.google.firebase.firebase-perf")
+}
+val debugBackendUrl = providers.gradleProperty("gymvip.backendUrl").orElse("https://gymvip-backend.onrender.com").get()
+require(debugBackendUrl.matches(Regex("https?://[A-Za-z0-9.:-]+"))) { "gymvip.backendUrl debe ser una URL HTTP(S) sin credenciales." }
+val debugAppId = providers.gradleProperty("gymvip.debugApplicationId").orElse("com.gymvip.mobile").get()
+require(debugAppId == "com.gymvip.mobile" || debugAppId.startsWith("com.gymvip.mobile.")) { "Identificador Android inválido" }
+val receptionNumber = providers.gradleProperty("gymvip.receptionWhatsApp").orElse("+51905436989").get()
+require(receptionNumber.matches(Regex("[+]?[0-9]{8,15}"))) { "Número de recepción inválido" }
 
 kotlin {
     androidTarget {
@@ -21,7 +41,7 @@ kotlin {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
         }
     }
-    
+
     listOf(
         iosArm64(),
         iosSimulatorArm64()
@@ -56,15 +76,29 @@ kotlin {
 
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
-            implementation(libs.firebase.remote.config)
         }
 
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.security.crypto)
+            implementation(libs.androidx.camera.core)
+            implementation(libs.androidx.camera.camera2)
+            implementation(libs.androidx.camera.lifecycle)
+            implementation(libs.androidx.camera.view)
+            implementation(libs.mlkit.barcode.scanning)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.sqldelight.android.driver)
             implementation(libs.kotlinx.coroutines.android)
+
+            // Firebase BoM & Official Services
+            implementation(project.dependencies.platform(libs.firebase.bom))
+            implementation(libs.firebase.analytics)
+            implementation(libs.firebase.crashlytics)
+            implementation(libs.firebase.perf)
+            implementation(libs.firebase.messaging)
+            implementation(libs.firebase.config)
+            implementation(libs.firebase.appcheck.playintegrity)
+            implementation(libs.firebase.appcheck.debug)
         }
 
         iosMain.dependencies {
@@ -98,8 +132,10 @@ android {
         applicationId = "com.gymvip.mobile"
         minSdk = 24
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1.0"
+        buildConfigField("boolean", "FIREBASE_ENABLED", firebaseEnabled.toString())
+        buildConfigField("String", "RECEPTION_WHATSAPP", "\"$receptionNumber\"")
+        versionCode = 3
+        versionName = "1.1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -109,13 +145,60 @@ android {
         }
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
+    val keystorePropsFile = rootProject.file("keystore.properties")
+    val keystoreProps = Properties()
+    if (keystorePropsFile.exists()) {
+        keystorePropsFile.inputStream().use { keystoreProps.load(it) }
+    }
+
+    signingConfigs {
+        getByName("debug") {
+            enableV1Signing = true
+            enableV2Signing = true
+        }
+        create("release") {
+            val rawPath = System.getenv("GYMVIP_KEYSTORE_PATH")
+                ?: keystoreProps.getProperty("storeFile")
+                ?: "release.keystore"
+            val resolvedFile = if (file(rawPath).isAbsolute) file(rawPath) else rootProject.file(rawPath)
+
+            if (resolvedFile.exists()) {
+                storeFile = resolvedFile
+                storePassword = System.getenv("GYMVIP_KEYSTORE_PASSWORD")
+                    ?: keystoreProps.getProperty("storePassword")
+                keyAlias = System.getenv("GYMVIP_KEY_ALIAS")
+                    ?: keystoreProps.getProperty("keyAlias")
+                keyPassword = System.getenv("GYMVIP_KEY_PASSWORD")
+                    ?: keystoreProps.getProperty("keyPassword")
+                enableV1Signing = true
+                enableV2Signing = true
+            } else {
+                val debugConfig = getByName("debug")
+                storeFile = debugConfig.storeFile
+                storePassword = debugConfig.storePassword
+                keyAlias = debugConfig.keyAlias
+                keyPassword = debugConfig.keyPassword
+                enableV1Signing = true
+                enableV2Signing = true
+            }
+        }
+    }
+
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
-            // Firma de release configurada si se proveen keystore/contraseñas privadas
+            buildConfigField("String", "DEFAULT_SERVER_URL", "\"https://gymvip-backend.onrender.com\"")
+            signingConfig = signingConfigs.getByName("release")
         }
         getByName("debug") {
             isDebuggable = true
+            applicationIdSuffix = debugAppId.removePrefix("com.gymvip.mobile").ifBlank { null }
+            signingConfig = signingConfigs.getByName("debug")
+            buildConfigField("String", "DEFAULT_SERVER_URL", "\"$debugBackendUrl\"")
         }
     }
 
@@ -144,3 +227,25 @@ compose.desktop {
     }
 }
 
+tasks.register("validateReleaseConfiguration") {
+    description = "Valida que las compilaciones de producción no dependan de localhost o emuladores"
+    group = "verification"
+    doLast {
+        require(firebaseEnabled && (file("google-services.json").isFile || file("src/release/google-services.json").isFile)) { "Release requiere configuración Firebase real del equipo." }
+        val releaseSignature = android.signingConfigs.getByName("release")
+        require(releaseSignature.storeFile?.isFile == true &&
+                releaseSignature.storeFile?.canonicalPath != android.signingConfigs.getByName("debug").storeFile?.canonicalPath &&
+                !releaseSignature.storePassword.isNullOrBlank() && !releaseSignature.keyAlias.isNullOrBlank() && !releaseSignature.keyPassword.isNullOrBlank()) {
+            "Release requiere el keystore privado del equipo, no la firma debug."
+        }
+        val configuredUrl = "https://gymvip-backend.onrender.com"
+        if (configuredUrl.contains("localhost") || configuredUrl.contains("10.0.2.2") || configuredUrl.contains("127.0.0.1")) {
+            throw GradleException("ERROR DE SEGURIDAD CRÍTICO: La compilación de release no puede apuntar a IP local o emulador ($configuredUrl)")
+        }
+        logger.lifecycle("[SEGURIDAD CI/CD] URL de servidor release verificada para producción: $configuredUrl")
+    }
+}
+
+tasks.matching { it.name.startsWith("assembleRelease") || it.name.startsWith("bundleRelease") }.configureEach {
+    dependsOn("validateReleaseConfiguration")
+}

@@ -46,6 +46,14 @@ class DtoMapperTest {
         assertEquals("Plan VIP Mensual", domain.planName)
         assertEquals(MembershipStatus.VIGENTE, domain.status)
         assertEquals(26, domain.daysRemaining)
+        assertEquals(
+            MembershipStatus.PROXIMA_A_VENCER,
+            dto.copy(status = "POR_VENCER").toDomain("c1d2e3f4", "2026-10-15T10:00:00Z").status
+        )
+        assertEquals(
+            MembershipStatus.VENCIDA,
+            dto.copy(status = "VENCIDO").toDomain("c1d2e3f4", "2026-10-15T10:00:00Z").status
+        )
     }
 
     @Test

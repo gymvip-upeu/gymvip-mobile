@@ -11,6 +11,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.gymvip.mobile.di.AppContainer
@@ -28,14 +29,16 @@ import com.gymvip.mobile.presentation.screen.faq.FaqScreen
 import com.gymvip.mobile.presentation.screen.home.HomeScreen
 import com.gymvip.mobile.presentation.screen.inbox.InboxScreen
 import com.gymvip.mobile.presentation.screen.legal.TermsAndPrivacyScreen
+import com.gymvip.mobile.presentation.screen.membership.MemberCheckInScannerScreen
 import com.gymvip.mobile.presentation.screen.membership.MembershipScreen
 import com.gymvip.mobile.presentation.screen.permissions.AppPermissionsScreen
+import com.gymvip.mobile.presentation.screen.permissions.PostLoginPermissionsScreen
 import com.gymvip.mobile.presentation.screen.preferences.PreferencesScreen
 import com.gymvip.mobile.presentation.screen.profile.EditProfileScreen
 import com.gymvip.mobile.presentation.screen.profile.ProfileScreen
-import com.gymvip.mobile.presentation.screen.settings.SettingsScreen
 import com.gymvip.mobile.presentation.screen.settings.AccountSecurityScreen
 import com.gymvip.mobile.presentation.screen.settings.ConfirmEmailScreen
+import com.gymvip.mobile.presentation.screen.settings.SettingsScreen
 import com.gymvip.mobile.presentation.screen.services.ServicesScreen
 import com.gymvip.mobile.presentation.screen.splash.OnboardingScreen
 import com.gymvip.mobile.presentation.screen.splash.SplashScreen
@@ -48,6 +51,7 @@ import com.gymvip.mobile.presentation.viewmodel.InboxViewModel
 import com.gymvip.mobile.presentation.viewmodel.MembershipViewModel
 import com.gymvip.mobile.presentation.viewmodel.PreferencesViewModel
 import com.gymvip.mobile.presentation.viewmodel.ProfileViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
@@ -57,7 +61,13 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
     }
     val preferencesState by preferencesViewModel.uiState.collectAsState()
 
-    GymVipTheme(themePreference = preferencesState.currentTheme, onDarkThemeChanged = onDarkThemeChanged) {
+    GymVipTheme(
+        themePreference = preferencesState.currentTheme,
+        fontScale = preferencesState.fontScale,
+        highContrast = preferencesState.highContrast,
+        reduceMotion = preferencesState.reduceMotion,
+        onDarkThemeChanged = onDarkThemeChanged
+    ) {
         val authViewModel = remember {
             AuthViewModel(
                 loginUseCase = AppContainer.loginUseCase,
@@ -82,7 +92,7 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
 
         val parentDestination = when (val destination = currentDestination) {
             NavDestination.Settings -> NavDestination.Main(MainTab.PROFILE)
-            NavDestination.Faq, NavDestination.Services -> NavDestination.Main(MainTab.HOME)
+            NavDestination.Faq, NavDestination.Services, NavDestination.MemberCheckInScanner -> NavDestination.Main(MainTab.HOME)
             NavDestination.EditProfile, NavDestination.Preferences, NavDestination.Permissions,
             NavDestination.AccountSecurity -> NavDestination.Settings
             NavDestination.ConfirmEmail -> NavDestination.AccountSecurity
@@ -92,6 +102,8 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
         AppBackHandler(enabled = parentDestination != null) {
             parentDestination?.let { currentDestination = it }
         }
+
+        val coroutineScope = rememberCoroutineScope()
 
         // Una sesión autenticada no entra al contenido hasta aceptar términos y privacidad.
         LaunchedEffect(authState.isAuthenticated, authState.authenticatedProfile?.accountId) {
@@ -110,16 +122,22 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                 if (!hasRequiredConsent) {
                     currentDestination = NavDestination.TermsAndPrivacy(requiresAcceptance = true)
                 } else {
-                    when (val destination = currentDestination) {
-                        is NavDestination.Splash,
-                        is NavDestination.Onboarding,
-                        is NavDestination.Login,
-                        is NavDestination.Activation,
-                        is NavDestination.PasswordRecovery -> currentDestination = NavDestination.Main(currentTab)
-                        is NavDestination.TermsAndPrivacy -> {
-                            if (destination.requiresAcceptance) currentDestination = NavDestination.Main(currentTab)
+                    val permissionsSeen = AppContainer.configRepository.getBooleanPreference("permissions_explainer_completed", false)
+                    if (!permissionsSeen) {
+                        currentDestination = NavDestination.PostLoginPermissions
+                    } else {
+                        when (val destination = currentDestination) {
+                            is NavDestination.Splash,
+                            is NavDestination.Onboarding,
+                            is NavDestination.Login,
+                            is NavDestination.Activation,
+                            is NavDestination.PasswordRecovery,
+                            is NavDestination.PostLoginPermissions -> currentDestination = NavDestination.Main(currentTab)
+                            is NavDestination.TermsAndPrivacy -> {
+                                if (destination.requiresAcceptance) currentDestination = NavDestination.Main(currentTab)
+                            }
+                            else -> Unit
                         }
-                        else -> Unit
                     }
                 }
             } else if (
@@ -130,7 +148,8 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                 currentDestination !is NavDestination.Activation
             ) {
                 currentTab = MainTab.HOME
-                currentDestination = NavDestination.Onboarding
+                val onboardingSeen = AppContainer.configRepository.getBooleanPreference("onboarding_completed", false)
+                currentDestination = if (onboardingSeen) NavDestination.Login else NavDestination.Onboarding
             }
         }
 
@@ -138,7 +157,12 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
             is NavDestination.Splash -> {
                 SplashScreen(
                     onResolved = { isActive ->
-                        if (!isActive) currentDestination = NavDestination.Onboarding
+                        if (!isActive) {
+                            coroutineScope.launch {
+                                val onboardingSeen = AppContainer.configRepository.getBooleanPreference("onboarding_completed", false)
+                                currentDestination = if (onboardingSeen) NavDestination.Login else NavDestination.Onboarding
+                            }
+                        }
                     },
                     isSessionActive = authState.isAuthenticated
                 )
@@ -146,8 +170,35 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
 
             is NavDestination.Onboarding -> {
                 OnboardingScreen(
-                    onLogin = { currentDestination = NavDestination.Login },
-                    onActivate = { currentDestination = NavDestination.Activation }
+                    onLogin = {
+                        coroutineScope.launch {
+                            AppContainer.configRepository.setBooleanPreference("onboarding_completed", true)
+                        }
+                        currentDestination = NavDestination.Login
+                    },
+                    onActivate = {
+                        coroutineScope.launch {
+                            AppContainer.configRepository.setBooleanPreference("onboarding_completed", true)
+                        }
+                        currentDestination = NavDestination.Activation
+                    }
+                )
+            }
+
+            is NavDestination.PostLoginPermissions -> {
+                PostLoginPermissionsScreen(
+                    onContinue = {
+                        coroutineScope.launch {
+                            AppContainer.configRepository.setBooleanPreference("permissions_explainer_completed", true)
+                        }
+                        currentDestination = NavDestination.Main(currentTab)
+                    },
+                    onSkip = {
+                        coroutineScope.launch {
+                            AppContainer.configRepository.setBooleanPreference("permissions_explainer_completed", true)
+                        }
+                        currentDestination = NavDestination.Main(currentTab)
+                    }
                 )
             }
 
@@ -172,6 +223,13 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                     catalogRepository = AppContainer.catalogRepository,
                     userRoles = userRoles,
                     onBack = { currentDestination = NavDestination.Main(currentTab) }
+                )
+            }
+
+            is NavDestination.MemberCheckInScanner -> {
+                MemberCheckInScannerScreen(
+                    memberRepository = AppContainer.memberRepository,
+                    onBack = { currentDestination = NavDestination.Main(MainTab.HOME) }
                 )
             }
 
@@ -209,18 +267,16 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                 )
             }
 
-            is NavDestination.EditProfile -> {
-                profileViewModel?.let {
-                    EditProfileScreen(viewModel = it, onBack = { currentDestination = NavDestination.Settings })
-                }
-            }
-
             is NavDestination.AccountSecurity -> {
                 profileViewModel?.let {
                     AccountSecurityScreen(
                         viewModel = it,
                         onBack = { currentDestination = NavDestination.Settings },
-                        onChangePassword = { currentDestination = NavDestination.ConfirmEmail }
+                        onChangePassword = { currentDestination = NavDestination.ConfirmEmail },
+                        onAccountDeleted = {
+                            authViewModel.logout()
+                            currentDestination = NavDestination.Login
+                        }
                     )
                 }
             }
@@ -230,6 +286,12 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                     viewModel = authViewModel,
                     onBack = { currentDestination = NavDestination.AccountSecurity }
                 )
+            }
+
+            is NavDestination.EditProfile -> {
+                profileViewModel?.let {
+                    EditProfileScreen(viewModel = it, onBack = { currentDestination = NavDestination.Settings })
+                }
             }
 
             is NavDestination.TermsAndPrivacy -> {
@@ -346,12 +408,21 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                                 onNavigateTab = { tab ->
                                     currentTab = tab
                                     currentDestination = NavDestination.Main(tab)
+                                },
+                                onNavigateCheckInScanner = { currentDestination = NavDestination.MemberCheckInScanner }
+                            )
+                            MainTab.MEMBERSHIP -> MembershipScreen(
+                                viewModel = membershipViewModel,
+                                userRoles = userRoles,
+                                onNavigateToCatalog = {
+                                    currentTab = MainTab.CATALOG
+                                    currentDestination = NavDestination.Main(MainTab.CATALOG)
                                 }
                             )
-                            MainTab.MEMBERSHIP -> MembershipScreen(viewModel = membershipViewModel)
                             MainTab.CATALOG -> CatalogScreen(
                                 catalogViewModel = catalogViewModel,
-                                favoritesViewModel = favoritesViewModel
+                                favoritesViewModel = favoritesViewModel,
+                                receptionWhatsAppNumber = AppContainer.configRepository.receptionWhatsAppNumber
                             )
                             MainTab.INBOX -> InboxScreen(viewModel = inboxViewModel)
                             MainTab.PROFILE -> profileViewModel?.let {

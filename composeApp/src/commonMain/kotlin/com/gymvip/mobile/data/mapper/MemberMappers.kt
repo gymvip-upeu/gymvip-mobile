@@ -57,8 +57,8 @@ fun Member_profile.toDomain(): MemberProfile {
 fun MembershipSummaryDto.toDomain(accountId: String, lastSyncedAt: String): MembershipSummary {
     val domainStatus = when (status.uppercase()) {
         "VIGENTE" -> MembershipStatus.VIGENTE
-        "PROXIMA_A_VENCER" -> MembershipStatus.PROXIMA_A_VENCER
-        "VENCIDA" -> MembershipStatus.VENCIDA
+        "POR_VENCER", "PROXIMA_A_VENCER" -> MembershipStatus.PROXIMA_A_VENCER
+        "VENCIDO", "VENCIDA" -> MembershipStatus.VENCIDA
         else -> MembershipStatus.SIN_MEMBRESIA
     }
     return MembershipSummary(
@@ -76,8 +76,8 @@ fun MembershipSummaryDto.toDomain(accountId: String, lastSyncedAt: String): Memb
 fun Membership_summary.toDomain(): MembershipSummary {
     val domainStatus = when (status.uppercase()) {
         "VIGENTE" -> MembershipStatus.VIGENTE
-        "PROXIMA_A_VENCER" -> MembershipStatus.PROXIMA_A_VENCER
-        "VENCIDA" -> MembershipStatus.VENCIDA
+        "POR_VENCER", "PROXIMA_A_VENCER" -> MembershipStatus.PROXIMA_A_VENCER
+        "VENCIDO", "VENCIDA" -> MembershipStatus.VENCIDA
         else -> MembershipStatus.SIN_MEMBRESIA
     }
     return MembershipSummary(

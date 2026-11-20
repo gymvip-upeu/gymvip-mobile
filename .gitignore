@@ -24,4 +24,10 @@ replay_pid*
 *.db-shm
 gymvip.db*
 /out/
+*.apk
+apks-instalables/
+*google-services*.json
+*.jks
+*.keystore
+keystore.properties
 

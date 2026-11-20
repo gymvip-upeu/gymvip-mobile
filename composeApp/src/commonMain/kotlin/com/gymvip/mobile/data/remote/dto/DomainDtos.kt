@@ -37,6 +37,17 @@ data class PaymentSummaryDto(
 )
 
 @Serializable
+data class CatalogOfferDto(
+    val id: String,
+    val name: String,
+    val description: String,
+    val conditions: String,
+    val pricePen: Double,
+    val startDate: String,
+    val endDate: String
+)
+
+@Serializable
 data class ProductDto(
     val id: String,
     val name: String,
@@ -45,7 +56,15 @@ data class ProductDto(
     val pricePen: Double,
     val isPromotion: Boolean = false,
     val promotionDiscountPercent: Int? = null,
-    val imageUrl: String? = null
+    val imageUrl: String? = null,
+    val brand: String? = null,
+    val availability: String? = null,
+    val presentation: String? = null,
+    val netContent: String? = null,
+    val flavor: String? = null,
+    val ingredients: String? = null,
+    val offer: CatalogOfferDto? = null,
+    val finishedOffer: CatalogOfferDto? = null
 )
 
 @Serializable
@@ -325,4 +344,21 @@ data class AdminSupplementDto(
 @Serializable
 data class BarcodeUpdateRequestDto(
     val barcode: String
+)
+
+@Serializable
+data class MemberSelfCheckInRequestDto(
+    val challenge: String,
+    val requestId: String? = null
+)
+
+@Serializable
+data class MemberCheckInResponseDto(
+    val status: String,
+    val recorded: Boolean,
+    val message: String,
+    val attendanceDate: String? = null,
+    val checkedAtUtc: String? = null,
+    val memberName: String? = null,
+    val memberCode: String? = null
 )

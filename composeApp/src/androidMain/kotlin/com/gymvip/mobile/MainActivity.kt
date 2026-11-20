@@ -8,6 +8,7 @@ import androidx.core.view.WindowCompat
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(R.style.Theme_GymVip)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {

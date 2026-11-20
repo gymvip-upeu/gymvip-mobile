@@ -6,7 +6,9 @@ data class GymService(
     val description: String,
     val schedule: String,
     val location: String,
-    val isIncluded: Boolean = true
+    val isIncluded: Boolean = true,
+    val status: String = "DISPONIBLE",
+    val includedPlanTypes: String = "TODOS"
 )
 
 data class MemberConsent(

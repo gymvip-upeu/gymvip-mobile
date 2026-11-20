@@ -1,6 +1,7 @@
 package com.gymvip.mobile.data.remote.api
 
 import com.gymvip.mobile.data.remote.dto.*
+import com.gymvip.mobile.domain.error.AppError
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -20,11 +21,12 @@ class MemberApi(
 ) {
     private val explicitBaseUrl: String? = baseUrl
     private val baseUrl: String get() = explicitBaseUrl ?: GymVipHttpClient.baseUrl
+
     /**
      * Consulta el espacio de trabajo unificado del socio autenticado (GET /api/v1/member-app/me).
      * Retorna cliente, vigencia/cobertura, periodos, pagos y asistencias en una sola invocación.
      */
-    suspend fun getWorkspace(): Result<MemberWorkspaceDto> = runCatching {
+    suspend fun getWorkspace(): Result<MemberWorkspaceDto> = GymVipHttpClient.safeApiCall {
         val response = client.get("$baseUrl/api/v1/member-app/me")
         if (response.status == HttpStatusCode.OK) {
             response.body<MemberWorkspaceDto>()
@@ -34,77 +36,72 @@ class MemberApi(
     }
 
     /**
-     * Perfil del socio autenticado. Prioriza /api/v1/member-app/me y mantiene fallback a /api/v1/me/profile.
+     * Perfil del socio autenticado. Prioriza /api/v1/member-app/me y solo realiza fallback
+     * a /api/v1/me/profile si el servidor no tiene implementado el endpoint unificado (404/501).
      */
-    suspend fun getProfile(accountId: String = ""): Result<MemberProfileDto> = runCatching {
-        val workspaceResult = runCatching {
-            val response = client.get("$baseUrl/api/v1/member-app/me")
-            if (response.status == HttpStatusCode.OK) {
-                response.body<MemberWorkspaceDto>().toProfileDto()
-            } else {
-                throw GymVipHttpClient.parseResponseError(response)
-            }
+    suspend fun getProfile(accountId: String = ""): Result<MemberProfileDto> = GymVipHttpClient.safeApiCall {
+        val workspaceResult = getWorkspace()
+        if (workspaceResult.isSuccess) {
+            return@safeApiCall workspaceResult.getOrThrow().toProfileDto()
         }
 
-        if (workspaceResult.isSuccess) {
-            workspaceResult.getOrThrow()
+        val err = workspaceResult.exceptionOrNull()
+        val shouldFallback = err is AppError.NotFound || (err is AppError.Server && (err.statusCode == 404 || err.statusCode == 501))
+        if (!shouldFallback) {
+            throw err ?: AppError.Network("Error al consultar datos de perfil")
+        }
+
+        val fallbackResponse = client.get("$baseUrl/api/v1/me/profile")
+        if (fallbackResponse.status == HttpStatusCode.OK) {
+            fallbackResponse.body<MemberProfileDto>()
         } else {
-            val fallbackResponse = client.get("$baseUrl/api/v1/me/profile")
-            if (fallbackResponse.status == HttpStatusCode.OK) {
-                fallbackResponse.body<MemberProfileDto>()
-            } else {
-                throw workspaceResult.exceptionOrNull() ?: GymVipHttpClient.parseResponseError(fallbackResponse)
-            }
+            throw GymVipHttpClient.parseResponseError(fallbackResponse)
         }
     }
 
     /**
-     * Resumen de membresía y vigencia. Prioriza /api/v1/member-app/me y mantiene fallback a /api/v1/me/membership.
+     * Resumen de membresía y vigencia. Reutiliza /api/v1/member-app/me con fallback controlado.
      */
-    suspend fun getMembership(accountId: String = ""): Result<MembershipSummaryDto> = runCatching {
-        val workspaceResult = runCatching {
-            val response = client.get("$baseUrl/api/v1/member-app/me")
-            if (response.status == HttpStatusCode.OK) {
-                response.body<MemberWorkspaceDto>().toMembershipDto()
-            } else {
-                throw GymVipHttpClient.parseResponseError(response)
-            }
+    suspend fun getMembership(accountId: String = ""): Result<MembershipSummaryDto> = GymVipHttpClient.safeApiCall {
+        val workspaceResult = getWorkspace()
+        if (workspaceResult.isSuccess) {
+            return@safeApiCall workspaceResult.getOrThrow().toMembershipDto()
         }
 
-        if (workspaceResult.isSuccess) {
-            workspaceResult.getOrThrow()
+        val err = workspaceResult.exceptionOrNull()
+        val shouldFallback = err is AppError.NotFound || (err is AppError.Server && (err.statusCode == 404 || err.statusCode == 501))
+        if (!shouldFallback) {
+            throw err ?: AppError.Network("Error al consultar vigencia de membresía")
+        }
+
+        val fallbackResponse = client.get("$baseUrl/api/v1/me/membership")
+        if (fallbackResponse.status == HttpStatusCode.OK) {
+            fallbackResponse.body<MembershipSummaryDto>()
         } else {
-            val fallbackResponse = client.get("$baseUrl/api/v1/me/membership")
-            if (fallbackResponse.status == HttpStatusCode.OK) {
-                fallbackResponse.body<MembershipSummaryDto>()
-            } else {
-                throw workspaceResult.exceptionOrNull() ?: GymVipHttpClient.parseResponseError(fallbackResponse)
-            }
+            throw GymVipHttpClient.parseResponseError(fallbackResponse)
         }
     }
 
     /**
-     * Historial de pagos. Prioriza /api/v1/member-app/me y mantiene fallback a /api/v1/me/payments.
+     * Historial de pagos. Reutiliza /api/v1/member-app/me con fallback controlado.
      */
-    suspend fun getPayments(accountId: String = ""): Result<List<PaymentSummaryDto>> = runCatching {
-        val workspaceResult = runCatching {
-            val response = client.get("$baseUrl/api/v1/member-app/me")
-            if (response.status == HttpStatusCode.OK) {
-                response.body<MemberWorkspaceDto>().toPaymentsDto()
-            } else {
-                throw GymVipHttpClient.parseResponseError(response)
-            }
+    suspend fun getPayments(accountId: String = ""): Result<List<PaymentSummaryDto>> = GymVipHttpClient.safeApiCall {
+        val workspaceResult = getWorkspace()
+        if (workspaceResult.isSuccess) {
+            return@safeApiCall workspaceResult.getOrThrow().toPaymentsDto()
         }
 
-        if (workspaceResult.isSuccess) {
-            workspaceResult.getOrThrow()
+        val err = workspaceResult.exceptionOrNull()
+        val shouldFallback = err is AppError.NotFound || (err is AppError.Server && (err.statusCode == 404 || err.statusCode == 501))
+        if (!shouldFallback) {
+            throw err ?: AppError.Network("Error al consultar historial de pagos")
+        }
+
+        val fallbackResponse = client.get("$baseUrl/api/v1/me/payments")
+        if (fallbackResponse.status == HttpStatusCode.OK) {
+            fallbackResponse.body<List<PaymentSummaryDto>>()
         } else {
-            val fallbackResponse = client.get("$baseUrl/api/v1/me/payments")
-            if (fallbackResponse.status == HttpStatusCode.OK) {
-                fallbackResponse.body<List<PaymentSummaryDto>>()
-            } else {
-                throw workspaceResult.exceptionOrNull() ?: GymVipHttpClient.parseResponseError(fallbackResponse)
-            }
+            throw GymVipHttpClient.parseResponseError(fallbackResponse)
         }
     }
 
@@ -112,7 +109,7 @@ class MemberApi(
      * Generación de credencial QR dinámica (GET /api/v1/member-app/qr, HU-13).
      * TTL: 60 segundos con firma temporal para validación en mostrador.
      */
-    suspend fun getDynamicQr(): Result<DynamicQrResponseDto> = runCatching {
+    suspend fun getDynamicQr(): Result<DynamicQrResponseDto> = GymVipHttpClient.safeApiCall {
         val response = client.get("$baseUrl/api/v1/member-app/qr")
         if (response.status == HttpStatusCode.OK) {
             response.body<DynamicQrResponseDto>()
@@ -124,7 +121,7 @@ class MemberApi(
     /**
      * Historial de asistencias registradas en recepción (GET /api/v1/member-app/attendance).
      */
-    suspend fun getAttendance(): Result<List<MemberAttendanceDto>> = runCatching {
+    suspend fun getAttendance(): Result<List<MemberAttendanceDto>> = GymVipHttpClient.safeApiCall {
         val response = client.get("$baseUrl/api/v1/member-app/attendance")
         if (response.status == HttpStatusCode.OK) {
             response.body<List<MemberAttendanceDto>>()
@@ -136,7 +133,7 @@ class MemberApi(
     /**
      * Consulta si la sesión activa exige cambio forzoso de contraseña (GET /api/v1/member-app/session).
      */
-    suspend fun getSessionStatus(): Result<MemberSessionStatusDto> = runCatching {
+    suspend fun getSessionStatus(): Result<MemberSessionStatusDto> = GymVipHttpClient.safeApiCall {
         val response = client.get("$baseUrl/api/v1/member-app/session")
         if (response.status == HttpStatusCode.OK) {
             response.body<MemberSessionStatusDto>()
@@ -148,7 +145,7 @@ class MemberApi(
     /**
      * Cambio obligatorio de contraseña temporal (POST /api/v1/member-app/password, HU-05).
      */
-    suspend fun changePassword(request: PasswordChangeRequestDto): Result<PasswordChangeResponseDto> = runCatching {
+    suspend fun changePassword(request: PasswordChangeRequestDto): Result<PasswordChangeResponseDto> = GymVipHttpClient.safeApiCall {
         val response = client.post("$baseUrl/api/v1/member-app/password") {
             contentType(ContentType.Application.Json)
             setBody(request)
@@ -163,7 +160,7 @@ class MemberApi(
     /**
      * Consulta preguntas frecuentes oficiales (GET /api/v1/member-app/faqs, HU-28).
      */
-    suspend fun getFaqs(): Result<List<FaqDto>> = runCatching {
+    suspend fun getFaqs(): Result<List<FaqDto>> = GymVipHttpClient.safeApiCall {
         val response = client.get("$baseUrl/api/v1/member-app/faqs")
         if (response.status == HttpStatusCode.OK) {
             response.body<List<FaqDto>>()
@@ -175,7 +172,7 @@ class MemberApi(
     /**
      * Consulta catálogo de servicios e instalaciones publicadas (GET /api/v1/member-app/services, HU-33).
      */
-    suspend fun getServices(): Result<List<GymServiceDto>> = runCatching {
+    suspend fun getServices(): Result<List<GymServiceDto>> = GymVipHttpClient.safeApiCall {
         val response = client.get("$baseUrl/api/v1/member-app/services")
         if (response.status == HttpStatusCode.OK) {
             response.body<List<GymServiceDto>>()
@@ -187,7 +184,7 @@ class MemberApi(
     /**
      * Consulta bandeja de notificaciones y avisos del socio (GET /api/v1/member-app/inbox, HU-15, HU-34).
      */
-    suspend fun getInbox(): Result<List<InboxItemDto>> = runCatching {
+    suspend fun getInbox(): Result<List<InboxItemDto>> = GymVipHttpClient.safeApiCall {
         val response = client.get("$baseUrl/api/v1/member-app/inbox")
         if (response.status == HttpStatusCode.OK) {
             response.body<List<InboxItemDto>>()
@@ -199,7 +196,7 @@ class MemberApi(
     /**
      * Marca un aviso como leído (POST /api/v1/member-app/inbox/{id}/read, HU-34).
      */
-    suspend fun markInboxAsRead(itemId: String): Result<Unit> = runCatching {
+    suspend fun markInboxAsRead(itemId: String): Result<Unit> = GymVipHttpClient.safeApiCall {
         val response = client.post("$baseUrl/api/v1/member-app/inbox/$itemId/read")
         if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.NoContent) {
             throw GymVipHttpClient.parseResponseError(response)
@@ -209,7 +206,7 @@ class MemberApi(
     /**
      * Consulta el estado de consentimientos legales del socio (GET /api/v1/member-app/consents, HU-05).
      */
-    suspend fun getConsents(): Result<ConsentStatusDto> = runCatching {
+    suspend fun getConsents(): Result<ConsentStatusDto> = GymVipHttpClient.safeApiCall {
         val response = client.get("$baseUrl/api/v1/member-app/consents")
         if (response.status == HttpStatusCode.OK) {
             response.body<ConsentStatusDto>()
@@ -221,13 +218,73 @@ class MemberApi(
     /**
      * Registra aceptación de términos, privacidad y consentimiento de comunicaciones (POST /api/v1/member-app/consents, HU-05, HU-15).
      */
-    suspend fun submitConsents(request: ConsentSubmitRequestDto): Result<ConsentStatusDto> = runCatching {
+    suspend fun submitConsents(request: ConsentSubmitRequestDto): Result<ConsentStatusDto> = GymVipHttpClient.safeApiCall {
         val response = client.post("$baseUrl/api/v1/member-app/consents") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }
         if (response.status == HttpStatusCode.OK) {
             response.body<ConsentStatusDto>()
+        } else {
+            throw GymVipHttpClient.parseResponseError(response)
+        }
+    }
+
+    /**
+     * Registra asistencia del socio escaneando el código QR de recepción (POST /api/v1/member-app/attendance/check-in).
+     */
+    suspend fun selfCheckIn(challenge: String, requestId: String? = null): Result<MemberCheckInResponseDto> = GymVipHttpClient.safeApiCall {
+        val response = client.post("$baseUrl/api/v1/member-app/attendance/check-in") {
+            contentType(ContentType.Application.Json)
+            setBody(MemberSelfCheckInRequestDto(challenge = challenge, requestId = requestId))
+        }
+        if (response.status == HttpStatusCode.OK) {
+            response.body<MemberCheckInResponseDto>()
+        } else {
+            throw GymVipHttpClient.parseResponseError(response)
+        }
+    }
+
+    /**
+     * Solicitud de supresión de cuenta bajo LPDP Ley 29733 (POST /api/v1/member-app/delete-account).
+     */
+    suspend fun requestAccountDeletion(reason: String = "Solicitud voluntaria del titular"): Result<AccountDeletionResultDto> = GymVipHttpClient.safeApiCall {
+        val response = client.post("$baseUrl/api/v1/member-app/delete-account") {
+            contentType(ContentType.Application.Json)
+            setBody(mapOf("reason" to reason))
+        }
+        if (response.status == HttpStatusCode.OK) {
+            response.body<AccountDeletionResultDto>()
+        } else {
+            throw GymVipHttpClient.parseResponseError(response)
+        }
+    }
+
+    /**
+     * Registra token FCM del dispositivo para avisos push (POST /api/v1/member-app/devices).
+     */
+    suspend fun registerDevice(token: String, platform: String = "ANDROID", model: String = ""): Result<Unit> = GymVipHttpClient.safeApiCall {
+        val response = client.post("$baseUrl/api/v1/member-app/devices") {
+            contentType(ContentType.Application.Json)
+            setBody(mapOf("token" to token, "platform" to platform, "deviceModel" to model))
+        }
+        if (response.status == HttpStatusCode.OK) {
+            Unit
+        } else {
+            throw GymVipHttpClient.parseResponseError(response)
+        }
+    }
+
+    /**
+     * Desregistra token FCM del dispositivo al cerrar sesión (POST /api/v1/member-app/devices/unregister).
+     */
+    suspend fun unregisterDevice(token: String): Result<Unit> = GymVipHttpClient.safeApiCall {
+        val response = client.post("$baseUrl/api/v1/member-app/devices/unregister") {
+            contentType(ContentType.Application.Json)
+            setBody(mapOf("token" to token))
+        }
+        if (response.status == HttpStatusCode.OK) {
+            Unit
         } else {
             throw GymVipHttpClient.parseResponseError(response)
         }

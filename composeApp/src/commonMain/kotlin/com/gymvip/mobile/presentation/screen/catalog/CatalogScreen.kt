@@ -1,5 +1,6 @@
 package com.gymvip.mobile.presentation.screen.catalog
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ShoppingBag
@@ -35,10 +37,21 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
+import com.gymvip.mobile.domain.model.Product
+import com.gymvip.mobile.presentation.component.ContextualHelpCard
+import com.gymvip.mobile.presentation.screen.faq.receptionWhatsAppUrl
+import kotlinx.coroutines.CancellationException
 import com.gymvip.mobile.domain.model.ProductCategory
 import com.gymvip.mobile.presentation.component.EmptyView
 import com.gymvip.mobile.presentation.component.FavoriteItemCard
@@ -53,10 +66,12 @@ import com.gymvip.mobile.presentation.theme.vipOutlinedTextFieldColors
 @Composable
 fun CatalogScreen(
     catalogViewModel: CatalogViewModel,
-    favoritesViewModel: FavoritesViewModel
+    favoritesViewModel: FavoritesViewModel,
+    receptionWhatsAppNumber: String?
 ) {
     val catalogState by catalogViewModel.uiState.collectAsState()
     val favoritesState by favoritesViewModel.uiState.collectAsState()
+    LaunchedEffect(catalogViewModel) { catalogViewModel.refresh() }
 
     Column(
         modifier = Modifier
@@ -66,6 +81,12 @@ fun CatalogScreen(
         OfflineBanner(
             isOffline = catalogState.errorMessage != null,
             pendingSyncCount = favoritesState.pendingCount
+        )
+
+        ContextualHelpCard(
+            screenKey = "catalog_help",
+            title = "Catálogo y Suplementos",
+            description = "Explore suplementos, promociones vigentes y planes. Puede guardar favoritos para consultarlos sin conexión o contactar a recepción por WhatsApp."
         )
 
         TabRow(
@@ -104,6 +125,10 @@ fun CatalogScreen(
             0 -> CatalogTab(
                 state = catalogState,
                 onFilterCategory = { catalogViewModel.setCategoryFilter(it) },
+                onFilterPromotions = catalogViewModel::togglePromotionsOnly,
+                onRefresh = catalogViewModel::refresh,
+                loadThumbnail = catalogViewModel::getThumbnail,
+                receptionWhatsAppNumber = receptionWhatsAppNumber,
                 onAddToFavorites = { favoritesViewModel.openAddDialog(it) }
             )
             1 -> FavoritesTab(
@@ -230,11 +255,38 @@ fun CatalogScreen(
 private fun CatalogTab(
     state: com.gymvip.mobile.presentation.viewmodel.CatalogUiState,
     onFilterCategory: (ProductCategory?) -> Unit,
-    onAddToFavorites: (com.gymvip.mobile.domain.model.Product) -> Unit
+    onFilterPromotions: (Boolean) -> Unit,
+    onRefresh: () -> Unit,
+    loadThumbnail: suspend (String) -> ByteArray,
+    receptionWhatsAppNumber: String?,
+    onAddToFavorites: (Product) -> Unit
 ) {
     val scrollCategories = rememberScrollState()
+    var query by remember { mutableStateOf("") }
+    var maxPrice by remember { mutableStateOf("") }
+    var supplementCategory by remember { mutableStateOf<String?>(null) }
+    var selectedId by remember { mutableStateOf<String?>(null) }
+    var finishedOnly by remember { mutableStateOf(false) }
+    val categories = state.products.mapNotNull { it.catalogCategory }
+        .filter { code -> ProductCategory.entries.none { it.name == code } }.distinct().sorted()
+    val limit = maxPrice.trim().replace(',', '.').toDoubleOrNull()
+        ?.takeIf { it.isFinite() && it >= 0 }
+    val badLimit = maxPrice.isNotBlank() && limit == null
+    val visibleProducts = if (badLimit) emptyList() else state.products.filterCatalog(
+        query, state.selectedCategory, supplementCategory, state.onlyPromotions && !finishedOnly, limit, finishedOnly
+    )
 
     Column(modifier = Modifier.fillMaxSize()) {
+        OutlinedTextField(
+            value = query, onValueChange = { query = it },
+            label = { Text("Nombre o marca") }, singleLine = true,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+        )
+        OutlinedTextField(
+            value = maxPrice, onValueChange = { maxPrice = it },
+            label = { Text("Precio máximo (S/)") }, singleLine = true, isError = badLimit,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -243,15 +295,32 @@ private fun CatalogTab(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             FilterChip(
-                selected = state.selectedCategory == null,
-                onClick = { onFilterCategory(null) },
-                label = { Text("Todos") },
+                selected = !state.onlyPromotions && !finishedOnly,
+                onClick = { finishedOnly = false; onFilterPromotions(false) },
+                label = { Text("Catálogo") },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = MaterialTheme.colorScheme.primary,
                     selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
-            ProductCategory.entries.forEach { cat ->
+            FilterChip(
+                selected = state.onlyPromotions && !finishedOnly,
+                onClick = { finishedOnly = false; onFilterPromotions(true) },
+                label = { Text("Promociones vigentes") }
+            )
+            FilterChip(
+                selected = finishedOnly,
+                onClick = { finishedOnly = true; onFilterPromotions(false) },
+                label = { Text("Finalizadas") }
+            )
+            FilterChip(
+                selected = state.selectedCategory == null && supplementCategory == null,
+                onClick = { supplementCategory = null; onFilterCategory(null) },
+                label = { Text("Todas las categorías") }
+            )
+            ProductCategory.entries.filter { category ->
+                state.products.any { it.category == category }
+            }.forEach { cat ->
                 val name = when (cat) {
                     ProductCategory.PLAN_MEMBRESIA -> "Planes"
                     ProductCategory.SUPLEMENTO -> "Suplementos"
@@ -260,8 +329,8 @@ private fun CatalogTab(
                     ProductCategory.SERVICIO_ESPECIAL -> "Especiales"
                 }
                 FilterChip(
-                    selected = state.selectedCategory == cat,
-                    onClick = { onFilterCategory(cat) },
+                    selected = state.selectedCategory == cat && supplementCategory == null,
+                    onClick = { supplementCategory = null; onFilterCategory(cat) },
                     label = { Text(name) },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primary,
@@ -269,14 +338,26 @@ private fun CatalogTab(
                     )
                 )
             }
+            categories.forEach { category ->
+                FilterChip(
+                    selected = supplementCategory == category,
+                    onClick = { supplementCategory = category; onFilterCategory(null) },
+                    label = { Text(category.lowercase().replaceFirstChar { it.uppercase() }) }
+                )
+            }
         }
 
-        if (state.isLoading && state.products.isEmpty()) {
+        if (state.errorMessage != null) {
+            Text(state.errorMessage, modifier = Modifier.padding(horizontal = 16.dp))
+            OutlinedButton(onClick = onRefresh, modifier = Modifier.padding(horizontal = 16.dp)) {
+                Text("Reintentar")
+            }
+        } else if (state.isLoading && state.products.isEmpty()) {
             LoadingView("Cargando catálogo...")
-        } else if (state.products.isEmpty()) {
+        } else if (visibleProducts.isEmpty() && !badLimit) {
             EmptyView(
                 icon = Icons.Outlined.ShoppingBag,
-                title = "Sin productos",
+                title = if (state.onlyPromotions || finishedOnly) "Sin promociones" else "Sin productos",
                 message = "No se encontraron elementos en esta categoría."
             )
         } else {
@@ -286,14 +367,85 @@ private fun CatalogTab(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(state.products, key = { it.id }) { product ->
+                items(visibleProducts, key = { it.id }) { product ->
                     ProductItemCard(
-                        product = product,
-                        onAddToFavorites = onAddToFavorites
+                        product = if (finishedOnly) product.copy(isPromotion = false, offer = null) else product,
+                        onAddToFavorites = onAddToFavorites,
+                        onViewDetails = { selectedId = product.id },
+                        thumbnail = {
+                            CatalogImage(product, loadThumbnail)
+                            val offer = if (finishedOnly) product.finishedOffer else product.offer
+                            offer?.let {
+                                Text(if (finishedOnly) "${it.name} · Finalizada" else it.name)
+                            }
+                            listOfNotNull(product.presentation, product.netContent)
+                                .filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }
+                                ?.let { Text(it.joinToString(" · ")) }
+                        }
                     )
                 }
             }
         }
+    }
+    state.products.firstOrNull { it.id == selectedId }?.let { product ->
+        val uriHandler = LocalUriHandler.current
+        val whatsApp = receptionWhatsAppUrl(receptionWhatsAppNumber)
+        var contactFailed by remember(product.id) { mutableStateOf(false) }
+        AlertDialog(
+            onDismissRequest = { selectedId = null },
+            title = { Text(product.name) },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CatalogImage(product, loadThumbnail)
+                    product.brand?.let { Text(it) }
+                    Text(product.description)
+                    listOfNotNull(product.presentation, product.netContent, product.flavor)
+                        .filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }
+                        ?.let { Text(it.joinToString(" · ")) }
+                    product.ingredients?.takeIf { it.isNotBlank() }?.let { Text(it) }
+                    product.availability?.let {
+                        Text(if (it == "DISPONIBLE") "Disponible" else "Agotado")
+                    }
+                    Text((if (finishedOnly) product.price else product.currentPrice).amountInSoles)
+                    (if (finishedOnly) product.finishedOffer else product.offer)?.let { offer ->
+                        Text(offer.name, style = MaterialTheme.typography.titleSmall)
+                        Text(offer.description)
+                        Text(if (finishedOnly) "Finalizada · Precio anterior ${offer.price.amountInSoles}"
+                             else "Ahorras ${(product.price - offer.price).amountInSoles}")
+                        Text("Vigencia del ${offer.startDate} al ${offer.endDate}")
+                        Text(offer.conditions)
+                    }
+                    if (contactFailed) Text("No se pudo abrir WhatsApp.")
+                }
+            },
+            confirmButton = { OutlinedButton(onClick = { selectedId = null }) { Text("Cerrar") } },
+            dismissButton = {
+                if (whatsApp != null) {
+                    OutlinedButton(onClick = {
+                        contactFailed = runCatching { uriHandler.openUri(whatsApp) }.isFailure
+                    }) { Text("WhatsApp de recepción") }
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun CatalogImage(product: Product, loadThumbnail: suspend (String) -> ByteArray) {
+    val bitmap by produceState<ImageBitmap?>(initialValue = null, product.imageUrl, product.id) {
+        value = null
+        val path = product.imageUrl ?: return@produceState
+        try {
+            value = decodeCatalogThumbnail(loadThumbnail(path))
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            // The product details remain available if the thumbnail fails.
+        }
+    }
+    bitmap?.let {
+        Image(bitmap = it, contentDescription = product.name,
+            modifier = Modifier.fillMaxWidth().height(132.dp))
     }
 }
 
