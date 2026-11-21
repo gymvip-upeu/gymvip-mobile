@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Fingerprint
+import com.gymvip.mobile.presentation.security.LocalBiometricGate
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.PersonRemove
 import androidx.compose.material.icons.outlined.Security
@@ -73,6 +74,7 @@ internal fun AccountSecurityScreen(
     var isRevokingSessions by remember { mutableStateOf(false) }
     var sessionRevocationMessage by remember { mutableStateOf<String?>(null) }
     var biometricEnabled by remember { mutableStateOf(false) }
+    var biometricMessage by remember { mutableStateOf<String?>(null) }
 
     var showDeleteDialog by remember { mutableStateOf(false) }
     var deleteReason by remember { mutableStateOf("") }
@@ -82,6 +84,7 @@ internal fun AccountSecurityScreen(
 
     LaunchedEffect(Unit) {
         biometricEnabled = configRepository.getBooleanPreference("biometric_lock_enabled", false)
+        LocalBiometricGate.enabled = biometricEnabled
     }
 
     SettingsPage(title = "Cuenta y seguridad", onBack = onBack) {
@@ -196,9 +199,24 @@ internal fun AccountSecurityScreen(
                 Switch(
                     checked = biometricEnabled,
                     onCheckedChange = { isChecked ->
-                        biometricEnabled = isChecked
-                        scope.launch {
-                            configRepository.setBooleanPreference("biometric_lock_enabled", isChecked)
+                        biometricMessage = null
+                        if (isChecked && !LocalBiometricGate.isAvailable()) {
+                            biometricMessage = "Configura una huella o biometría segura en este dispositivo para activar el bloqueo."
+                        } else if (isChecked) {
+                            LocalBiometricGate.authenticate { accepted ->
+                                if (accepted) {
+                                    biometricEnabled = true
+                                    LocalBiometricGate.enabled = true
+                                    scope.launch { configRepository.setBooleanPreference("biometric_lock_enabled", true) }
+                                } else {
+                                    biometricMessage = "No se activó el bloqueo: confirma tu identidad para intentarlo de nuevo."
+                                }
+                            }
+                        } else {
+                            biometricEnabled = false
+                            LocalBiometricGate.enabled = false
+                            LocalBiometricGate.unlock()
+                            scope.launch { configRepository.setBooleanPreference("biometric_lock_enabled", false) }
                         }
                     },
                     colors = SwitchDefaults.colors(
@@ -207,6 +225,7 @@ internal fun AccountSecurityScreen(
                     )
                 )
             }
+            biometricMessage?.let { Text(it, modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.error) }
         }
 
         // Sección 4: Protección de Datos Personales (LPDP Ley 29733)
