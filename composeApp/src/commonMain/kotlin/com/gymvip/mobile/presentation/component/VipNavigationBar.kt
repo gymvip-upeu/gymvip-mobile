@@ -32,7 +32,8 @@ internal val MainTab.navigationIcon: ImageVector
 fun VipNavigationBar(
     currentTab: MainTab,
     onTabSelected: (MainTab) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    visibleTabs: List<MainTab> = MainTab.entries
 ) {
     val colors = MaterialTheme.colorScheme
     val followsSystem = LocalGymVipSystemTheme.current
@@ -42,7 +43,7 @@ fun VipNavigationBar(
         contentColor = MaterialTheme.colorScheme.onSurface,
         tonalElevation = 0.dp
     ) {
-        MainTab.entries.forEach { tab ->
+        visibleTabs.forEach { tab ->
             val isSelected = currentTab == tab
             NavigationBarItem(
                 selected = isSelected,

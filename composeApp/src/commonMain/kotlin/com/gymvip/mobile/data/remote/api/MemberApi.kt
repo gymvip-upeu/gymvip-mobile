@@ -5,6 +5,7 @@ import com.gymvip.mobile.domain.error.AppError
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -21,6 +22,16 @@ class MemberApi(
 ) {
     private val explicitBaseUrl: String? = baseUrl
     private val baseUrl: String get() = explicitBaseUrl ?: GymVipHttpClient.baseUrl
+
+    suspend fun updateOwnProfile(firstName: String, lastName: String, phone: String): Result<MemberClientDto> =
+        GymVipHttpClient.safeApiCall {
+            val response = client.patch("$baseUrl/api/v1/member-app/profile") {
+                contentType(ContentType.Application.Json)
+                setBody(mapOf("firstName" to firstName, "lastName" to lastName, "phone" to phone))
+            }
+            if (response.status == HttpStatusCode.OK) response.body<MemberClientDto>()
+            else throw GymVipHttpClient.parseResponseError(response)
+        }
 
     /**
      * Consulta el espacio de trabajo unificado del socio autenticado (GET /api/v1/member-app/me).

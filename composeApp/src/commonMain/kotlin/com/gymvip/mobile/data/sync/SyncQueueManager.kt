@@ -11,6 +11,8 @@ import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 class SyncQueueManager(
     private val database: GymVipDatabase,
@@ -25,7 +27,10 @@ class SyncQueueManager(
         note: String
     ) {
         val now = Clock.System.now().toString()
-        val payload = """{"productId":"$productId","personalNote":"$note"}"""
+        val payload = buildJsonObject {
+            put("productId", productId)
+            put("personalNote", note)
+        }.toString()
         val opId = "op_${tempId}"
 
         database.gymVipDatabaseQueries.transaction {
@@ -60,7 +65,10 @@ class SyncQueueManager(
             if (existingCreate != null) {
                 val parsed = json.parseToJsonElement(existingCreate.payloadJson).jsonObject
                 val productId = parsed["productId"]?.jsonPrimitive?.content ?: ""
-                val updatedPayload = """{"productId":"$productId","personalNote":"$newNote"}"""
+                val updatedPayload = buildJsonObject {
+                    put("productId", productId)
+                    put("personalNote", newNote)
+                }.toString()
                 database.gymVipDatabaseQueries.deleteSyncOperation(existingCreate.id)
                 database.gymVipDatabaseQueries.insertSyncOperation(
                     id = existingCreate.id,
@@ -75,7 +83,7 @@ class SyncQueueManager(
                     lastError = null
                 )
             } else {
-                val payload = """{"personalNote":"$newNote"}"""
+                val payload = buildJsonObject { put("personalNote", newNote) }.toString()
                 database.gymVipDatabaseQueries.insertSyncOperation(
                     id = opId,
                     accountId = accountId,
@@ -144,7 +152,15 @@ class SyncQueueManager(
                         val productId = parsed["productId"]?.jsonPrimitive?.content ?: ""
                         val note = parsed["personalNote"]?.jsonPrimitive?.content ?: ""
 
-                        val response = favoriteApi.addFavorite(FavoriteRequestDto(productId, note)).getOrThrow()
+                        val local = database.gymVipDatabaseQueries.selectFavoriteById(op.entityId, accountId)
+                            .executeAsOneOrNull() ?: error("Favorito local no encontrado")
+                        val response = favoriteApi.addFavorite(FavoriteRequestDto(
+                            productId = productId,
+                            personalNote = note,
+                            productTitle = local.productName,
+                            productCategory = local.productCategory,
+                            notes = note
+                        )).getOrThrow()
 
                         // Reconciliación: actualizar ID local si el servidor generó uno nuevo
                         database.gymVipDatabaseQueries.transaction {
@@ -202,17 +218,7 @@ class SyncQueueManager(
                     }
                 }
             } catch (e: Exception) {
-                if (e is AppError.Conflict) {
-                    // Conflicto 409 detectado: marcar ítem local como CONFLICT para intervención visible del usuario
-                    database.gymVipDatabaseQueries.transaction {
-                        database.gymVipDatabaseQueries.markFavoritePendingDelete(
-                            updatedAt = Clock.System.now().toString(),
-                            id = op.entityId,
-                            accountId = accountId
-                        )
-                        database.gymVipDatabaseQueries.deleteSyncOperation(op.id)
-                    }
-                } else if (e is AppError.Unauthorized) {
+                if (e is AppError.Unauthorized) {
                     // Detener procesamiento si la sesión expiró para no reintentar en bucle
                     throw e
                 } else {
@@ -222,7 +228,7 @@ class SyncQueueManager(
                         lastError = e.message ?: "Error desconocido",
                         id = op.id
                     )
-                    // Si superó reintentos o es error permanente de red, propagar y detener lote
+                    // Mantener el ítem pendiente y comunicar el error; nunca convertirlo en borrado.
                     throw e
                 }
             }

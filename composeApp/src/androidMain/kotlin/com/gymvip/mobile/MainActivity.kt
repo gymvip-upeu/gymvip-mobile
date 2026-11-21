@@ -6,24 +6,33 @@ import androidx.activity.enableEdgeToEdge
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.fragment.app.FragmentActivity
 import com.gymvip.mobile.di.AppContainer
 import com.gymvip.mobile.presentation.security.LocalBiometricGate
+import com.gymvip.mobile.presentation.theme.GoldPrimary
+import gymvip_mobile.composeapp.generated.resources.Res
+import gymvip_mobile.composeapp.generated.resources.onboarding_welcome
+import org.jetbrains.compose.resources.painterResource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -60,21 +69,35 @@ class MainActivity : FragmentActivity() {
                     controller.isAppearanceLightNavigationBars = !dark
                 }
                 if (locked) {
+                    Image(
+                        painter = painterResource(Res.drawable.onboarding_welcome),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
+                        listOf(Color(0xE60B1320), Color(0xCC142033), Color(0xF20B1320))
+                    )))
                     Column(
-                        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(32.dp),
+                        Modifier.fillMaxSize().padding(32.dp),
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("GYM VIP bloqueado", style = MaterialTheme.typography.headlineSmall)
-                        Button(onClick = { requestBiometric { if (it) LocalBiometricGate.unlock() } }) {
+                        Text("GYM VIP bloqueado", style = MaterialTheme.typography.headlineSmall, color = Color.White)
+                        Button(onClick = { requestBiometric { if (it) LocalBiometricGate.unlock() } },
+                            colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary, contentColor = Color(0xFF0B1320))) {
                             Text("Desbloquear con biometría")
                         }
-                        Button(onClick = LocalBiometricGate.requireLogin) { Text("Iniciar sesión de nuevo") }
+                        Button(onClick = LocalBiometricGate.requireLogin,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF203650), contentColor = Color.White)) {
+                            Text("Iniciar sesión de nuevo")
+                        }
                     }
                 }
             }
         }
         scope.launch {
+            AppContainer.configRepository.setActiveAccount(AppContainer.secureTokenStore.getAccountId())
             val enabled = AppContainer.configRepository.getBooleanPreference("biometric_lock_enabled", false)
             val hasSession = !AppContainer.secureTokenStore.getAccessToken().isNullOrBlank()
             LocalBiometricGate.enabled = enabled

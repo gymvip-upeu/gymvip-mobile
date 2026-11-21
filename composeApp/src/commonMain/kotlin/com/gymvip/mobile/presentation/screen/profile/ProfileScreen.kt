@@ -57,6 +57,7 @@ import com.gymvip.mobile.presentation.theme.SuccessGreen
 import com.gymvip.mobile.presentation.theme.accentForeground
 import com.gymvip.mobile.presentation.viewmodel.ProfileViewModel
 import kotlinx.coroutines.launch
+import kotlinx.datetime.toLocalDateTime
 
 @Composable
 fun ProfileScreen(
@@ -117,6 +118,7 @@ fun ProfileScreen(
         val accountType = when {
             roles.any { it.contains("ADMIN", ignoreCase = true) } -> "Administrador del Sistema"
             roles.any { it.contains("RECEPCION", ignoreCase = true) } -> "Personal de Recepción"
+            roles.any { it.contains("AUDITOR", ignoreCase = true) } -> "Auditor"
             else -> "Socio Titular VIP"
         }
         val accountStatus = when (profile?.status?.name) {
@@ -229,7 +231,9 @@ fun ProfileScreen(
             shape = RoundedCornerShape(12.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                ProfileDataRow("Documento de Identidad:", "${profile?.documentType ?: "DNI"} ${profile?.documentNumber?.takeIf { it.isNotBlank() } ?: "No registrado"}")
+                if (!isAdminOrReception && !roles.contains("AUDITOR")) {
+                    ProfileDataRow("Documento de Identidad:", "${profile?.documentType ?: "DNI"} ${profile?.documentNumber?.takeIf { it.isNotBlank() } ?: "No registrado"}")
+                }
                 ProfileDataRow("Teléfono de contacto:", profile?.phone?.takeIf { it.isNotBlank() } ?: "No registrado")
                 ProfileDataRow("Última sincronización:", formatSyncDate(profile?.lastSyncedAt))
             }
@@ -310,9 +314,12 @@ fun ProfileScreen(
 }
 
 private fun formatSyncDate(dateString: String?): String {
-    if (dateString.isNullOrBlank()) return "Hoy"
-    val clean = dateString.replace("T", " ").take(16)
-    return "$clean (America/Lima)"
+    if (dateString.isNullOrBlank()) return "Sin sincronización confirmada"
+    return runCatching {
+        val instant = kotlinx.datetime.Instant.parse(dateString)
+        val local = instant.toLocalDateTime(kotlinx.datetime.TimeZone.of("America/Lima"))
+        "${local.toString().replace('T', ' ').take(16)} (America/Lima)"
+    }.getOrElse { "Hora de sincronización no verificable" }
 }
 
 @Composable

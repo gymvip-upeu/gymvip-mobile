@@ -21,6 +21,7 @@ fun appModules(driverFactory: DatabaseDriverFactory, tokenStore: SecureTokenStor
         single { GymVipHttpClient.create(tokenStore = get()) }
         single { AuthApi(get()) }
         single { MemberApi(get()) }
+        single { SupplementOrderApi(get()) }
         single { CatalogApi(get()) }
         single { FavoriteApi(get()) }
         single { SyncQueueManager(get(), get()) }
@@ -34,7 +35,7 @@ fun appModules(driverFactory: DatabaseDriverFactory, tokenStore: SecureTokenStor
         single<InboxRepository> { InboxRepositoryImpl(get(), get()) }
         single<GymServiceRepository> { GymServiceRepositoryImpl(get(), get()) }
         single<LegalConsentRepository> { LegalConsentRepositoryImpl(get(), get()) }
-        single<ConfigRepository> { ConfigRepositoryImpl() }
+        single<ConfigRepository> { ConfigRepositoryImpl(get()) }
     },
     module {
         factory { LoginUseCase(get()) }

@@ -1,0 +1,6 @@
+CREATE TABLE local_preference (
+    accountId TEXT NOT NULL,
+    preferenceKey TEXT NOT NULL,
+    preferenceValue TEXT NOT NULL,
+    PRIMARY KEY (accountId, preferenceKey)
+);

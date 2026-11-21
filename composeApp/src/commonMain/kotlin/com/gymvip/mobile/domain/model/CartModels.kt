@@ -12,7 +12,8 @@ enum class OrderStatus(val label: String) {
     ENTREGADO("Entregado al Socio"),
     CANCELADO("Cancelado"),
     RECHAZADO("Pago Observado/Rechazado"),
-    EXPIRADO("Reserva Expirada")
+    EXPIRADO("Reserva Expirada"),
+    DEVUELTO("Devuelto")
 }
 
 enum class PaymentStatus(val label: String) {

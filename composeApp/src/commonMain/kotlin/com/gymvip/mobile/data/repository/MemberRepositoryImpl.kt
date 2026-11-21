@@ -24,18 +24,19 @@ class MemberRepositoryImpl(
 
     private val syncMutex = Mutex()
     private var lastWorkspaceSyncTime: Long = 0L
+    private var lastWorkspaceAccountId: String? = null
     private val syncCooldownMillis: Long = 5_000L // 5 segundos de reutilización coherente
 
     private suspend fun syncWorkspaceIfStale(accountId: String): Result<Unit> = syncMutex.withLock {
         val nowMillis = Clock.System.now().toEpochMilliseconds()
-        if (nowMillis - lastWorkspaceSyncTime < syncCooldownMillis) {
+        if (lastWorkspaceAccountId == accountId && nowMillis - lastWorkspaceSyncTime < syncCooldownMillis) {
             return Result.success(Unit)
         }
 
         val workspaceResult = memberApi.getWorkspace()
         return workspaceResult.map { workspace ->
             val nowStr = Clock.System.now().toString()
-            val profile = workspace.toProfileDto().toDomain(nowStr)
+            val profile = workspace.toProfileDto().toDomain(nowStr).copy(accountId = accountId)
             val membership = workspace.toMembershipDto().toDomain(accountId, nowStr)
             val payments = workspace.toPaymentsDto().map { it.toDomain(accountId, nowStr) }
 
@@ -79,6 +80,7 @@ class MemberRepositoryImpl(
                 }
             }
             lastWorkspaceSyncTime = nowMillis
+            lastWorkspaceAccountId = accountId
         }
     }
 
@@ -119,7 +121,7 @@ class MemberRepositoryImpl(
         val result = memberApi.getProfile(accountId)
         return result.map { dto ->
             val now = Clock.System.now().toString()
-            val domain = dto.toDomain(now)
+            val domain = dto.toDomain(now).copy(accountId = accountId)
             database.gymVipDatabaseQueries.insertOrReplaceProfile(
                 accountId = domain.accountId,
                 email = domain.email,
@@ -132,6 +134,26 @@ class MemberRepositoryImpl(
                 lastSyncedAt = domain.lastSyncedAt
             )
             domain
+        }
+    }
+
+    override suspend fun updateOwnProfile(accountId: String, firstName: String, lastName: String, phone: String): Result<MemberProfile> {
+        return memberApi.updateOwnProfile(firstName, lastName, phone).map { client ->
+            val now = Clock.System.now().toString()
+            val profile = com.gymvip.mobile.data.remote.dto.MemberWorkspaceDto(client = client)
+                .toProfileDto().toDomain(now).copy(accountId = accountId)
+            database.gymVipDatabaseQueries.insertOrReplaceProfile(
+                accountId = accountId,
+                email = profile.email,
+                firstName = profile.firstName,
+                lastName = profile.lastName,
+                documentType = profile.documentType,
+                documentNumber = profile.documentNumber,
+                phone = profile.phone,
+                status = profile.status.name,
+                lastSyncedAt = profile.lastSyncedAt
+            )
+            profile
         }
     }
 

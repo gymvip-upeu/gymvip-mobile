@@ -89,6 +89,25 @@ CREATE TABLE sync_queue (
     lastError TEXT
 );
 
+CREATE TABLE local_preference (
+    accountId TEXT NOT NULL,
+    preferenceKey TEXT NOT NULL,
+    preferenceValue TEXT NOT NULL,
+    PRIMARY KEY (accountId, preferenceKey)
+);
+
+selectPreferencesByAccount:
+SELECT * FROM local_preference WHERE accountId = ?;
+
+selectPreference:
+SELECT preferenceValue FROM local_preference WHERE accountId = ? AND preferenceKey = ? LIMIT 1;
+
+upsertPreference:
+INSERT OR REPLACE INTO local_preference(accountId, preferenceKey, preferenceValue) VALUES (?, ?, ?);
+
+deletePreferencesByAccount:
+DELETE FROM local_preference WHERE accountId = ?;
+
 -- Queries para member_profile
 selectProfileByAccountId:
 SELECT * FROM member_profile WHERE accountId = ? LIMIT 1;

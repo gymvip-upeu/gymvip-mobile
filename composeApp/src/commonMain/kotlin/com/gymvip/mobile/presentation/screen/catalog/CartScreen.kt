@@ -31,11 +31,14 @@ import com.gymvip.mobile.presentation.theme.GoldPrimary
 fun CartScreen(
     cart: ShoppingCart,
     activeOrder: SupplementOrder? = null,
+    orders: List<SupplementOrder> = emptyList(),
+    errorMessage: String? = null,
     onQuantityChange: (String, Int) -> Unit,
     onClearCart: () -> Unit,
     onCheckoutOrder: (paymentMethod: String, notes: String) -> Unit = { _, _ -> },
     onSubmitPaymentEvidence: (reference: String, notes: String) -> Unit = { _, _ -> },
     onCancelOrder: (reason: String) -> Unit = {},
+    onRefresh: () -> Unit = {},
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -44,7 +47,7 @@ fun CartScreen(
     var showTicketDialog by remember { mutableStateOf(false) }
     var showCancelDialog by remember { mutableStateOf(false) }
 
-    var selectedPaymentMethod by remember { mutableStateOf("YAPE") }
+    val selectedPaymentMethod = "EFECTIVO_MOSTRADOR"
     var orderNotes by remember { mutableStateOf("") }
     var paymentReferenceInput by remember { mutableStateOf("") }
     var paymentNotesInput by remember { mutableStateOf("") }
@@ -56,6 +59,7 @@ fun CartScreen(
             .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
+        TextButton(onClick = onBack) { Text("← Volver al catálogo") }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -68,12 +72,14 @@ fun CartScreen(
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
-                    text = "Compra en línea con retiro seguro en el mostrador del gimnasio.",
+                    text = "Reserva suplementos y paga en efectivo en el mostrador del gimnasio.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
+        TextButton(onClick = onRefresh) { Text("Actualizar carrito y pedidos") }
+        errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -89,12 +95,27 @@ fun CartScreen(
         }
 
         if (cart.items.isEmpty()) {
-            EmptyView(
-                icon = Icons.Outlined.ShoppingCart,
-                title = "Tu Carrito está Vacío",
-                message = "Agrega suplementos desde el catálogo para generar tu pedido.",
-                modifier = Modifier.weight(1f)
-            )
+            if (orders.isEmpty()) {
+                EmptyView(
+                    icon = Icons.Outlined.ShoppingCart,
+                    title = "Tu Carrito está Vacío",
+                    message = "Agrega suplementos desde el catálogo para generar tu pedido.",
+                    modifier = Modifier.weight(1f)
+                )
+            } else {
+                Text("Historial de pedidos", style = MaterialTheme.typography.titleMedium)
+                LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(orders, key = { it.id }) { order ->
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text(order.orderNumber, fontWeight = FontWeight.Bold)
+                                Text("${order.orderStatus.label} · ${order.total.amountInSoles}")
+                                Text("Pago: ${order.paymentStatus.label} · Retiro: ${order.fulfillmentStatus.label}")
+                            }
+                        }
+                    }
+                }
+            }
         } else {
             LazyColumn(
                 modifier = Modifier.weight(1f),
@@ -175,25 +196,7 @@ fun CartScreen(
                         fontWeight = FontWeight.SemiBold,
                         color = GoldPrimary
                     )
-                    Text("Selecciona tu medio de pago:")
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(
-                            selected = selectedPaymentMethod == "YAPE",
-                            onClick = { selectedPaymentMethod = "YAPE" },
-                            label = { Text("Yape") }
-                        )
-                        FilterChip(
-                            selected = selectedPaymentMethod == "PLIN",
-                            onClick = { selectedPaymentMethod = "PLIN" },
-                            label = { Text("Plin") }
-                        )
-                        FilterChip(
-                            selected = selectedPaymentMethod == "TRANSFERENCIA",
-                            onClick = { selectedPaymentMethod = "TRANSFERENCIA" },
-                            label = { Text("Transferencia") }
-                        )
-                    }
+                    Text("Pago en efectivo en recepción. El pedido se confirmará cuando el personal registre el cobro.")
 
                     OutlinedTextField(
                         value = orderNotes,
@@ -289,7 +292,7 @@ fun CartScreen(
         )
     }
 
-    // Modal de Visualización de Ticket QR de Retiro
+    // Modal de visualización del código de retiro
     if (showTicketDialog && activeOrder?.pickupToken != null) {
         AlertDialog(
             onDismissRequest = { showTicketDialog = false },
@@ -297,7 +300,7 @@ fun CartScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.QrCode, contentDescription = null, tint = GoldPrimary)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Ticket de Retiro en Mostrador")
+                    Text("Código de Retiro en Mostrador")
                 }
             },
             text = {
@@ -313,7 +316,7 @@ fun CartScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Representación visual del código QR / Token
+                    // El código completo es la credencial verificable; no se muestra un QR decorativo.
                     Box(
                         modifier = Modifier
                             .size(180.dp)
@@ -323,16 +326,10 @@ fun CartScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                Icons.Default.QrCode,
-                                contentDescription = "Código QR de Retiro",
-                                modifier = Modifier.size(110.dp),
-                                tint = Color.Black
-                            )
                             Text(
-                                text = activeOrder.pickupToken.take(16) + "...",
+                                text = activeOrder.pickupToken,
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = 10.sp,
+                                fontSize = 12.sp,
                                 color = Color.DarkGray
                             )
                         }
@@ -450,15 +447,10 @@ private fun ActiveOrderBanner(
                     ) {
                         Icon(Icons.Default.QrCode, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Ver Ticket QR", color = Color.Black)
+                        Text("Ver código de retiro", color = Color.Black)
                     }
                 } else if (order.paymentStatus == PaymentStatus.PENDIENTE) {
-                    Button(
-                        onClick = onSubmitEvidence,
-                        colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary)
-                    ) {
-                        Text("Subir Comprobante", color = Color.Black)
-                    }
+                    Text("Pago pendiente en caja", style = MaterialTheme.typography.bodySmall)
                     OutlinedButton(onClick = onCancelOrder) {
                         Text("Cancelar")
                     }

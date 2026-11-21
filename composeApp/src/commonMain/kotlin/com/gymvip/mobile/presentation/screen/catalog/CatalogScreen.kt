@@ -67,7 +67,12 @@ import com.gymvip.mobile.presentation.theme.vipOutlinedTextFieldColors
 fun CatalogScreen(
     catalogViewModel: CatalogViewModel,
     favoritesViewModel: FavoritesViewModel,
-    receptionWhatsAppNumber: String?
+    receptionWhatsAppNumber: String?,
+    canPurchase: Boolean = false,
+    cartCount: Int = 0,
+    cartError: String? = null,
+    onOpenCart: () -> Unit = {},
+    onAddToCart: (Product) -> Unit = {}
 ) {
     val catalogState by catalogViewModel.uiState.collectAsState()
     val favoritesState by favoritesViewModel.uiState.collectAsState()
@@ -82,6 +87,12 @@ fun CatalogScreen(
             isOffline = catalogState.errorMessage != null,
             pendingSyncCount = favoritesState.pendingCount
         )
+        if (canPurchase) {
+            Button(onClick = onOpenCart, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                Text("Mi carrito ($cartCount) y pedidos")
+            }
+        }
+        cartError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp)) }
 
         ContextualHelpCard(
             screenKey = "catalog_help",
@@ -129,7 +140,8 @@ fun CatalogScreen(
                 onRefresh = catalogViewModel::refresh,
                 loadThumbnail = catalogViewModel::getThumbnail,
                 receptionWhatsAppNumber = receptionWhatsAppNumber,
-                onAddToFavorites = { favoritesViewModel.openAddDialog(it) }
+                onAddToFavorites = { favoritesViewModel.openAddDialog(it) },
+                onAddToCart = if (canPurchase) onAddToCart else null
             )
             1 -> FavoritesTab(
                 state = favoritesState,
@@ -259,7 +271,8 @@ private fun CatalogTab(
     onRefresh: () -> Unit,
     loadThumbnail: suspend (String) -> ByteArray,
     receptionWhatsAppNumber: String?,
-    onAddToFavorites: (Product) -> Unit
+    onAddToFavorites: (Product) -> Unit,
+    onAddToCart: ((Product) -> Unit)?
 ) {
     val scrollCategories = rememberScrollState()
     var query by remember { mutableStateOf("") }
@@ -420,10 +433,15 @@ private fun CatalogTab(
             },
             confirmButton = { OutlinedButton(onClick = { selectedId = null }) { Text("Cerrar") } },
             dismissButton = {
-                if (whatsApp != null) {
-                    OutlinedButton(onClick = {
-                        contactFailed = runCatching { uriHandler.openUri(whatsApp) }.isFailure
-                    }) { Text("WhatsApp de recepción") }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (onAddToCart != null && product.category == ProductCategory.SUPLEMENTO && product.availability == "DISPONIBLE" && !finishedOnly) {
+                        Button(onClick = { onAddToCart(product); selectedId = null }) { Text("Añadir al carrito") }
+                    }
+                    if (whatsApp != null) {
+                        OutlinedButton(onClick = {
+                            contactFailed = runCatching { uriHandler.openUri(whatsApp) }.isFailure
+                        }) { Text("WhatsApp") }
+                    }
                 }
             }
         )

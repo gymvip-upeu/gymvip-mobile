@@ -34,7 +34,7 @@ internal fun EditProfileScreen(viewModel: ProfileViewModel, onBack: () -> Unit) 
             var lastName by rememberSaveable(profile.accountId) { mutableStateOf(profile.lastName) }
             var phone by rememberSaveable(profile.accountId) { mutableStateOf(profile.phone.orEmpty()) }
             Text(
-                "Los cambios se muestran en tu perfil durante esta sesión.",
+                "Los cambios se guardarán en tu ficha del gimnasio.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium
             )
@@ -63,15 +63,15 @@ internal fun EditProfileScreen(viewModel: ProfileViewModel, onBack: () -> Unit) 
                 singleLine = true,
                 colors = vipOutlinedTextFieldColors()
             )
+            state.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Button(
                 onClick = {
-                    viewModel.editLocally(firstName, lastName, phone)
-                    onBack()
+                    viewModel.saveProfile(firstName, lastName, phone, onBack)
                 },
-                enabled = firstName.isNotBlank(),
+                enabled = firstName.isNotBlank() && lastName.isNotBlank() && !state.isSaving,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Guardar cambios")
+                Text(if (state.isSaving) "Guardando…" else "Guardar cambios")
             }
         }
     }

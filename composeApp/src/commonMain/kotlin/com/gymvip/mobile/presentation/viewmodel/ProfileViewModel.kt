@@ -15,10 +15,10 @@ import kotlinx.coroutines.launch
 
 data class ProfileUiState(
     val profile: MemberProfile? = null,
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val isSaving: Boolean = false,
+    val errorMessage: String? = null
 )
-
-private data class ProfileEdit(val firstName: String, val lastName: String, val phone: String?)
 
 class ProfileViewModel(
     private val memberRepository: MemberRepository,
@@ -27,15 +27,10 @@ class ProfileViewModel(
 ) {
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
-    private var localEdit: ProfileEdit? = null
 
     init {
         memberRepository.observeProfile(accountId).onEach { prof ->
-            val edit = localEdit
-            val displayedProfile = if (edit == null) prof else prof?.copy(
-                firstName = edit.firstName, lastName = edit.lastName, phone = edit.phone
-            )
-            _uiState.value = _uiState.value.copy(profile = displayedProfile)
+            _uiState.value = _uiState.value.copy(profile = prof)
         }.launchIn(scope)
 
         refresh()
@@ -49,13 +44,21 @@ class ProfileViewModel(
         }
     }
 
-    fun editLocally(firstName: String, lastName: String, phone: String) {
-        val profile = _uiState.value.profile ?: return
-        val edit = ProfileEdit(firstName.trim(), lastName.trim(), phone.trim().ifBlank { null })
-        localEdit = edit
-        _uiState.value = _uiState.value.copy(
-            profile = profile.copy(firstName = edit.firstName, lastName = edit.lastName, phone = edit.phone)
-        )
+    fun saveProfile(firstName: String, lastName: String, phone: String, onSaved: () -> Unit) {
+        scope.launch {
+            _uiState.value = _uiState.value.copy(isSaving = true, errorMessage = null)
+            val result = memberRepository.updateOwnProfile(accountId, firstName.trim(), lastName.trim(), phone.trim())
+            result.fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(isSaving = false, profile = it)
+                    onSaved()
+                },
+                onFailure = {
+                    _uiState.value = _uiState.value.copy(isSaving = false,
+                        errorMessage = it.message ?: "No se pudieron guardar los cambios.")
+                }
+            )
+        }
     }
 
     fun onCleared() {

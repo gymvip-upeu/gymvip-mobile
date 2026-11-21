@@ -62,7 +62,7 @@ class AuthRepositoryImpl(
             val remoteResult = memberApi.getProfile(accountId)
             if (remoteResult.isSuccess) {
                 val now = Clock.System.now().toString()
-                val profile = remoteResult.getOrThrow().toDomain(now).copy(roles = accountRoles)
+                val profile = remoteResult.getOrThrow().toDomain(now).copy(accountId = accountId, roles = accountRoles)
                 database.gymVipDatabaseQueries.insertOrReplaceProfile(
                     accountId = profile.accountId,
                     email = profile.email,
@@ -183,7 +183,7 @@ class AuthRepositoryImpl(
                     Result.failure(AppError.Forbidden("Debe cambiar su contraseña temporal antes de continuar"))
                 }
 
-                val profile = profileResult.getOrNull()?.toDomain(now)?.copy(roles = accountRoles) ?: MemberProfile(
+                val profile = profileResult.getOrNull()?.toDomain(now)?.copy(accountId = accountId, roles = accountRoles) ?: MemberProfile(
                     accountId = accountId,
                     email = dto.email,
                     firstName = "Socio",

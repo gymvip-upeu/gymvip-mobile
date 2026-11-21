@@ -63,6 +63,7 @@ internal fun AccountSecurityScreen(
     viewModel: ProfileViewModel,
     onBack: () -> Unit,
     onChangePassword: () -> Unit,
+    isMember: Boolean = true,
     onAccountDeleted: () -> Unit = {},
     authRepository: AuthRepository = AppContainer.authRepository,
     memberRepository: MemberRepository = AppContainer.memberRepository,
@@ -229,7 +230,7 @@ internal fun AccountSecurityScreen(
         }
 
         // Sección 4: Protección de Datos Personales (LPDP Ley 29733)
-        SettingsSection("Privacidad y Ley N° 29733") {
+        if (isMember) SettingsSection("Privacidad y Ley N° 29733") {
             Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
