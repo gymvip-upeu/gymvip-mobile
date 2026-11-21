@@ -1,6 +1,7 @@
 package com.gymvip.mobile.presentation.screen.splash
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,12 +43,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gymvip.mobile.presentation.component.GymVipLogo
 import com.gymvip.mobile.presentation.theme.LocalGymVipSystemTheme
+import gymvip_mobile.composeapp.generated.resources.Res
+import gymvip_mobile.composeapp.generated.resources.onboarding_qr
+import gymvip_mobile.composeapp.generated.resources.onboarding_supplements
+import gymvip_mobile.composeapp.generated.resources.onboarding_welcome
+import org.jetbrains.compose.resources.painterResource
 
 data class OnboardingPageData(
     val title: String,
@@ -113,6 +120,30 @@ fun OnboardingScreen(
             )
             .systemBarsPadding()
     ) {
+        val background = when (currentPage) {
+            0 -> Res.drawable.onboarding_welcome
+            1 -> Res.drawable.onboarding_qr
+            2 -> Res.drawable.onboarding_supplements
+            else -> null
+        }
+        if (background != null) {
+            Image(
+                painter = painterResource(background),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        0.0f to Color(0xB30B1320),
+                        0.35f to Color(0x730B1320),
+                        0.70f to Color(0x990B1320),
+                        1.0f to Color(0xD90B1320)
+                    )
+                )
+            )
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
