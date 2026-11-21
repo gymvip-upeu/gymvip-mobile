@@ -116,14 +116,17 @@ android {
         applicationId = "com.gymvip.mobile"
         minSdk = 24
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.1.1"
+        versionCode = 4
+        versionName = "1.1.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+        jniLibs {
+            useLegacyPackaging = true
         }
     }
 
@@ -141,6 +144,7 @@ android {
         getByName("debug") {
             enableV1Signing = true
             enableV2Signing = true
+            enableV3Signing = true
         }
         create("release") {
             val rawPath = System.getenv("GYMVIP_KEYSTORE_PATH")
@@ -169,6 +173,7 @@ android {
             keyPassword = keyPwd
             enableV1Signing = true
             enableV2Signing = true
+            enableV3Signing = true
         }
     }
 
