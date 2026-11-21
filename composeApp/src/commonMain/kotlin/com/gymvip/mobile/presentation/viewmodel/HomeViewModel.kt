@@ -33,6 +33,7 @@ class HomeViewModel(
     private val getMembershipSummaryUseCase: GetMembershipSummaryUseCase,
     private val configRepository: ConfigRepository,
     private val accountId: String,
+    private val isStaff: Boolean = false,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 ) {
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -62,6 +63,10 @@ class HomeViewModel(
     }
 
     fun refreshAll() {
+        if (isStaff) {
+            _uiState.value = _uiState.value.copy(isLoading = false, isOffline = false, noticeType = ConnectionNoticeType.NONE, errorMessage = null)
+            return
+        }
         scope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
             val profResult = memberRepository.refreshProfile(accountId)
@@ -71,13 +76,15 @@ class HomeViewModel(
                 val ex = profResult.exceptionOrNull() ?: memResult.exceptionOrNull()
                 val (noticeType, message) = when (ex) {
                     is AppError.Unauthorized -> ConnectionNoticeType.SESSION_EXPIRED to "Sesión expirada. Inicie sesión nuevamente para actualizar sus datos."
+                    is AppError.Forbidden -> ConnectionNoticeType.ACCESS_DENIED to "Esta cuenta no tiene permiso para consultar la membresía de socio."
+                    is AppError.NotFound -> ConnectionNoticeType.ACCESS_DENIED to "No hay una ficha de socio asociada a esta cuenta."
                     is AppError.Server -> ConnectionNoticeType.SERVER_ERROR to "El servidor de GYM VIP no responde temporalmente. Mostrando datos locales de su última sesión."
                     is AppError.Network -> ConnectionNoticeType.OFFLINE_NETWORK to "Sin conexión a internet. Mostrando datos locales de su última sesión."
-                    else -> ConnectionNoticeType.OFFLINE_NETWORK to "Modo sin conexión. Mostrando datos locales de su última sesión."
+                    else -> ConnectionNoticeType.SERVER_ERROR to "No se pudo actualizar la información. Reintente o consulte soporte."
                 }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    isOffline = true,
+                    isOffline = noticeType == ConnectionNoticeType.OFFLINE_NETWORK || noticeType == ConnectionNoticeType.SERVER_ERROR,
                     noticeType = noticeType,
                     errorMessage = message
                 )

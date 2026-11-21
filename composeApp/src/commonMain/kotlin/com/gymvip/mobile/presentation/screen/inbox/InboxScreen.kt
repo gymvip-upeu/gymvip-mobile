@@ -68,7 +68,7 @@ fun InboxScreen(viewModel: InboxViewModel) {
     when {
         state.isLoading && state.items.isEmpty() -> LoadingView("Cargando avisos…")
         state.loadFailed && state.items.isEmpty() -> ErrorRetryView(
-            message = "No se pudieron cargar tus avisos.",
+            message = state.loadErrorMessage ?: "No se pudieron cargar tus avisos.",
             onRetry = viewModel::refresh,
             modifier = Modifier.fillMaxSize()
         )
@@ -120,7 +120,7 @@ fun InboxScreen(viewModel: InboxViewModel) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                "Mostrando avisos guardados.",
+                                state.loadErrorMessage ?: "Mostrando avisos guardados.",
                                 modifier = Modifier.weight(1f),
                                 style = MaterialTheme.typography.bodySmall
                             )
@@ -153,7 +153,7 @@ fun InboxScreen(viewModel: InboxViewModel) {
     }
 
     state.items.firstOrNull { it.id == selectedId }?.let { item ->
-        InboxDetail(item, state.readingId == item.id, state.readFailed, onMarkRead = { viewModel.markAsRead(item.id) }, onClose = { selectedId = null })
+        InboxDetail(item, state.readingId == item.id, state.readErrorMessage, onMarkRead = { viewModel.markAsRead(item.id) }, onClose = { selectedId = null })
     }
 }
 
@@ -211,7 +211,7 @@ private fun InboxCard(item: InboxItem, onOpen: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun InboxDetail(item: InboxItem, reading: Boolean, readFailed: Boolean, onMarkRead: () -> Unit, onClose: () -> Unit) {
+private fun InboxDetail(item: InboxItem, reading: Boolean, readErrorMessage: String?, onMarkRead: () -> Unit, onClose: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onClose) {
         Column(
             modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
@@ -230,8 +230,8 @@ private fun InboxDetail(item: InboxItem, reading: Boolean, readFailed: Boolean, 
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyLarge
             )
-            if (readFailed && !item.isRead) {
-                Text("No se pudo confirmar la lectura. Comprueba tu conexión y vuelve a intentarlo.", color = MaterialTheme.colorScheme.error)
+            if (readErrorMessage != null && !item.isRead) {
+                Text(readErrorMessage, color = MaterialTheme.colorScheme.error)
             }
             if (item.isRead) {
                 Text("Leído", color = MaterialTheme.colorScheme.accentForeground)

@@ -68,13 +68,13 @@ fun MembershipScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        OfflineBanner(isOffline = state.isOffline)
+        OfflineBanner(isOffline = state.isOffline, noticeType = state.noticeType, customMessage = state.errorMessage)
 
         // Ayuda contextual opcional y no invasiva para la sección de membresía
         ContextualHelpCard(
             screenKey = "membership_help",
             title = "Membresía y Vigencia",
-            description = "Consulte la vigencia de 30 días calendario y su historial de pagos en PEN. Las renovaciones se realizan exclusivamente en el mostrador de recepción."
+            description = "Consulte la vigencia de 30 días calendario y su historial de pagos en PEN. Recepción le indicará los medios disponibles para renovar."
         )
 
         TabRow(
@@ -219,7 +219,7 @@ private fun MembershipDetailTab(
                 Text(
                     text = "• Cada mensualidad otorga exactamente 30 días calendario continuos de acceso.\n" +
                             "• No se aplican días de gracia ni extensiones automáticas (cero tolerancia).\n" +
-                            "• Las renovaciones y pagos se tramitan exclusivamente de forma presencial en recepción de sede Ñaña.\n" +
+                            "• Recepción puede registrar el pago en caja o compartir un enlace de pago disponible para su membresía.\n" +
                             "• Su historial permanece accesible en todo momento para su control contable.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant

@@ -64,6 +64,7 @@ import com.gymvip.mobile.presentation.theme.accentForeground
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
+    isStaff: Boolean = false,
     onNavigateServices: () -> Unit,
     onNavigateFaq: () -> Unit,
     onNavigateTab: (MainTab) -> Unit,
@@ -148,7 +149,11 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(modifier = Modifier.height(8.dp))
-            MembershipStatusCard(membership = state.membership)
+            if (isStaff) {
+                Text("Membresía de socio no disponible para esta cuenta de gestión.", style = MaterialTheme.typography.bodyMedium)
+            } else {
+                MembershipStatusCard(membership = state.membership)
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 

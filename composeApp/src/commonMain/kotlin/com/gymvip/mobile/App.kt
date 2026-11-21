@@ -15,6 +15,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.gymvip.mobile.di.AppContainer
+import com.gymvip.mobile.notification.syncPushRegistration
 import com.gymvip.mobile.presentation.component.VipNavigationBar
 import com.gymvip.mobile.presentation.component.VipTopAppBar
 import com.gymvip.mobile.presentation.navigation.AppBackHandler
@@ -76,6 +77,12 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
             )
         }
         val authState by authViewModel.uiState.collectAsState()
+
+        LaunchedEffect(authState.isAuthenticated, authState.authenticatedProfile?.accountId) {
+            if (authState.isAuthenticated && authState.authenticatedProfile?.roles?.contains("CLIENTE") == true) {
+                syncPushRegistration()
+            }
+        }
 
         var currentDestination by remember { mutableStateOf<NavDestination>(NavDestination.Splash) }
         var currentTab by remember { mutableStateOf(MainTab.HOME) }
@@ -321,6 +328,8 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
 
             is NavDestination.Main -> {
                 val accountId = authState.authenticatedProfile?.accountId ?: "unknown_account"
+                val userRoles = authState.authenticatedProfile?.roles.orEmpty()
+                val isStaff = userRoles.any { it == "ADMIN" || it == "RECEPCION" } && !userRoles.contains("CLIENTE")
 
                 // ViewModels para la sesión del socio
                 val homeViewModel = remember(accountId) {
@@ -328,7 +337,8 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                         memberRepository = AppContainer.memberRepository,
                         getMembershipSummaryUseCase = AppContainer.getMembershipSummaryUseCase,
                         configRepository = AppContainer.configRepository,
-                        accountId = accountId
+                        accountId = accountId,
+                        isStaff = isStaff
                     )
                 }
 
@@ -336,7 +346,8 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                     MembershipViewModel(
                         getMembershipSummaryUseCase = AppContainer.getMembershipSummaryUseCase,
                         getPaymentHistoryUseCase = AppContainer.getPaymentHistoryUseCase,
-                        accountId = accountId
+                        accountId = accountId,
+                        isStaff = isStaff
                     )
                 }
 
@@ -361,8 +372,6 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                 DisposableEffect(inboxViewModel) {
                     onDispose { inboxViewModel.onCleared() }
                 }
-
-                val userRoles = authState.authenticatedProfile?.roles.orEmpty()
 
                 Scaffold(
                     topBar = {
@@ -403,6 +412,7 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                         when (currentTab) {
                             MainTab.HOME -> HomeScreen(
                                 viewModel = homeViewModel,
+                                isStaff = isStaff,
                                 onNavigateServices = { currentDestination = NavDestination.Services },
                                 onNavigateFaq = { currentDestination = NavDestination.Faq },
                                 onNavigateTab = { tab ->

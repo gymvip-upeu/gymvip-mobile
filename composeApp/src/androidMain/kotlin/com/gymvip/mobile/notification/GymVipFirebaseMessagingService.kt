@@ -55,11 +55,10 @@ class GymVipFirebaseMessagingService : FirebaseMessagingService() {
         serviceScope.launch {
             try {
                 if (AppContainer.isInitialized) {
-                    val memberApi = AppContainer.memberApi
                     val secureStore = AppContainer.secureTokenStore
                     val currentJwt = secureStore.getAccessToken()
                     if (!currentJwt.isNullOrBlank()) {
-                        memberApi.registerDevice(token)
+                        syncPushRegistration()
                     }
                 }
             } catch (e: Throwable) {

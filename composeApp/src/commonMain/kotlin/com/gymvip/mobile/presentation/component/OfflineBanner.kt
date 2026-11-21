@@ -25,7 +25,8 @@ enum class ConnectionNoticeType {
     NONE,
     OFFLINE_NETWORK,
     SERVER_ERROR,
-    SESSION_EXPIRED
+    SESSION_EXPIRED,
+    ACCESS_DENIED
 }
 
 @Composable
@@ -48,16 +49,17 @@ fun OfflineBanner(
 
     val icon = when (effectiveType) {
         ConnectionNoticeType.SESSION_EXPIRED -> Icons.Outlined.ErrorOutline
+        ConnectionNoticeType.ACCESS_DENIED -> Icons.Outlined.ErrorOutline
         ConnectionNoticeType.SERVER_ERROR -> Icons.Outlined.CloudOff
         ConnectionNoticeType.OFFLINE_NETWORK -> Icons.Outlined.WifiOff
         ConnectionNoticeType.NONE -> Icons.Outlined.Sync
     }
 
     val color = when (effectiveType) {
-        ConnectionNoticeType.SESSION_EXPIRED -> MaterialTheme.colorScheme.error
+        ConnectionNoticeType.SESSION_EXPIRED, ConnectionNoticeType.ACCESS_DENIED -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.onPrimaryContainer
     }
-    val background = if (effectiveType == ConnectionNoticeType.SESSION_EXPIRED) {
+    val background = if (effectiveType == ConnectionNoticeType.SESSION_EXPIRED || effectiveType == ConnectionNoticeType.ACCESS_DENIED) {
         MaterialTheme.colorScheme.surfaceVariant
     } else {
         MaterialTheme.colorScheme.primaryContainer
@@ -65,6 +67,7 @@ fun OfflineBanner(
 
     val defaultMessage = when (effectiveType) {
         ConnectionNoticeType.SESSION_EXPIRED -> "Sesión expirada. Por favor, vuelva a iniciar sesión para sincronizar sus datos."
+        ConnectionNoticeType.ACCESS_DENIED -> "Esta cuenta no tiene permiso para consultar estos datos."
         ConnectionNoticeType.SERVER_ERROR -> "El servidor de GYM VIP no responde temporalmente. Mostrando datos locales de su última sesión."
         ConnectionNoticeType.OFFLINE_NETWORK -> {
             if (pendingSyncCount > 0) {
