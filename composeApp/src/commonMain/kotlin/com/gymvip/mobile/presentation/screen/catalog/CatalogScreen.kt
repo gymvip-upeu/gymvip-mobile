@@ -1,6 +1,5 @@
 package com.gymvip.mobile.presentation.screen.catalog
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -13,13 +12,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ShoppingBag
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -46,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.domain.model.Product
@@ -57,7 +58,6 @@ import com.gymvip.mobile.presentation.component.EmptyView
 import com.gymvip.mobile.presentation.component.FavoriteItemCard
 import com.gymvip.mobile.presentation.component.LoadingView
 import com.gymvip.mobile.presentation.component.OfflineBanner
-import com.gymvip.mobile.presentation.component.ProductItemCard
 import com.gymvip.mobile.presentation.viewmodel.CatalogViewModel
 import com.gymvip.mobile.presentation.viewmodel.FavoritesViewModel
 import com.gymvip.mobile.presentation.theme.accentForeground
@@ -87,9 +87,16 @@ fun CatalogScreen(
             isOffline = catalogState.errorMessage != null,
             pendingSyncCount = favoritesState.pendingCount
         )
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Text("Suplementos", style = MaterialTheme.typography.headlineMedium)
+            Text("Explora productos y promociones disponibles en recepción.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         if (canPurchase) {
-            Button(onClick = onOpenCart, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                Text("Mi carrito ($cartCount) y pedidos")
+            OutlinedButton(onClick = onOpenCart, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                Icon(Icons.Outlined.ShoppingCart, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Mi carrito · $cartCount ${if (cartCount == 1) "producto" else "productos"} · Pedidos")
             }
         }
         cartError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp)) }
@@ -114,7 +121,7 @@ fun CatalogScreen(
             Tab(
                 selected = catalogState.selectedSubTab == 0,
                 onClick = { catalogViewModel.setSubTab(0) },
-                text = { Text("Catálogo General", style = MaterialTheme.typography.titleSmall) }
+                text = { Text("Productos", style = MaterialTheme.typography.titleSmall) }
             )
             Tab(
                 selected = catalogState.selectedSubTab == 1,
@@ -126,7 +133,7 @@ fun CatalogScreen(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(Icons.Outlined.StarBorder, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Text("Mis favoritos ($count)", style = MaterialTheme.typography.titleSmall)
+                        Text("Favoritos ($count)", style = MaterialTheme.typography.titleSmall)
                     }
                 }
             )
@@ -290,16 +297,12 @@ private fun CatalogTab(
     )
 
     Column(modifier = Modifier.fillMaxSize()) {
-        OutlinedTextField(
-            value = query, onValueChange = { query = it },
-            label = { Text("Nombre o marca") }, singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
-        )
-        OutlinedTextField(
-            value = maxPrice, onValueChange = { maxPrice = it },
+        OutlinedTextField(value = query, onValueChange = { query = it },
+            label = { Text("Buscar producto o marca") }, singleLine = true,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+        OutlinedTextField(value = maxPrice, onValueChange = { maxPrice = it },
             label = { Text("Precio máximo (S/)") }, singleLine = true, isError = badLimit,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
-        )
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -310,7 +313,7 @@ private fun CatalogTab(
             FilterChip(
                 selected = !state.onlyPromotions && !finishedOnly,
                 onClick = { finishedOnly = false; onFilterPromotions(false) },
-                label = { Text("Catálogo") },
+                label = { Text("Todos") },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = MaterialTheme.colorScheme.primary,
                     selectedLabelColor = MaterialTheme.colorScheme.onPrimary
@@ -319,7 +322,7 @@ private fun CatalogTab(
             FilterChip(
                 selected = state.onlyPromotions && !finishedOnly,
                 onClick = { finishedOnly = false; onFilterPromotions(true) },
-                label = { Text("Promociones vigentes") }
+                label = { Text("Promociones") }
             )
             FilterChip(
                 selected = finishedOnly,
@@ -374,28 +377,19 @@ private fun CatalogTab(
                 message = "No se encontraron elementos en esta categoría."
             )
         } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(visibleProducts, key = { it.id }) { product ->
-                    ProductItemCard(
-                        product = if (finishedOnly) product.copy(isPromotion = false, offer = null) else product,
-                        onAddToFavorites = onAddToFavorites,
-                        onViewDetails = { selectedId = product.id },
-                        thumbnail = {
-                            CatalogImage(product, loadThumbnail)
-                            val offer = if (finishedOnly) product.finishedOffer else product.offer
-                            offer?.let {
-                                Text(if (finishedOnly) "${it.name} · Finalizada" else it.name)
+            LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                visibleProducts.chunked(2).forEach { pair ->
+                    item(key = pair.joinToString("-") { it.id }) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            pair.forEach { product ->
+                                CatalogShopCard(product, finishedOnly, { selectedId = product.id },
+                                    onAddToFavorites, onAddToCart, { CatalogImage(product, loadThumbnail) },
+                                    Modifier.weight(1f))
                             }
-                            listOfNotNull(product.presentation, product.netContent)
-                                .filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }
-                                ?.let { Text(it.joinToString(" · ")) }
+                            if (pair.size == 1) Spacer(Modifier.weight(1f))
                         }
-                    )
+                    }
                 }
             }
         }
@@ -461,9 +455,13 @@ private fun CatalogImage(product: Product, loadThumbnail: suspend (String) -> By
             // The product details remain available if the thumbnail fails.
         }
     }
-    bitmap?.let {
-        Image(bitmap = it, contentDescription = product.name,
-            modifier = Modifier.fillMaxWidth().height(132.dp))
+    Box(Modifier.fillMaxWidth().height(164.dp).background(MaterialTheme.colorScheme.surfaceVariant),
+        contentAlignment = Alignment.Center) {
+        bitmap?.let {
+            androidx.compose.foundation.Image(bitmap = it, contentDescription = product.name,
+                modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+        } ?: Icon(Icons.Outlined.ShoppingBag, contentDescription = "Imagen no disponible de ${product.name}",
+            modifier = Modifier.size(38.dp), tint = MaterialTheme.colorScheme.primary)
     }
 }
 
