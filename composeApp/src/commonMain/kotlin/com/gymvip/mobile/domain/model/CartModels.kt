@@ -109,6 +109,15 @@ data class SupplementOrder(
     val hasPickupToken: Boolean
 )
 
+data class DigitalPaymentLink(
+    val id: String,
+    val orderId: String,
+    val amountPen: MoneyPen,
+    val status: String,
+    val url: String,
+    val expiresAt: String
+)
+
 /**
  * Ticket de Retiro en Mostrador.
  * Referencia opaca con advertencia tributaria explícita.

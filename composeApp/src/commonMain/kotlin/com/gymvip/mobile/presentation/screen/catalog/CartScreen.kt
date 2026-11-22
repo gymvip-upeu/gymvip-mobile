@@ -17,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -32,10 +33,13 @@ fun CartScreen(
     cart: ShoppingCart,
     activeOrder: SupplementOrder? = null,
     orders: List<SupplementOrder> = emptyList(),
+    digitalPaymentLink: DigitalPaymentLink? = null,
+    culqiEnabled: Boolean = false,
     errorMessage: String? = null,
     onQuantityChange: (String, Int) -> Unit,
     onClearCart: () -> Unit,
     onCheckoutOrder: (paymentMethod: String, notes: String) -> Unit = { _, _ -> },
+    onRefreshPaymentLink: () -> Unit = {},
     onSubmitPaymentEvidence: (reference: String, notes: String) -> Unit = { _, _ -> },
     onCancelOrder: (reason: String) -> Unit = {},
     onRefresh: () -> Unit = {},
@@ -47,7 +51,9 @@ fun CartScreen(
     var showTicketDialog by remember { mutableStateOf(false) }
     var showCancelDialog by remember { mutableStateOf(false) }
 
-    val selectedPaymentMethod = "EFECTIVO_MOSTRADOR"
+    var selectedPaymentMethod by remember { mutableStateOf("EFECTIVO_MOSTRADOR") }
+    val uriHandler = LocalUriHandler.current
+    val digitalAvailable = culqiEnabled && cart.totalPrice.cents in 600..999900
     var orderNotes by remember { mutableStateOf("") }
     var paymentReferenceInput by remember { mutableStateOf("") }
     var paymentNotesInput by remember { mutableStateOf("") }
@@ -72,7 +78,7 @@ fun CartScreen(
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
-                    text = "Reserva suplementos y paga en efectivo en el mostrador del gimnasio.",
+                    text = "Reserva suplementos y elige efectivo en recepción o pago seguro por enlace.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -87,9 +93,12 @@ fun CartScreen(
         if (activeOrder != null) {
             ActiveOrderBanner(
                 order = activeOrder,
+                digitalPaymentLink = digitalPaymentLink,
                 onViewTicket = { showTicketDialog = true },
                 onSubmitEvidence = { showEvidenceDialog = true },
-                onCancelOrder = { showCancelDialog = true }
+                onCancelOrder = { showCancelDialog = true },
+                onOpenPaymentLink = { url -> uriHandler.openUri(url) },
+                onRefreshPaymentLink = onRefreshPaymentLink
             )
             Spacer(modifier = Modifier.height(12.dp))
         }
@@ -155,7 +164,7 @@ fun CartScreen(
                     }
 
                     Text(
-                        text = "Al confirmar, el stock se reserva por 30 minutos mientras registras tu comprobante.",
+                        text = "Al confirmar, el stock se reserva por 30 minutos. El enlace digital vence antes de la reserva.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 8.dp)
@@ -196,7 +205,21 @@ fun CartScreen(
                         fontWeight = FontWeight.SemiBold,
                         color = GoldPrimary
                     )
-                    Text("Pago en efectivo en recepción. El pedido se confirmará cuando el personal registre el cobro.")
+                    Text("Elige cómo deseas pagar. El pedido se confirma únicamente después del cobro verificado.")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = selectedPaymentMethod == "EFECTIVO_MOSTRADOR", onClick = { selectedPaymentMethod = "EFECTIVO_MOSTRADOR" })
+                        Text("Efectivo en recepción")
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = selectedPaymentMethod == "TARJETA_PASARELA", enabled = digitalAvailable,
+                            onClick = { selectedPaymentMethod = "TARJETA_PASARELA" })
+                        Text(if (digitalAvailable) "Pago en línea con CulqiLink" else if (!culqiEnabled)
+                            "Pago en línea · pendiente de configuración" else "Pago en línea · importe fuera de rango")
+                    }
+                    if (selectedPaymentMethod == "TARJETA_PASARELA") {
+                        Text("Abrirás un enlace seguro de Culqi. Volver a la app no confirma el pago; espera el estado verificado.",
+                            style = MaterialTheme.typography.bodySmall)
+                    }
 
                     OutlinedTextField(
                         value = orderNotes,
@@ -219,6 +242,7 @@ fun CartScreen(
                         showCheckoutDialog = false
                         onCheckoutOrder(selectedPaymentMethod, orderNotes)
                     },
+                    enabled = selectedPaymentMethod != "TARJETA_PASARELA" || digitalAvailable,
                     colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary)
                 ) {
                     Text("Confirmar Pedido", color = Color.Black)
@@ -402,9 +426,12 @@ fun CartScreen(
 @Composable
 private fun ActiveOrderBanner(
     order: SupplementOrder,
+    digitalPaymentLink: DigitalPaymentLink?,
     onViewTicket: () -> Unit,
     onSubmitEvidence: () -> Unit,
-    onCancelOrder: () -> Unit
+    onCancelOrder: () -> Unit,
+    onOpenPaymentLink: (String) -> Unit,
+    onRefreshPaymentLink: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -450,10 +477,27 @@ private fun ActiveOrderBanner(
                         Text("Ver código de retiro", color = Color.Black)
                     }
                 } else if (order.paymentStatus == PaymentStatus.PENDIENTE) {
-                    Text("Pago pendiente en caja", style = MaterialTheme.typography.bodySmall)
-                    OutlinedButton(onClick = onCancelOrder) {
-                        Text("Cancelar")
-                    }
+                    if (order.paymentMethod == "TARJETA_PASARELA") {
+                        Column {
+                            val linkState = when (digitalPaymentLink?.status) {
+                                "PENDING" -> "enlace activo"
+                                "EXPIRED" -> "enlace vencido"
+                                "REVIEW" -> "pago en revisión"
+                                "PAID" -> "pago verificado"
+                                else -> "consultando enlace"
+                            }
+                            Text("Pago digital pendiente · $linkState",
+                                style = MaterialTheme.typography.bodySmall)
+                            if (digitalPaymentLink?.orderId == order.id && digitalPaymentLink.status == "PENDING") {
+                                Button(onClick = { onOpenPaymentLink(digitalPaymentLink.url) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary)) {
+                                    Text("Abrir pago seguro", color = Color.Black)
+                                }
+                            }
+                            TextButton(onClick = onRefreshPaymentLink) { Text("Actualizar estado") }
+                        }
+                    } else Text("Pago pendiente en caja", style = MaterialTheme.typography.bodySmall)
+                    OutlinedButton(onClick = onCancelOrder) { Text("Cancelar") }
                 }
             }
         }

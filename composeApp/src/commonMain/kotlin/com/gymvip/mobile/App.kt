@@ -29,6 +29,7 @@ import com.gymvip.mobile.presentation.screen.catalog.CatalogScreen
 import com.gymvip.mobile.presentation.screen.catalog.CartScreen
 import com.gymvip.mobile.domain.model.ShoppingCart
 import com.gymvip.mobile.domain.model.SupplementOrder
+import com.gymvip.mobile.domain.model.DigitalPaymentLink
 import com.gymvip.mobile.domain.model.OrderStatus
 import kotlin.random.Random
 import com.gymvip.mobile.presentation.screen.faq.FaqScreen
@@ -105,6 +106,8 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
         val profileAccountId = authState.authenticatedProfile?.accountId?.takeIf { it.isNotBlank() }
         var shoppingCart by remember(profileAccountId) { mutableStateOf(ShoppingCart()) }
         var orders by remember(profileAccountId) { mutableStateOf<List<SupplementOrder>>(emptyList()) }
+        var paymentLink by remember(profileAccountId) { mutableStateOf<DigitalPaymentLink?>(null) }
+        var culqiEnabled by remember(profileAccountId) { mutableStateOf(false) }
         var cartError by remember(profileAccountId) { mutableStateOf<String?>(null) }
         var checkoutKey by remember(profileAccountId) { mutableStateOf<String?>(null) }
         val orderApi = AppContainer.supplementOrderApi
@@ -118,10 +121,16 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                         order.copy(pickupToken = token, hasPickupToken = token != null)
                     } else order
                 }
+                val digital = orders.firstOrNull { it.paymentMethod == "TARJETA_PASARELA" && it.paymentStatus == com.gymvip.mobile.domain.model.PaymentStatus.PENDIENTE }
+                if (digital != null) {
+                    orderApi.paymentLinkForOrder(digital.id).onSuccess { paymentLink = it }
+                        .onFailure { cartError = it.message }
+                } else paymentLink = null
             }.onFailure { cartError = it.message }
         }
         LaunchedEffect(profileAccountId, authState.isAuthenticated) {
             if (authState.isAuthenticated && authState.authenticatedProfile?.roles?.contains("CLIENTE") == true) {
+                orderApi.paymentConfig().onSuccess { culqiEnabled = it }
                 refreshOrders()
             }
         }
@@ -280,6 +289,8 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                         cart = shoppingCart,
                         activeOrder = orders.firstOrNull { it.orderStatus !in setOf(OrderStatus.ENTREGADO, OrderStatus.CANCELADO, OrderStatus.RECHAZADO, OrderStatus.EXPIRADO, OrderStatus.DEVUELTO) },
                         orders = orders,
+                        digitalPaymentLink = paymentLink,
+                        culqiEnabled = culqiEnabled,
                         errorMessage = cartError,
                         onQuantityChange = { productId, quantity ->
                             coroutineScope.launch {
@@ -293,16 +304,26 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                                     .onFailure { cartError = it.message }
                             }
                         },
-                        onCheckoutOrder = { _, notes ->
+                        onCheckoutOrder = { method, notes ->
                             coroutineScope.launch {
                                 val key = checkoutKey ?: "mobile-${profileAccountId}-${Random.nextLong().toULong()}".also { checkoutKey = it }
-                                orderApi.checkoutCash(key, notes).onSuccess {
-                                    checkoutKey = null
-                                    cartError = null
-                                    refreshOrders()
-                                }.onFailure { cartError = it.message }
+                                if (method == "TARJETA_PASARELA") {
+                                    orderApi.checkoutDigital(key, notes).onSuccess {
+                                        paymentLink = it
+                                        checkoutKey = null
+                                        cartError = null
+                                        refreshOrders()
+                                    }.onFailure { cartError = it.message }
+                                } else {
+                                    orderApi.checkoutCash(key, notes).onSuccess {
+                                        checkoutKey = null
+                                        cartError = null
+                                        refreshOrders()
+                                    }.onFailure { cartError = it.message }
+                                }
                             }
                         },
+                        onRefreshPaymentLink = { coroutineScope.launch { refreshOrders() } },
                         onCancelOrder = { reason ->
                             val active = orders.firstOrNull { it.orderStatus == OrderStatus.PENDIENTE_PAGO }
                             if (active != null) coroutineScope.launch {

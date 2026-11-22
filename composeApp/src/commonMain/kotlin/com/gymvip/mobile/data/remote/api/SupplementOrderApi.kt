@@ -30,6 +30,18 @@ private data class UpdateCartRequest(val supplementId: String, val quantity: Int
 private data class CashCheckoutRequest(val paymentMethod: String, val customerNotes: String, val idempotencyKey: String)
 
 @Serializable
+private data class DigitalCheckoutRequest(val customerNotes: String, val idempotencyKey: String)
+
+@Serializable
+private data class PaymentConfigResponse(val culqiEnabled: Boolean = false)
+
+@Serializable
+private data class DigitalPaymentLinkResponse(
+    val id: String, val orderId: String, val amountPen: Double,
+    val status: String, val url: String, val expiresAt: String
+)
+
+@Serializable
 private data class CancelOrderRequest(val reason: String)
 
 @Serializable
@@ -83,6 +95,27 @@ class SupplementOrderApi(private val client: HttpClient) {
         response.body<OrderResponse>().toDomain()
     }
 
+    suspend fun paymentConfig(): Result<Boolean> = GymVipHttpClient.safeApiCall {
+        val response = client.get("$base/orders/payment-config")
+        if (!response.status.isSuccess()) throw GymVipHttpClient.parseResponseError(response)
+        response.body<PaymentConfigResponse>().culqiEnabled
+    }
+
+    suspend fun checkoutDigital(idempotencyKey: String, notes: String): Result<DigitalPaymentLink> = GymVipHttpClient.safeApiCall {
+        val response = client.post("$base/orders/checkout-culqi") {
+            contentType(ContentType.Application.Json)
+            setBody(DigitalCheckoutRequest(notes, idempotencyKey))
+        }
+        if (!response.status.isSuccess()) throw GymVipHttpClient.parseResponseError(response)
+        response.body<DigitalPaymentLinkResponse>().toDomain()
+    }
+
+    suspend fun paymentLinkForOrder(orderId: String): Result<DigitalPaymentLink> = GymVipHttpClient.safeApiCall {
+        val response = client.get("$base/orders/$orderId/payment-link")
+        if (!response.status.isSuccess()) throw GymVipHttpClient.parseResponseError(response)
+        response.body<DigitalPaymentLinkResponse>().toDomain()
+    }
+
     suspend fun orders(): Result<List<SupplementOrder>> = GymVipHttpClient.safeApiCall {
         val response = client.get("$base/orders")
         if (!response.status.isSuccess()) throw GymVipHttpClient.parseResponseError(response)
@@ -113,6 +146,10 @@ class SupplementOrderApi(private val client: HttpClient) {
             price, item.quantity
         )
     })
+
+    private fun DigitalPaymentLinkResponse.toDomain() = DigitalPaymentLink(
+        id, orderId, MoneyPen.fromDouble(amountPen), status, url, expiresAt
+    )
 
     private fun OrderResponse.toDomain() = SupplementOrder(
         id, orderNumber,
