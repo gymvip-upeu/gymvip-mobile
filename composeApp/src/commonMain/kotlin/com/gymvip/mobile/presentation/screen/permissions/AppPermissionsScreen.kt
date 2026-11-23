@@ -35,7 +35,7 @@ fun AppPermissionsScreen(onBack: () -> Unit) {
     SettingsPage(title = "Permisos de la aplicación", onBack = onBack) {
         PermissionCard(
             title = "Notificaciones",
-            description = "Recibe avisos del gimnasio en tu dispositivo.",
+            description = "Activa las alertas en tu dispositivo. Aunque las desactives, tus avisos seguirán disponibles al actualizar la bandeja.",
             icon = Icons.Outlined.Notifications,
             permission = notifications
         )

@@ -104,6 +104,9 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
         var currentTab by remember { mutableStateOf(MainTab.HOME) }
 
         val profileAccountId = authState.authenticatedProfile?.accountId?.takeIf { it.isNotBlank() }
+        val pendingPush by com.gymvip.mobile.notification.PushNavigation.pending.collectAsState()
+        val inboxRevision by com.gymvip.mobile.notification.PushNavigation.inboxRevision.collectAsState()
+        var requestedInboxItem by remember(profileAccountId) { mutableStateOf<String?>(null) }
         var shoppingCart by remember(profileAccountId) { mutableStateOf(ShoppingCart()) }
         var orders by remember(profileAccountId) { mutableStateOf<List<SupplementOrder>>(emptyList()) }
         var paymentLink by remember(profileAccountId) { mutableStateOf<DigitalPaymentLink?>(null) }
@@ -208,6 +211,29 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                 val onboardingSeen = AppContainer.configRepository.getBooleanPreference("onboarding_completed", false)
                 currentDestination = if (onboardingSeen) NavDestination.Login else NavDestination.Onboarding
             }
+        }
+
+        LaunchedEffect(pendingPush, profileAccountId, authState.isAuthenticated, currentDestination) {
+            val target = pendingPush ?: return@LaunchedEffect
+            if (!authState.isAuthenticated) return@LaunchedEffect
+            if (target.accountId != profileAccountId || authState.authenticatedProfile?.roles?.contains("CLIENTE") != true) {
+                com.gymvip.mobile.notification.PushNavigation.clear()
+                return@LaunchedEffect
+            }
+            val destination = currentDestination
+            if (destination is NavDestination.Splash || destination is NavDestination.Login ||
+                destination is NavDestination.PostLoginPermissions ||
+                (destination is NavDestination.TermsAndPrivacy && destination.requiresAcceptance)) return@LaunchedEffect
+            if (target.destination == com.gymvip.mobile.notification.PushDestination.ORDERS) {
+                currentDestination = NavDestination.Cart
+                com.gymvip.mobile.notification.PushNavigation.clear()
+                refreshOrders()
+                return@LaunchedEffect
+            }
+            requestedInboxItem = target.itemId
+            currentTab = MainTab.INBOX
+            currentDestination = NavDestination.Main(MainTab.INBOX)
+            com.gymvip.mobile.notification.PushNavigation.clear()
         }
 
         when (val dest = currentDestination) {
@@ -490,6 +516,12 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                 }
                 DisposableEffect(inboxViewModel) {
                     onDispose { inboxViewModel.onCleared() }
+                }
+                LaunchedEffect(requestedInboxItem, accountId) {
+                    requestedInboxItem?.let { inboxViewModel.openFromPush(it); requestedInboxItem = null }
+                }
+                LaunchedEffect(inboxRevision) {
+                    if (inboxRevision > 0) inboxViewModel.refresh()
                 }
 
                 Scaffold(

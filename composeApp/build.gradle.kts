@@ -122,6 +122,12 @@ kotlin {
             implementation(libs.ktor.client.mock)
             implementation(libs.sqldelight.sqlite.driver)
         }
+        val androidInstrumentedTest by getting {
+            dependencies {
+                implementation("androidx.test:runner:1.6.2")
+                implementation("junit:junit:4.13.2")
+            }
+        }
     }
 }
 

@@ -1,6 +1,10 @@
 package com.gymvip.mobile
 
 import android.os.Bundle
+import android.content.Intent
+import com.gymvip.mobile.notification.PushDeviceRuntime
+import com.gymvip.mobile.notification.PushNavigation
+import com.gymvip.mobile.notification.syncPushRegistration
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.biometric.BiometricManager
@@ -46,6 +50,7 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.Theme_GymVip)
         super.onCreate(savedInstanceState)
+        handleNoticeIntent(intent)
         enableEdgeToEdge()
         LocalBiometricGate.isAvailable = {
             BiometricManager.from(this).canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) ==
@@ -116,6 +121,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onStart() {
         super.onStart()
+        scope.launch { syncPushRegistration() }
         if (stoppedWithLock) {
             stoppedWithLock = false
             scope.launch {
@@ -123,6 +129,24 @@ class MainActivity : FragmentActivity() {
                 else window.decorView.post {
                     requestBiometric { if (it) LocalBiometricGate.unlock() }
                 }
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleNoticeIntent(intent)
+    }
+
+    private fun handleNoticeIntent(intent: Intent?) {
+        val account = intent?.getStringExtra("pushAccountId") ?: return
+        val item = intent.getStringExtra("pushItemId") ?: return
+        val tag = intent.getStringExtra("pushSessionTag") ?: return
+        scope.launch {
+            if (PushDeviceRuntime.owns(account, tag)) {
+                if (intent.getStringExtra("pushType") == "GYMVIP_ORDERS" && item == "ORDERS") PushNavigation.offerOrders(account)
+                else PushNavigation.offer(account, item)
             }
         }
     }

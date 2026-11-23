@@ -34,5 +34,7 @@ open class GymVipApplication : Application() {
         val driverFactory = DatabaseDriverFactory(this)
         val secureStore = PlatformSecureTokenStore(this)
         AppContainer.initialize(driverFactory, secureStore, createClientEngine())
+        com.gymvip.mobile.notification.PushDeviceRuntime.initialize(this)
+        GymVipFirebaseMessagingService.createNotificationChannel(this)
     }
 }

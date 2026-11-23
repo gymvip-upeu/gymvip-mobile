@@ -23,7 +23,10 @@ data class InboxUiState(
     val loadErrorMessage: String? = null,
     val readingId: String? = null,
     val readFailed: Boolean = false,
-    val readErrorMessage: String? = null
+    val readErrorMessage: String? = null,
+    val pushItemId: String? = null,
+    val openedItemId: String? = null,
+    val pushErrorMessage: String? = null
 ) {
     val unreadCount: Int get() = items.count { !it.isRead }
 }
@@ -39,7 +42,7 @@ class InboxViewModel(
 
     init {
         getInboxUseCase.observe(accountId).onEach { list ->
-            _uiState.update { it.copy(items = list) }
+            _uiState.update { it.copy(items = list.filter { item -> item.accountId == accountId }) }
         }.launchIn(scope)
 
         refresh()
@@ -50,9 +53,30 @@ class InboxViewModel(
         refreshJob = scope.launch {
             _uiState.update { it.copy(isLoading = true) }
             val result = getInboxUseCase.refresh(accountId)
-            _uiState.update { it.copy(isLoading = false, loadFailed = result.isFailure,
-                loadErrorMessage = result.exceptionOrNull()?.let(::describeInboxError)) }
+            _uiState.update { current ->
+                val items = result.getOrNull()?.filter { it.accountId == accountId } ?: current.items
+                val target = current.pushItemId
+                val found = target != null && items.any { it.id == target }
+                current.copy(items = items, isLoading = false, loadFailed = result.isFailure,
+                    loadErrorMessage = result.exceptionOrNull()?.let(::describeInboxError),
+                    openedItemId = if (found) target else null,
+                    pushErrorMessage = when {
+                        target == null || found -> null
+                        result.isFailure -> "No pudimos descargar este aviso. Conéctate y pulsa Reintentar."
+                        else -> "Este aviso ya no está disponible para tu cuenta."
+                    })
+            }
         }
+    }
+
+    fun openFromPush(itemId: String) {
+        _uiState.update { it.copy(pushItemId = itemId, pushErrorMessage = null,
+            openedItemId = it.items.firstOrNull { item -> item.id == itemId && item.accountId == accountId }?.id) }
+        refresh()
+    }
+
+    fun dismissPush() {
+        _uiState.update { it.copy(pushItemId = null, openedItemId = null, pushErrorMessage = null) }
     }
 
     fun markAsRead(itemId: String) {

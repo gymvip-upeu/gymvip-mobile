@@ -220,6 +220,7 @@ class AuthRepositoryImpl(
 
     override suspend fun logout(): Result<Unit> {
         val accountId = secureTokenStore.getAccountId()
+        com.gymvip.mobile.notification.clearPushRegistration()
         try {
             authApi.logout()
         } catch (_: Exception) {
