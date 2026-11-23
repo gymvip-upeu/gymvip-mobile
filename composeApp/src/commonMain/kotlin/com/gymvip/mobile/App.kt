@@ -15,6 +15,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.gymvip.mobile.di.AppContainer
+import com.gymvip.mobile.notification.syncPushRegistration
 import com.gymvip.mobile.presentation.component.VipNavigationBar
 import com.gymvip.mobile.presentation.component.VipTopAppBar
 import com.gymvip.mobile.presentation.navigation.AppBackHandler
@@ -25,6 +26,12 @@ import com.gymvip.mobile.presentation.screen.auth.LoginScreen
 import com.gymvip.mobile.presentation.screen.auth.PasswordRecoveryScreen
 import com.gymvip.mobile.presentation.screen.catalog.AdminProductScannerScreen
 import com.gymvip.mobile.presentation.screen.catalog.CatalogScreen
+import com.gymvip.mobile.presentation.screen.catalog.CartScreen
+import com.gymvip.mobile.domain.model.ShoppingCart
+import com.gymvip.mobile.domain.model.SupplementOrder
+import com.gymvip.mobile.domain.model.DigitalPaymentLink
+import com.gymvip.mobile.domain.model.OrderStatus
+import kotlin.random.Random
 import com.gymvip.mobile.presentation.screen.faq.FaqScreen
 import com.gymvip.mobile.presentation.screen.home.HomeScreen
 import com.gymvip.mobile.presentation.screen.inbox.InboxScreen
@@ -42,6 +49,7 @@ import com.gymvip.mobile.presentation.screen.settings.SettingsScreen
 import com.gymvip.mobile.presentation.screen.services.ServicesScreen
 import com.gymvip.mobile.presentation.screen.splash.OnboardingScreen
 import com.gymvip.mobile.presentation.screen.splash.SplashScreen
+import com.gymvip.mobile.presentation.security.LocalBiometricGate
 import com.gymvip.mobile.presentation.theme.GymVipTheme
 import com.gymvip.mobile.presentation.viewmodel.AuthViewModel
 import com.gymvip.mobile.presentation.viewmodel.CatalogViewModel
@@ -77,10 +85,55 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
         }
         val authState by authViewModel.uiState.collectAsState()
 
+        LaunchedEffect(authState.isAuthenticated, authState.authenticatedProfile?.accountId) {
+            val accountId = authState.authenticatedProfile?.accountId?.takeIf { authState.isAuthenticated }
+            AppContainer.configRepository.setActiveAccount(accountId)
+            LocalBiometricGate.enabled = if (accountId != null) {
+                AppContainer.configRepository.getBooleanPreference("biometric_lock_enabled", false)
+            } else false
+            if (accountId == null) LocalBiometricGate.unlock()
+        }
+
+        LaunchedEffect(authState.isAuthenticated, authState.authenticatedProfile?.accountId) {
+            if (authState.isAuthenticated && authState.authenticatedProfile?.roles?.contains("CLIENTE") == true) {
+                syncPushRegistration()
+            }
+        }
+
         var currentDestination by remember { mutableStateOf<NavDestination>(NavDestination.Splash) }
         var currentTab by remember { mutableStateOf(MainTab.HOME) }
 
         val profileAccountId = authState.authenticatedProfile?.accountId?.takeIf { it.isNotBlank() }
+        var shoppingCart by remember(profileAccountId) { mutableStateOf(ShoppingCart()) }
+        var orders by remember(profileAccountId) { mutableStateOf<List<SupplementOrder>>(emptyList()) }
+        var paymentLink by remember(profileAccountId) { mutableStateOf<DigitalPaymentLink?>(null) }
+        var culqiEnabled by remember(profileAccountId) { mutableStateOf(false) }
+        var cartError by remember(profileAccountId) { mutableStateOf<String?>(null) }
+        var checkoutKey by remember(profileAccountId) { mutableStateOf<String?>(null) }
+        val orderApi = AppContainer.supplementOrderApi
+        suspend fun refreshOrders() {
+            orderApi.cart().onSuccess { shoppingCart = it }.onFailure { cartError = it.message }
+            orderApi.orders().onSuccess { remote ->
+                orders = remote.map { order ->
+                    if (order.hasPickupToken && order.orderStatus == OrderStatus.LISTO_PARA_RETIRO) {
+                        val token = orderApi.pickupToken(order.id)
+                            .onFailure { cartError = it.message }.getOrNull()
+                        order.copy(pickupToken = token, hasPickupToken = token != null)
+                    } else order
+                }
+                val digital = orders.firstOrNull { it.paymentMethod == "TARJETA_PASARELA" && it.paymentStatus == com.gymvip.mobile.domain.model.PaymentStatus.PENDIENTE }
+                if (digital != null) {
+                    orderApi.paymentLinkForOrder(digital.id).onSuccess { paymentLink = it }
+                        .onFailure { cartError = it.message }
+                } else paymentLink = null
+            }.onFailure { cartError = it.message }
+        }
+        LaunchedEffect(profileAccountId, authState.isAuthenticated) {
+            if (authState.isAuthenticated && authState.authenticatedProfile?.roles?.contains("CLIENTE") == true) {
+                orderApi.paymentConfig().onSuccess { culqiEnabled = it }
+                refreshOrders()
+            }
+        }
         val profileViewModel = if (authState.isAuthenticated && profileAccountId != null) {
             remember(profileAccountId) {
                 ProfileViewModel(memberRepository = AppContainer.memberRepository, accountId = profileAccountId)
@@ -96,6 +149,7 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
             NavDestination.EditProfile, NavDestination.Preferences, NavDestination.Permissions,
             NavDestination.AccountSecurity -> NavDestination.Settings
             NavDestination.ConfirmEmail -> NavDestination.AccountSecurity
+            NavDestination.Cart -> NavDestination.Main(MainTab.CATALOG)
             is NavDestination.TermsAndPrivacy -> if (destination.requiresAcceptance) null else NavDestination.Settings
             else -> null
         }
@@ -113,6 +167,9 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                     currentDestination = NavDestination.Login
                     return@LaunchedEffect
                 }
+
+                AppContainer.configRepository.setActiveAccount(accountId)
+                currentTab = MainTab.HOME
 
                 val consent = AppContainer.legalConsentRepository.fetchConsent(accountId).getOrNull()
                 val hasRequiredConsent = consent?.let {
@@ -226,6 +283,60 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                 )
             }
 
+            is NavDestination.Cart -> {
+                if (authState.isAuthenticated && authState.authenticatedProfile?.roles?.contains("CLIENTE") == true) {
+                    CartScreen(
+                        cart = shoppingCart,
+                        activeOrder = orders.firstOrNull { it.orderStatus !in setOf(OrderStatus.ENTREGADO, OrderStatus.CANCELADO, OrderStatus.RECHAZADO, OrderStatus.EXPIRADO, OrderStatus.DEVUELTO) },
+                        orders = orders,
+                        digitalPaymentLink = paymentLink,
+                        culqiEnabled = culqiEnabled,
+                        errorMessage = cartError,
+                        onQuantityChange = { productId, quantity ->
+                            coroutineScope.launch {
+                                orderApi.setQuantity(productId, quantity).onSuccess { shoppingCart = it; cartError = null }
+                                    .onFailure { cartError = it.message }
+                            }
+                        },
+                        onClearCart = {
+                            coroutineScope.launch {
+                                orderApi.clearCart().onSuccess { shoppingCart = ShoppingCart(); cartError = null }
+                                    .onFailure { cartError = it.message }
+                            }
+                        },
+                        onCheckoutOrder = { method, notes ->
+                            coroutineScope.launch {
+                                val key = checkoutKey ?: "mobile-${profileAccountId}-${Random.nextLong().toULong()}".also { checkoutKey = it }
+                                if (method == "TARJETA_PASARELA") {
+                                    orderApi.checkoutDigital(key, notes).onSuccess {
+                                        paymentLink = it
+                                        checkoutKey = null
+                                        cartError = null
+                                        refreshOrders()
+                                    }.onFailure { cartError = it.message }
+                                } else {
+                                    orderApi.checkoutCash(key, notes).onSuccess {
+                                        checkoutKey = null
+                                        cartError = null
+                                        refreshOrders()
+                                    }.onFailure { cartError = it.message }
+                                }
+                            }
+                        },
+                        onRefreshPaymentLink = { coroutineScope.launch { refreshOrders() } },
+                        onCancelOrder = { reason ->
+                            val active = orders.firstOrNull { it.orderStatus == OrderStatus.PENDIENTE_PAGO }
+                            if (active != null) coroutineScope.launch {
+                                orderApi.cancel(active.id, reason).onSuccess { refreshOrders() }
+                                    .onFailure { cartError = it.message }
+                            }
+                        },
+                        onRefresh = { coroutineScope.launch { refreshOrders() } },
+                        onBack = { currentDestination = NavDestination.Main(MainTab.CATALOG) }
+                    )
+                }
+            }
+
             is NavDestination.MemberCheckInScanner -> {
                 MemberCheckInScannerScreen(
                     memberRepository = AppContainer.memberRepository,
@@ -259,6 +370,7 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                 SettingsScreen(
                     onBack = { currentDestination = NavDestination.Main(MainTab.PROFILE) },
                     onEditProfile = { currentDestination = NavDestination.EditProfile },
+                    canEditProfile = authState.authenticatedProfile?.roles?.contains("CLIENTE") == true,
                     onAccountSecurity = { currentDestination = NavDestination.AccountSecurity },
                     onPermissions = { currentDestination = NavDestination.Permissions },
                     onAppearance = { currentDestination = NavDestination.Preferences },
@@ -273,6 +385,7 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                         viewModel = it,
                         onBack = { currentDestination = NavDestination.Settings },
                         onChangePassword = { currentDestination = NavDestination.ConfirmEmail },
+                        isMember = authState.authenticatedProfile?.roles?.contains("CLIENTE") == true,
                         onAccountDeleted = {
                             authViewModel.logout()
                             currentDestination = NavDestination.Login
@@ -320,7 +433,22 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
             }
 
             is NavDestination.Main -> {
+                if (!authState.isAuthenticated) {
+                    LoginScreen(
+                        viewModel = authViewModel,
+                        onNavigateToActivation = { currentDestination = NavDestination.Activation },
+                        onNavigateToRecovery = { currentDestination = NavDestination.PasswordRecovery }
+                    )
+                    return@GymVipTheme
+                }
                 val accountId = authState.authenticatedProfile?.accountId ?: "unknown_account"
+                val userRoles = authState.authenticatedProfile?.roles.orEmpty()
+                val isStaff = userRoles.any { it == "ADMIN" || it == "RECEPCION" || it == "AUDITOR" } && !userRoles.contains("CLIENTE")
+                val visibleTabs = when {
+                    userRoles.contains("CLIENTE") -> MainTab.entries
+                    userRoles.contains("AUDITOR") && !userRoles.contains("ADMIN") -> listOf(MainTab.HOME, MainTab.PROFILE)
+                    else -> listOf(MainTab.HOME, MainTab.CATALOG, MainTab.INBOX, MainTab.PROFILE)
+                }
 
                 // ViewModels para la sesión del socio
                 val homeViewModel = remember(accountId) {
@@ -328,7 +456,8 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                         memberRepository = AppContainer.memberRepository,
                         getMembershipSummaryUseCase = AppContainer.getMembershipSummaryUseCase,
                         configRepository = AppContainer.configRepository,
-                        accountId = accountId
+                        accountId = accountId,
+                        isStaff = isStaff
                     )
                 }
 
@@ -336,11 +465,12 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                     MembershipViewModel(
                         getMembershipSummaryUseCase = AppContainer.getMembershipSummaryUseCase,
                         getPaymentHistoryUseCase = AppContainer.getPaymentHistoryUseCase,
-                        accountId = accountId
+                        accountId = accountId,
+                        isStaff = isStaff
                     )
                 }
 
-                val catalogViewModel = remember {
+                val catalogViewModel = remember(accountId) {
                     CatalogViewModel(getCatalogUseCase = AppContainer.getCatalogUseCase)
                 }
 
@@ -361,8 +491,6 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                 DisposableEffect(inboxViewModel) {
                     onDispose { inboxViewModel.onCleared() }
                 }
-
-                val userRoles = authState.authenticatedProfile?.roles.orEmpty()
 
                 Scaffold(
                     topBar = {
@@ -388,9 +516,12 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                     bottomBar = {
                         VipNavigationBar(
                             currentTab = currentTab,
+                            visibleTabs = visibleTabs,
                             onTabSelected = { tab ->
-                                currentTab = tab
-                                currentDestination = NavDestination.Main(tab)
+                                if (tab in visibleTabs) {
+                                    currentTab = tab
+                                    currentDestination = NavDestination.Main(tab)
+                                }
                             }
                         )
                     }
@@ -403,6 +534,8 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                         when (currentTab) {
                             MainTab.HOME -> HomeScreen(
                                 viewModel = homeViewModel,
+                                isStaff = isStaff,
+                                userRoles = userRoles,
                                 onNavigateServices = { currentDestination = NavDestination.Services },
                                 onNavigateFaq = { currentDestination = NavDestination.Faq },
                                 onNavigateTab = { tab ->
@@ -411,7 +544,7 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                                 },
                                 onNavigateCheckInScanner = { currentDestination = NavDestination.MemberCheckInScanner }
                             )
-                            MainTab.MEMBERSHIP -> MembershipScreen(
+                            MainTab.MEMBERSHIP -> if (!isStaff) MembershipScreen(
                                 viewModel = membershipViewModel,
                                 userRoles = userRoles,
                                 onNavigateToCatalog = {
@@ -422,7 +555,18 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                             MainTab.CATALOG -> CatalogScreen(
                                 catalogViewModel = catalogViewModel,
                                 favoritesViewModel = favoritesViewModel,
-                                receptionWhatsAppNumber = AppContainer.configRepository.receptionWhatsAppNumber
+                                receptionWhatsAppNumber = AppContainer.configRepository.receptionWhatsAppNumber,
+                                canPurchase = userRoles.contains("CLIENTE"),
+                                cartCount = shoppingCart.totalQuantity,
+                                cartError = cartError,
+                                onOpenCart = { currentDestination = NavDestination.Cart },
+                                onAddToCart = { product ->
+                                    coroutineScope.launch {
+                                        val quantity = shoppingCart.items.firstOrNull { it.product.id == product.id }?.quantity ?: 0
+                                        orderApi.setQuantity(product.id, quantity + 1).onSuccess { shoppingCart = it; cartError = null }
+                                            .onFailure { cartError = it.message }
+                                    }
+                                }
                             )
                             MainTab.INBOX -> InboxScreen(viewModel = inboxViewModel)
                             MainTab.PROFILE -> profileViewModel?.let {

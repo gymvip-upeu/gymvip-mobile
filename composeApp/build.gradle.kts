@@ -81,6 +81,7 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.security.crypto)
+            implementation(libs.androidx.biometric)
             implementation(libs.androidx.camera.core)
             implementation(libs.androidx.camera.camera2)
             implementation(libs.androidx.camera.lifecycle)
@@ -134,14 +135,17 @@ android {
         targetSdk = 34
         buildConfigField("boolean", "FIREBASE_ENABLED", firebaseEnabled.toString())
         buildConfigField("String", "RECEPTION_WHATSAPP", "\"$receptionNumber\"")
-        versionCode = 3
-        versionName = "1.1.1"
+        versionCode = 6
+        versionName = "1.1.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+        jniLibs {
+            useLegacyPackaging = true
         }
     }
 
@@ -159,6 +163,7 @@ android {
         getByName("debug") {
             enableV1Signing = true
             enableV2Signing = true
+            enableV3Signing = true
         }
         create("release") {
             val rawPath = System.getenv("GYMVIP_KEYSTORE_PATH")
@@ -176,14 +181,7 @@ android {
                     ?: keystoreProps.getProperty("keyPassword")
                 enableV1Signing = true
                 enableV2Signing = true
-            } else {
-                val debugConfig = getByName("debug")
-                storeFile = debugConfig.storeFile
-                storePassword = debugConfig.storePassword
-                keyAlias = debugConfig.keyAlias
-                keyPassword = debugConfig.keyPassword
-                enableV1Signing = true
-                enableV2Signing = true
+                enableV3Signing = true
             }
         }
     }

@@ -24,11 +24,12 @@ class MemberRepositoryImpl(
 
     private val syncMutex = Mutex()
     private var lastWorkspaceSyncTime: Long = 0L
+    private var lastWorkspaceAccountId: String? = null
     private val syncCooldownMillis: Long = 5_000L // 5 segundos de reutilización coherente
 
     private suspend fun syncWorkspaceIfStale(accountId: String): Result<Unit> = syncMutex.withLock {
         val nowMillis = Clock.System.now().toEpochMilliseconds()
-        if (nowMillis - lastWorkspaceSyncTime < syncCooldownMillis) {
+        if (lastWorkspaceAccountId == accountId && nowMillis - lastWorkspaceSyncTime < syncCooldownMillis) {
             return Result.success(Unit)
         }
 
@@ -79,6 +80,7 @@ class MemberRepositoryImpl(
                 }
             }
             lastWorkspaceSyncTime = nowMillis
+            lastWorkspaceAccountId = accountId
         }
     }
 
@@ -132,6 +134,26 @@ class MemberRepositoryImpl(
                 lastSyncedAt = domain.lastSyncedAt
             )
             domain
+        }
+    }
+
+    override suspend fun updateOwnProfile(accountId: String, firstName: String, lastName: String, phone: String): Result<MemberProfile> {
+        return memberApi.updateOwnProfile(firstName, lastName, phone).map { client ->
+            val now = Clock.System.now().toString()
+            val profile = com.gymvip.mobile.data.remote.dto.MemberWorkspaceDto(client = client)
+                .toProfileDto().toDomain(now).copy(accountId = accountId)
+            database.gymVipDatabaseQueries.insertOrReplaceProfile(
+                accountId = accountId,
+                email = profile.email,
+                firstName = profile.firstName,
+                lastName = profile.lastName,
+                documentType = profile.documentType,
+                documentNumber = profile.documentNumber,
+                phone = profile.phone,
+                status = profile.status.name,
+                lastSyncedAt = profile.lastSyncedAt
+            )
+            profile
         }
     }
 

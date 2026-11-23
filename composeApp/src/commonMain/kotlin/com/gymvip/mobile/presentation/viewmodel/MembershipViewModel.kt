@@ -1,9 +1,11 @@
 package com.gymvip.mobile.presentation.viewmodel
 
+import com.gymvip.mobile.domain.error.AppError
 import com.gymvip.mobile.domain.model.MembershipSummary
 import com.gymvip.mobile.domain.model.PaymentSummary
 import com.gymvip.mobile.domain.usecase.GetMembershipSummaryUseCase
 import com.gymvip.mobile.domain.usecase.GetPaymentHistoryUseCase
+import com.gymvip.mobile.presentation.component.ConnectionNoticeType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,6 +23,7 @@ data class MembershipUiState(
     val payments: List<PaymentSummary> = emptyList(),
     val selectedSubTab: Int = 0, // 0 = Resumen de Membresía, 1 = Historial de Pagos
     val isOffline: Boolean = false,
+    val noticeType: ConnectionNoticeType = ConnectionNoticeType.NONE,
     val errorMessage: String? = null
 )
 
@@ -28,6 +31,7 @@ class MembershipViewModel(
     private val getMembershipSummaryUseCase: GetMembershipSummaryUseCase,
     private val getPaymentHistoryUseCase: GetPaymentHistoryUseCase,
     private val accountId: String,
+    private val isStaff: Boolean = false,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 ) {
     private val _uiState = MutableStateFlow(MembershipUiState())
@@ -53,21 +57,34 @@ class MembershipViewModel(
     }
 
     fun refresh() {
+        if (isStaff) {
+            _uiState.value = _uiState.value.copy(isLoading = false, isOffline = false, errorMessage = null)
+            return
+        }
         scope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             val memResult = getMembershipSummaryUseCase.refresh(accountId)
             val payResult = getPaymentHistoryUseCase.refresh(accountId)
 
             if (memResult.isFailure && payResult.isFailure) {
+                val error = memResult.exceptionOrNull() ?: payResult.exceptionOrNull()
+                val notice = when (error) {
+                    is AppError.Network -> ConnectionNoticeType.OFFLINE_NETWORK
+                    is AppError.Server -> ConnectionNoticeType.SERVER_ERROR
+                    is AppError.Unauthorized -> ConnectionNoticeType.SESSION_EXPIRED
+                    else -> ConnectionNoticeType.ACCESS_DENIED
+                }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    isOffline = true,
-                    errorMessage = "No se pudo actualizar con el servidor. Mostrando información local archivada."
+                    isOffline = notice == ConnectionNoticeType.OFFLINE_NETWORK || notice == ConnectionNoticeType.SERVER_ERROR,
+                    noticeType = notice,
+                    errorMessage = error?.message ?: "No se pudo actualizar la membresía."
                 )
             } else {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     isOffline = false,
+                    noticeType = ConnectionNoticeType.NONE,
                     errorMessage = null
                 )
             }

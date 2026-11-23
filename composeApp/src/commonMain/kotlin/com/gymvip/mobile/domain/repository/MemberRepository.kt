@@ -11,6 +11,7 @@ interface MemberRepository {
     fun observePayments(accountId: String): Flow<List<PaymentSummary>>
 
     suspend fun refreshProfile(accountId: String): Result<MemberProfile>
+    suspend fun updateOwnProfile(accountId: String, firstName: String, lastName: String, phone: String): Result<MemberProfile>
     suspend fun refreshMembership(accountId: String): Result<MembershipSummary>
     suspend fun refreshPayments(accountId: String): Result<List<PaymentSummary>>
     suspend fun checkInWithReceptionQr(challenge: String): Result<com.gymvip.mobile.domain.model.MemberCheckInResult>

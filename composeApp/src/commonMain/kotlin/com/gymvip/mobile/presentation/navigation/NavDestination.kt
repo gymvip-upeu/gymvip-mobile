@@ -23,6 +23,7 @@ sealed class NavDestination {
     data object Preferences : NavDestination()
     data object Services : NavDestination()
     data object AdminScanner : NavDestination()
+    data object Cart : NavDestination()
     data object MemberCheckInScanner : NavDestination()
     data object Permissions : NavDestination()
     data object PostLoginPermissions : NavDestination()

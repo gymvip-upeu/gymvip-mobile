@@ -101,6 +101,10 @@ class SyncQueueManagerTest {
         val api = FavoriteApi(client)
         val queueManager = SyncQueueManager(database, api)
 
+        database.gymVipDatabaseQueries.insertOrReplaceFavorite(
+            "temp_local_id", "acc_1", "prod_1", "Proteína", "SUPLEMENTO", 16500L,
+            "Nota de prueba", "2026-10-15T10:00:00Z", "2026-10-15T10:00:00Z", "PENDING_CREATE"
+        )
         // Encolar y procesar
         queueManager.enqueueFavoriteCreate("temp_local_id", "acc_1", "prod_1", "Nota de prueba")
         val processed = queueManager.processQueue("acc_1").getOrThrow()

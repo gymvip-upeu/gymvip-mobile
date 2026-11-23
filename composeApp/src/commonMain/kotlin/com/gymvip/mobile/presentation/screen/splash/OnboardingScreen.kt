@@ -1,7 +1,9 @@
 package com.gymvip.mobile.presentation.screen.splash
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +36,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -42,12 +45,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gymvip.mobile.presentation.component.GymVipLogo
 import com.gymvip.mobile.presentation.theme.LocalGymVipSystemTheme
+import gymvip_mobile.composeapp.generated.resources.Res
+import gymvip_mobile.composeapp.generated.resources.onboarding_qr
+import gymvip_mobile.composeapp.generated.resources.onboarding_supplements
+import gymvip_mobile.composeapp.generated.resources.onboarding_welcome
+import gymvip_mobile.composeapp.generated.resources.onboarding_community
+import org.jetbrains.compose.resources.painterResource
 
 data class OnboardingPageData(
     val title: String,
@@ -97,11 +108,23 @@ fun OnboardingScreen(
     }
 
     var currentPage by remember { mutableIntStateOf(0) }
+    var dragDistance by remember { mutableFloatStateOf(0f) }
     val isLastPage = currentPage == pages.size - 1
 
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .pointerInput(pages.size) {
+                detectHorizontalDragGestures(
+                    onDragStart = { dragDistance = 0f },
+                    onDragEnd = {
+                        if (dragDistance < -80f && currentPage < pages.lastIndex) currentPage++
+                        if (dragDistance > 80f && currentPage > 0) currentPage--
+                        dragDistance = 0f
+                    },
+                    onHorizontalDrag = { _, amount -> dragDistance += amount }
+                )
+            }
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
@@ -113,6 +136,28 @@ fun OnboardingScreen(
             )
             .systemBarsPadding()
     ) {
+        val background = when (currentPage) {
+            0 -> Res.drawable.onboarding_welcome
+            1 -> Res.drawable.onboarding_qr
+            2 -> Res.drawable.onboarding_supplements
+            else -> Res.drawable.onboarding_community
+        }
+        Image(
+            painter = painterResource(background),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    0.0f to Color(0xB30B1320),
+                    0.35f to Color(0x730B1320),
+                    0.70f to Color(0x990B1320),
+                    1.0f to Color(0xD90B1320)
+                )
+            )
+        )
         Column(
             modifier = Modifier
                 .fillMaxSize()

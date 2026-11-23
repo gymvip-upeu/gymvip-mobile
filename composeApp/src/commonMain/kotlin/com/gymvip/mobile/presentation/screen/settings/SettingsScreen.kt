@@ -76,6 +76,7 @@ internal fun SettingsPage(
 internal fun SettingsScreen(
     onBack: () -> Unit,
     onEditProfile: () -> Unit,
+    canEditProfile: Boolean = true,
     onAccountSecurity: () -> Unit,
     onPermissions: () -> Unit,
     onAppearance: () -> Unit,
@@ -84,8 +85,10 @@ internal fun SettingsScreen(
 ) {
     SettingsPage(title = "Ajustes", onBack = onBack) {
         SettingsSection("Perfil y cuenta") {
-            SettingsRow("Editar perfil", Icons.Outlined.Badge, onEditProfile)
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            if (canEditProfile) {
+                SettingsRow("Editar perfil", Icons.Outlined.Badge, onEditProfile)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            }
             SettingsRow("Cuenta y seguridad", Icons.Outlined.ManageAccounts, onAccountSecurity)
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             SettingsRow("Permisos de la aplicación", Icons.Outlined.Security, onPermissions)

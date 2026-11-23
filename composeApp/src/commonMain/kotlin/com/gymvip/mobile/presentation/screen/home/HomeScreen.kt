@@ -64,6 +64,8 @@ import com.gymvip.mobile.presentation.theme.accentForeground
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
+    isStaff: Boolean = false,
+    userRoles: List<String> = emptyList(),
     onNavigateServices: () -> Unit,
     onNavigateFaq: () -> Unit,
     onNavigateTab: (MainTab) -> Unit,
@@ -71,6 +73,41 @@ fun HomeScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
+
+    if (isStaff) {
+        Column(
+            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+                .verticalScroll(scrollState).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text("Panel de gestión", style = MaterialTheme.typography.headlineMedium)
+            Text("Las opciones de socio, asistencia personal e historial de compras no corresponden a esta cuenta.")
+            if (userRoles.any { it == "ADMIN" || it == "RECEPCION" }) {
+                QuickActionCard(
+                    icon = MainTab.CATALOG.navigationIcon,
+                    title = "Catálogo y stock",
+                    subtitle = "Consulta los productos disponibles",
+                    onClick = { onNavigateTab(MainTab.CATALOG) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                QuickActionCard(
+                    icon = MainTab.INBOX.navigationIcon,
+                    title = "Avisos generales",
+                    subtitle = "Consulta comunicados del gimnasio",
+                    onClick = { onNavigateTab(MainTab.INBOX) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            QuickActionCard(
+                icon = MainTab.PROFILE.navigationIcon,
+                title = "Cuenta y seguridad",
+                subtitle = "Configura este dispositivo y tus sesiones",
+                onClick = { onNavigateTab(MainTab.PROFILE) },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        return
+    }
 
     Column(
         modifier = Modifier
@@ -148,7 +185,11 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(modifier = Modifier.height(8.dp))
-            MembershipStatusCard(membership = state.membership)
+            if (isStaff) {
+                Text("Membresía de socio no disponible para esta cuenta de gestión.", style = MaterialTheme.typography.bodyMedium)
+            } else {
+                MembershipStatusCard(membership = state.membership)
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 

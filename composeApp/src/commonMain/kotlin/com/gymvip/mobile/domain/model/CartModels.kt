@@ -12,7 +12,8 @@ enum class OrderStatus(val label: String) {
     ENTREGADO("Entregado al Socio"),
     CANCELADO("Cancelado"),
     RECHAZADO("Pago Observado/Rechazado"),
-    EXPIRADO("Reserva Expirada")
+    EXPIRADO("Reserva Expirada"),
+    DEVUELTO("Devuelto")
 }
 
 enum class PaymentStatus(val label: String) {
@@ -106,6 +107,15 @@ data class SupplementOrder(
     val reservationExpiresAtUtc: String?,
     val pickupToken: String?,
     val hasPickupToken: Boolean
+)
+
+data class DigitalPaymentLink(
+    val id: String,
+    val orderId: String,
+    val amountPen: MoneyPen,
+    val status: String,
+    val url: String,
+    val expiresAt: String
 )
 
 /**
