@@ -80,6 +80,7 @@ class HomeViewModel(
                     is AppError.NotFound -> ConnectionNoticeType.ACCESS_DENIED to "No hay una ficha de socio asociada a esta cuenta."
                     is AppError.Server -> ConnectionNoticeType.SERVER_ERROR to "El servidor de GYM VIP no responde temporalmente. Mostrando datos locales de su última sesión."
                     is AppError.Network -> ConnectionNoticeType.OFFLINE_NETWORK to "Sin conexión a internet. Mostrando datos locales de su última sesión."
+                    is AppError.Sync -> ConnectionNoticeType.SERVER_ERROR to ex.messageDetail
                     else -> ConnectionNoticeType.SERVER_ERROR to "No se pudo actualizar la información. Reintente o consulte soporte."
                 }
                 _uiState.value = _uiState.value.copy(

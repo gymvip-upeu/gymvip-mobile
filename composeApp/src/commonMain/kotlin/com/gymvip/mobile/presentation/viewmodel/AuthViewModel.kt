@@ -19,6 +19,8 @@ import kotlinx.coroutines.launch
 data class AuthUiState(
     val isLoading: Boolean = false,
     val isAuthenticated: Boolean = false,
+    val mustChangePassword: Boolean = false,
+    val accessEmail: String? = null,
     val isCachedOffline: Boolean = false,
     val authenticatedProfile: MemberProfile? = null,
     val rememberedIdentifier: String? = null,
@@ -56,15 +58,23 @@ class AuthViewModel(
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         isAuthenticated = true,
+                        mustChangePassword = false,
+                        accessEmail = null,
                         isCachedOffline = state.isCachedOffline,
                         authenticatedProfile = state.profile,
                         errorMessage = null
                     )
                 }
+                is AuthState.PasswordChangeRequired -> {
+                    _uiState.value = _uiState.value.copy(isLoading = false, isAuthenticated = false,
+                        mustChangePassword = true, accessEmail = state.email, authenticatedProfile = null, errorMessage = null)
+                }
                 is AuthState.Unauthenticated -> {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         isAuthenticated = false,
+                        mustChangePassword = false,
+                        accessEmail = null,
                         isCachedOffline = false,
                         authenticatedProfile = null
                     )
@@ -85,6 +95,22 @@ class AuthViewModel(
     fun checkSession() {
         scope.launch {
             authRepository.checkExistingSession()
+        }
+    }
+
+    fun createFirstPassword(password: String, confirmation: String) {
+        if (_uiState.value.isLoading) return
+        if (password != confirmation || password.length < 12 || password.encodeToByteArray().size > 72 ||
+            !password.any { it in 'A'..'Z' } || !password.any { it in 'a'..'z' } || !password.any { it in '0'..'9' }) {
+            _uiState.value = _uiState.value.copy(errorMessage = "Confirma una contraseña diferente de la temporal, de al menos 12 caracteres, con mayúsculas, minúsculas y números (máximo 72 bytes).")
+            return
+        }
+        scope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            val result = authRepository.createFirstPassword(password)
+            _uiState.value = _uiState.value.copy(isLoading = false,
+                errorMessage = result.exceptionOrNull()?.message,
+                successMessage = if (result.isSuccess) "Contraseña creada. Ingresa con tu correo y tu nueva contraseña." else null)
         }
     }
 
@@ -141,6 +167,17 @@ class AuthViewModel(
                     )
                 }
             )
+        }
+    }
+
+    fun requestOwnPasswordReset(onComplete: (Result<String>) -> Unit) {
+        if (_uiState.value.isLoading) return
+        scope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null, successMessage = null)
+            val result = authRepository.requestOwnPasswordReset()
+            _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = result.exceptionOrNull()?.message,
+                successMessage = result.getOrNull())
+            onComplete(result)
         }
     }
 

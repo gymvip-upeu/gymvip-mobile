@@ -88,7 +88,7 @@ fun ActivationScreen(
     val scrollState = rememberScrollState()
 
     // Reglas de validación en tiempo real (consistentes con Spring Boot MemberWorkspaceService)
-    val hasMinLength = newPassword.length >= 8
+    val hasMinLength = newPassword.length >= 12
     val hasUpper = newPassword.any { it.isUpperCase() }
     val hasLower = newPassword.any { it.isLowerCase() }
     val hasDigit = newPassword.any { it.isDigit() }
@@ -96,9 +96,9 @@ fun ActivationScreen(
 
     fun validateAndSubmit() {
         localValidationError = null
-        val tokenClean = activationToken.trim().uppercase()
+        val tokenClean = activationToken.trim()
         if (tokenClean.isBlank()) {
-            localValidationError = "Ingresa el código único de activación entregado en recepción."
+            localValidationError = "Ingresa el código del enlace de activación recibido por correo."
             return
         }
         if (tokenClean.length < 5) {
@@ -168,10 +168,10 @@ fun ActivationScreen(
             OutlinedTextField(
                 value = activationToken,
                 onValueChange = {
-                    activationToken = it.uppercase()
+                    activationToken = it
                     localValidationError = null
                 },
-                label = { Text("Código de activación presencial") },
+                label = { Text("Código del enlace de activación") },
                 placeholder = { Text("Ej: ACT-9821-X9") },
                 singleLine = true,
                 leadingIcon = {
@@ -260,7 +260,7 @@ fun ActivationScreen(
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(6.dp))
-                PasswordRequirementRow("Mínimo 8 caracteres", hasMinLength)
+                PasswordRequirementRow("Mínimo 12 caracteres", hasMinLength)
                 PasswordRequirementRow("Al menos una letra mayúscula (A-Z)", hasUpper)
                 PasswordRequirementRow("Al menos una letra minúscula (a-z)", hasLower)
                 PasswordRequirementRow("Al menos un número (0-9)", hasDigit)

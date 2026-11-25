@@ -93,7 +93,7 @@ class AuthRepositoryImpl(
                     val now = Clock.System.now().toString()
                     val profile = localProfile?.toDomain()?.copy(accountId = accountId, roles = accountRoles) ?: MemberProfile(
                         accountId = accountId,
-                        email = secureTokenStore.getRememberedIdentifier().orEmpty().ifBlank { "socio@gymvip.local" },
+                        email = sessionStatus.email ?: secureTokenStore.getRememberedIdentifier().orEmpty().ifBlank { "Socio VIP" },
                         firstName = "Socio",
                         lastName = "VIP",
                         documentType = "DNI",
@@ -103,7 +103,7 @@ class AuthRepositoryImpl(
                         lastSyncedAt = now,
                         roles = accountRoles
                     )
-                    _authState.value = AuthState.Authenticated(profile, isCachedOffline = false)
+                    _authState.value = AuthState.PasswordChangeRequired(accountId, profile.email)
                     return true
                 }
                 secureTokenStore.clear()
@@ -175,6 +175,11 @@ class AuthRepositoryImpl(
 
                 // Si ES CLIENTE:
                 val sessionStatusResult = memberApi.getSessionStatus()
+                if (sessionStatusResult.isFailure) {
+                    secureTokenStore.clear()
+                    _authState.value = AuthState.Error("No pudimos comprobar tu acceso. Reintenta cuando vuelva la conexión.")
+                    return@fold Result.failure(sessionStatusResult.exceptionOrNull()!!)
+                }
                 val mustChange = sessionStatusResult.getOrNull()?.mustChangePassword ?: false
 
                 val profileResult = if (!mustChange) {
@@ -196,6 +201,10 @@ class AuthRepositoryImpl(
                     roles = accountRoles
                 )
 
+                if (mustChange) {
+                    _authState.value = AuthState.PasswordChangeRequired(accountId, dto.email)
+                    return@fold Result.success(profile)
+                }
                 database.gymVipDatabaseQueries.insertOrReplaceProfile(
                     accountId = profile.accountId,
                     email = profile.email,
@@ -242,6 +251,15 @@ class AuthRepositoryImpl(
         return Result.success(Unit)
     }
 
+    override suspend fun createFirstPassword(newPassword: String): Result<Unit> {
+        val result = memberApi.createFirstPassword(com.gymvip.mobile.data.remote.dto.FirstPasswordRequestDto(newPassword))
+        if (result.isFailure) return Result.failure(result.exceptionOrNull()!!)
+        com.gymvip.mobile.notification.clearPushRegistration()
+        secureTokenStore.clear()
+        _authState.value = AuthState.Unauthenticated
+        return Result.success(Unit)
+    }
+
     override suspend fun revokeOtherSessions(): Result<Unit> {
         return authApi.revokeOtherSessions()
     }
@@ -249,6 +267,17 @@ class AuthRepositoryImpl(
     override suspend fun activateAccount(token: String, newPassword: String): Result<Unit> {
         return authApi.activateAccount(ActivationRequestDto(token, newPassword))
     }
+
+    override suspend fun validateActiveSession() {
+        if (_authState.value !is AuthState.Authenticated) return
+        val result = authApi.getCurrentUser()
+        if (result.exceptionOrNull() is AppError.Unauthorized) {
+            secureTokenStore.clear()
+            _authState.value = AuthState.Unauthenticated
+        }
+    }
+
+    override suspend fun requestOwnPasswordReset(): Result<String> = authApi.requestOwnPasswordReset().map { it.message }
 
     override suspend fun requestPasswordReset(email: String): Result<String> {
         val reqResult = authApi.requestPasswordReset(PasswordResetRequestDto(email = email.trim()))

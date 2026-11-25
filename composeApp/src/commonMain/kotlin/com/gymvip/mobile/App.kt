@@ -84,6 +84,12 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
             )
         }
         val authState by authViewModel.uiState.collectAsState()
+        LaunchedEffect(authState.isAuthenticated) {
+            while (authState.isAuthenticated) {
+                AppContainer.authRepository.validateActiveSession()
+                kotlinx.coroutines.delay(15_000)
+            }
+        }
 
         LaunchedEffect(authState.isAuthenticated, authState.authenticatedProfile?.accountId) {
             val accountId = authState.authenticatedProfile?.accountId?.takeIf { authState.isAuthenticated }
@@ -163,7 +169,11 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
         val coroutineScope = rememberCoroutineScope()
 
         // Una sesión autenticada no entra al contenido hasta aceptar términos y privacidad.
-        LaunchedEffect(authState.isAuthenticated, authState.authenticatedProfile?.accountId) {
+        LaunchedEffect(authState.isAuthenticated, authState.authenticatedProfile?.accountId, authState.mustChangePassword) {
+            if (authState.mustChangePassword) {
+                currentDestination = NavDestination.FirstPassword
+                return@LaunchedEffect
+            }
             if (authState.isAuthenticated) {
                 val accountId = authState.authenticatedProfile?.accountId
                 if (accountId.isNullOrBlank()) {
@@ -237,6 +247,7 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
         }
 
         when (val dest = currentDestination) {
+            NavDestination.FirstPassword -> com.gymvip.mobile.presentation.screen.auth.FirstPasswordScreen(authViewModel)
             is NavDestination.Splash -> {
                 SplashScreen(
                     onResolved = { isActive ->
@@ -423,6 +434,7 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
             is NavDestination.ConfirmEmail -> {
                 ConfirmEmailScreen(
                     viewModel = authViewModel,
+                    registeredEmail = authState.authenticatedProfile?.email.orEmpty(),
                     onBack = { currentDestination = NavDestination.AccountSecurity }
                 )
             }

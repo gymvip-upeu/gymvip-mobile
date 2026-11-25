@@ -153,6 +153,16 @@ class MemberApi(
         }
     }
 
+    /** Crea la contraseña propia usando la sesión temporal ya autenticada. */
+    suspend fun createFirstPassword(request: FirstPasswordRequestDto): Result<PasswordChangeResponseDto> = GymVipHttpClient.safeApiCall {
+        val response = client.post("$baseUrl/api/v1/member-app/first-password") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (response.status == HttpStatusCode.OK) response.body<PasswordChangeResponseDto>()
+        else throw GymVipHttpClient.parseResponseError(response)
+    }
+
     /**
      * Cambio obligatorio de contraseña temporal (POST /api/v1/member-app/password, HU-05).
      */

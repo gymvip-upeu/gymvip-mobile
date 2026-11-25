@@ -139,7 +139,7 @@ data class MemberCoverageDto(
     val startDate: String? = null,
     val lastIncludedDate: String? = null,
     val endExclusive: String? = null,
-    val daysRemaining: Long = 0,
+    val daysRemaining: Long? = null,
     val timezone: String? = "America/Lima",
     val upcomingDays: Int = 7
 )
@@ -250,8 +250,12 @@ data class DynamicQrResponseDto(
 
 @Serializable
 data class MemberSessionStatusDto(
-    val mustChangePassword: Boolean = false
+    val mustChangePassword: Boolean = false,
+    val email: String? = null
 )
+
+@Serializable
+data class FirstPasswordRequestDto(val newPassword: String)
 
 @Serializable
 data class PasswordChangeRequestDto(
