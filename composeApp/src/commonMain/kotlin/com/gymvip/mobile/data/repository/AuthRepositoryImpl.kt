@@ -12,6 +12,7 @@ import com.gymvip.mobile.data.remote.dto.PasswordResetRequestDto
 import com.gymvip.mobile.domain.error.AppError
 import com.gymvip.mobile.domain.model.AccountStatus
 import com.gymvip.mobile.domain.model.MemberProfile
+import com.gymvip.mobile.domain.model.normalizedAccountRoles
 import com.gymvip.mobile.domain.repository.AuthRepository
 import com.gymvip.mobile.domain.repository.AuthState
 import kotlinx.coroutines.flow.Flow
@@ -36,7 +37,7 @@ class AuthRepositoryImpl(
         if (!token.isNullOrBlank() && !accountId.isNullOrBlank()) {
             val localProfile = database.gymVipDatabaseQueries.selectProfileByAccountId(accountId).executeAsOneOrNull()
             val serverRoles = authApi.getCurrentUser().getOrNull()?.normalizedRoles().orEmpty()
-            val accountRoles = serverRoles.ifEmpty { secureTokenStore.getAccountRoles() }
+            val accountRoles = serverRoles.ifEmpty { secureTokenStore.getAccountRoles().normalizedAccountRoles() }
             if (serverRoles.isNotEmpty()) secureTokenStore.saveAccountRoles(serverRoles)
 
             // Si la cuenta es administrativa (ADMIN o RECEPCION), no requiere consulta de socio
@@ -139,7 +140,7 @@ class AuthRepositoryImpl(
                     refreshToken = null,
                     accountId = accountId
                 )
-                val accountRoles = dto.roles.map { it.trim().uppercase() }.filter(String::isNotBlank).distinct()
+                val accountRoles = dto.roles.normalizedAccountRoles()
                 secureTokenStore.saveAccountRoles(accountRoles)
 
                 val now = Clock.System.now().toString()

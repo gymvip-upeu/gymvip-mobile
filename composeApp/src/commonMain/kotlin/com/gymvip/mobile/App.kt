@@ -117,25 +117,33 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
         var orders by remember(profileAccountId) { mutableStateOf<List<SupplementOrder>>(emptyList()) }
         var paymentLink by remember(profileAccountId) { mutableStateOf<DigitalPaymentLink?>(null) }
         var culqiEnabled by remember(profileAccountId) { mutableStateOf(false) }
+        var refreshingOrders by remember(profileAccountId) { mutableStateOf(false) }
         var cartError by remember(profileAccountId) { mutableStateOf<String?>(null) }
         var checkoutKey by remember(profileAccountId) { mutableStateOf<String?>(null) }
         val orderApi = AppContainer.supplementOrderApi
         suspend fun refreshOrders() {
-            orderApi.cart().onSuccess { shoppingCart = it }.onFailure { cartError = it.message }
-            orderApi.orders().onSuccess { remote ->
-                orders = remote.map { order ->
-                    if (order.hasPickupToken && order.orderStatus == OrderStatus.LISTO_PARA_RETIRO) {
-                        val token = orderApi.pickupToken(order.id)
-                            .onFailure { cartError = it.message }.getOrNull()
-                        order.copy(pickupToken = token, hasPickupToken = token != null)
-                    } else order
-                }
-                val digital = orders.firstOrNull { it.paymentMethod == "TARJETA_PASARELA" && it.paymentStatus == com.gymvip.mobile.domain.model.PaymentStatus.PENDIENTE }
-                if (digital != null) {
-                    orderApi.paymentLinkForOrder(digital.id).onSuccess { paymentLink = it }
-                        .onFailure { cartError = it.message }
-                } else paymentLink = null
-            }.onFailure { cartError = it.message }
+            if (refreshingOrders) return
+            refreshingOrders = true
+            cartError = null
+            try {
+                orderApi.cart().onSuccess { shoppingCart = it }.onFailure { cartError = it.message }
+                orderApi.orders().onSuccess { remote ->
+                    orders = remote.map { order ->
+                        if (order.hasPickupToken && order.orderStatus == OrderStatus.LISTO_PARA_RETIRO) {
+                            val token = orderApi.pickupToken(order.id)
+                                .onFailure { cartError = it.message }.getOrNull()
+                            order.copy(pickupToken = token, hasPickupToken = token != null)
+                        } else order
+                    }
+                    val digital = orders.firstOrNull { it.paymentMethod == "TARJETA_PASARELA" && it.paymentStatus == com.gymvip.mobile.domain.model.PaymentStatus.PENDIENTE }
+                    if (digital != null) {
+                        orderApi.paymentLinkForOrder(digital.id).onSuccess { paymentLink = it }
+                            .onFailure { cartError = it.message }
+                    } else paymentLink = null
+                }.onFailure { cartError = it.message }
+            } finally {
+                refreshingOrders = false
+            }
         }
         LaunchedEffect(profileAccountId, authState.isAuthenticated) {
             if (authState.isAuthenticated && authState.authenticatedProfile?.roles?.contains("CLIENTE") == true) {
@@ -550,10 +558,12 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                                 { currentDestination = NavDestination.Settings }
                             } else null,
                             onSyncClick = {
+                                catalogViewModel.refresh()
                                 favoritesViewModel.syncPending()
                                 membershipViewModel.refresh()
                                 homeViewModel.refreshAll()
                                 inboxViewModel.refresh()
+                                if (userRoles.contains("CLIENTE")) coroutineScope.launch { refreshOrders() }
                             }
                         )
                     },
@@ -603,6 +613,8 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                                 canPurchase = userRoles.contains("CLIENTE"),
                                 cartCount = shoppingCart.totalQuantity,
                                 cartError = cartError,
+                                isRefreshingCart = refreshingOrders,
+                                onRetryCart = { coroutineScope.launch { refreshOrders() } },
                                 onOpenCart = { currentDestination = NavDestination.Cart },
                                 onAddToCart = { product ->
                                     coroutineScope.launch {

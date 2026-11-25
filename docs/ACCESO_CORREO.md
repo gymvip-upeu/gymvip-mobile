@@ -75,3 +75,9 @@ Seguridad: hashes BCrypt de contraseñas y SHA-256 de tokens, enlaces en fragmen
 Límites operativos de pruebas: invitaciones se despachan después del commit en una cola en memoria; si el proceso se reinicia antes de enviarlas hay que revisar el estado y reenviar. Límites de solicitudes en memoria por instancia. No hay garantía de entrega ni cola persistente de correo; estas mejoras se evalúan antes del uso general. Reenvío de invitación: mínimo un minuto, máximo tres emisiones/hora. Recuperación: espera de un minuto en solicitudes autenticadas y máximo tres peticiones por IP/correo cada 15 minutos.
 
 Verificación de esta versión antes de publicar: backend 278 pruebas; comunicaciones 37; móvil 66 y APK debug; web 100, lint y build. Todas correctas.
+
+## Corrección de pestaña Membresía — 25/11/2026
+
+Se normalizan los roles de login, autoridades de Spring en /auth/me y sesiones guardadas: CLIENTE y ROLE_CLIENTE representan al mismo socio. Antes, restaurar una sesión guardaba ROLE_CLIENTE y ocultaba la pestaña aunque Inicio mostrara el perfil del socio. La normalización también cubre roles con prefijo en la caché sin conexión, conserva la distinción de personal administrativo y no modifica permisos del backend. Pruebas de regresión reproducen login → restauraciones repetidas → caché heredada sin red y verifican que ADMIN/RECEPCION no se convierten en CLIENTE.
+
+Verificación final 25/11/2026: 68 pruebas móviles y APK correctas. En el emulador se restauró la sesión del socio, se abrió Membresía con Vigencia Actual e Historial de Pagos, se cerró el proceso y se volvió a abrir; la pestaña siguió visible. APK USB de pruebas actualizada. Corrección local pendiente de commit/publicación.

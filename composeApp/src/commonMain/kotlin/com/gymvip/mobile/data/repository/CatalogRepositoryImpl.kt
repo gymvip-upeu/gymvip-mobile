@@ -28,7 +28,7 @@ class CatalogRepositoryImpl(
 
     override suspend fun refreshCatalog(): Result<List<Product>> {
         val result = catalogApi.getCatalogProducts()
-        return result.map { list ->
+        return result.mapCatching { list ->
             val now = Clock.System.now().toString()
             val domainList = list.map { it.toDomain() }
             database.gymVipDatabaseQueries.transaction {

@@ -1,5 +1,7 @@
 package com.gymvip.mobile.data.remote.dto
 
+import com.gymvip.mobile.domain.model.normalizedAccountRoles
+
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -88,5 +90,5 @@ data class CurrentUserDto(
             is JsonObject -> role["authority"]?.jsonPrimitive?.contentOrNull
             else -> null
         }
-    }.map { it.trim().uppercase() }.filter(String::isNotBlank).distinct()
+    }.normalizedAccountRoles()
 }

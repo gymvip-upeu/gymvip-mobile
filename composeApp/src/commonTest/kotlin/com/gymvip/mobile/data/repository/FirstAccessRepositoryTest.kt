@@ -11,6 +11,46 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.*
 
 class FirstAccessRepositoryTest {
+    @Test fun memberRoleSurvivesSessionRestoreWithSpringAuthoritiesAndLegacyOfflineCache() = runTest {
+        val driver=JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY);GymVipDatabase.Schema.create(driver)
+        val store=Store();var offline=false
+        val client=GymVipHttpClient.create(MockEngine { request ->
+            if(offline) respond("{}",HttpStatusCode.ServiceUnavailable,headersOf(HttpHeaders.ContentType,"application/json"))
+            else {
+                val body=when(request.url.encodedPath) {
+                    "/api/v1/auth/login" -> """{"token":"fixture","id":"member","email":"member@example.test","roles":["CLIENTE"]}"""
+                    "/api/v1/auth/me" -> """{"email":"member@example.test","roles":[{"authority":"ROLE_CLIENTE"}]}"""
+                    "/api/v1/member-app/session" -> """{"mustChangePassword":false}"""
+                    else -> """{"client":{"id":"client","email":"member@example.test","firstName":"Socio"}}"""
+                }
+                respond(body,HttpStatusCode.OK,headersOf(HttpHeaders.ContentType,"application/json"))
+            }
+        },enableLogging=false)
+        try {
+            val db=GymVipDatabase(driver)
+            var repository=AuthRepositoryImpl(AuthApi(client,"http://test"),MemberApi(client,"http://test"),store,db)
+            assertTrue(repository.login("member@example.test","PersonalPassword2026!").isSuccess)
+            assertEquals(listOf("CLIENTE"),(repository.getAuthState().first() as AuthState.Authenticated).profile.roles)
+            repository=AuthRepositoryImpl(AuthApi(client,"http://test"),MemberApi(client,"http://test"),store,db)
+            repeat(2) {
+                assertTrue(repository.checkExistingSession())
+                assertEquals(listOf("CLIENTE"),(repository.getAuthState().first() as AuthState.Authenticated).profile.roles)
+                assertEquals(listOf("CLIENTE"),store.roles)
+            }
+            store.roles=listOf("ROLE_CLIENTE");offline=true
+            assertTrue(repository.checkExistingSession())
+            val cached=repository.getAuthState().first() as AuthState.Authenticated
+            assertTrue(cached.isCachedOffline);assertEquals(listOf("CLIENTE"),cached.profile.roles)
+        } finally {client.close();driver.close()}
+    }
+    @Test fun authorityNormalizationDoesNotTurnStaffIntoMembers() {
+        val current=com.gymvip.mobile.data.remote.dto.CurrentUserDto(roles=listOf(
+            kotlinx.serialization.json.JsonPrimitive("ROLE_ADMIN"),
+            kotlinx.serialization.json.JsonObject(mapOf("authority" to kotlinx.serialization.json.JsonPrimitive("ROLE_RECEPCION")))
+        ))
+        assertEquals(listOf("ADMIN","RECEPCION"),current.normalizedRoles())
+        assertFalse(current.normalizedRoles().contains("CLIENTE"))
+    }
     @Test fun resetUsesSessionEmailAndRevokedSessionCannotKeepCachedAccess() = runTest {
         val driver=JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY);GymVipDatabase.Schema.create(driver)
         val store=Store();var revoked=false;var resetRequested=false
