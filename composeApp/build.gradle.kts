@@ -32,15 +32,27 @@ val receptionNumber = providers.gradleProperty("gymvip.receptionWhatsApp").orEls
 require(receptionNumber.matches(Regex("[+]?[0-9]{8,15}"))) { "Número de recepción inválido" }
 
 kotlin {
+    targets.configureEach {
+        compilations.configureEach {
+            compileTaskProvider.configure {
+                compilerOptions {
+                    freeCompilerArgs.add("-Xexpect-actual-classes")
+                }
+            }
+        }
+    }
+
     androidTarget {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+            freeCompilerArgs.add("-Xexpect-actual-classes")
         }
     }
 
     jvm("desktop") {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+            freeCompilerArgs.add("-Xexpect-actual-classes")
         }
     }
     
@@ -268,6 +280,10 @@ tasks.register("validateReleaseConfiguration") {
 
 tasks.matching { it.name.startsWith("assembleRelease") || it.name.startsWith("bundleRelease") }.configureEach {
     dependsOn("validateReleaseConfiguration")
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask<*>>().configureEach {
+    compilerOptions.freeCompilerArgs.add("-Xexpect-actual-classes")
 }
 
 
