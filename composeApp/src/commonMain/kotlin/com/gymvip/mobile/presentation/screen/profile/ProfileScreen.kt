@@ -113,9 +113,10 @@ fun ProfileScreen(
     ) {
         val roles = userRoles.ifEmpty { profile?.roles.orEmpty() }
         val isAdminOrReception = roles.any {
-            it.contains("ADMIN", ignoreCase = true) || it.contains("RECEPCION", ignoreCase = true)
+            it.contains("ADMIN", ignoreCase = true) || it.contains("RECEPCION", ignoreCase = true) || it.contains("GERENTE", ignoreCase = true)
         }
         val accountType = when {
+            roles.any { it.contains("GERENTE", ignoreCase = true) } -> "Gerente General"
             roles.any { it.contains("ADMIN", ignoreCase = true) } -> "Administrador del Sistema"
             roles.any { it.contains("RECEPCION", ignoreCase = true) } -> "Personal de Recepción"
             roles.any { it.contains("AUDITOR", ignoreCase = true) } -> "Auditor"

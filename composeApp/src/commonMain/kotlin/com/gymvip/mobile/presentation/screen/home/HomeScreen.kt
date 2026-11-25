@@ -81,8 +81,8 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text("Panel de gestión", style = MaterialTheme.typography.headlineMedium)
-            Text("Las opciones de socio, asistencia personal e historial de compras no corresponden a esta cuenta.")
-            if (userRoles.any { it == "ADMIN" || it == "RECEPCION" }) {
+            Text("Bienvenido al panel de administración y control operativo.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (userRoles.any { it == "ADMIN" || it == "RECEPCION" || it == "GERENTE" }) {
                 QuickActionCard(
                     icon = MainTab.CATALOG.navigationIcon,
                     title = "Catálogo y stock",

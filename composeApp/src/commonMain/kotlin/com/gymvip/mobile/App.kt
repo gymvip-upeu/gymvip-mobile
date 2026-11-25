@@ -443,10 +443,12 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                 }
                 val accountId = authState.authenticatedProfile?.accountId ?: "unknown_account"
                 val userRoles = authState.authenticatedProfile?.roles.orEmpty()
-                val isStaff = userRoles.any { it == "ADMIN" || it == "RECEPCION" || it == "AUDITOR" } && !userRoles.contains("CLIENTE")
+                val isStaff = userRoles.any { it == "ADMIN" || it == "GERENTE" || it == "RECEPCION" || it == "AUDITOR" } && !userRoles.contains("CLIENTE")
+                val isExecutive = userRoles.any { it == "ADMIN" || it == "GERENTE" }
                 val visibleTabs = when {
                     userRoles.contains("CLIENTE") -> MainTab.entries
-                    userRoles.contains("AUDITOR") && !userRoles.contains("ADMIN") -> listOf(MainTab.HOME, MainTab.PROFILE)
+                    userRoles.contains("GERENTE") || userRoles.contains("ADMIN") -> listOf(MainTab.HOME, MainTab.CATALOG, MainTab.INBOX, MainTab.PROFILE)
+                    userRoles.contains("AUDITOR") && !isExecutive -> listOf(MainTab.HOME, MainTab.PROFILE)
                     else -> listOf(MainTab.HOME, MainTab.CATALOG, MainTab.INBOX, MainTab.PROFILE)
                 }
 

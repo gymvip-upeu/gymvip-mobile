@@ -82,7 +82,7 @@ fun AdminProductScannerScreen(
     val onAccent = if (followsSystem) MaterialTheme.colorScheme.onPrimary else GoldOnPrimary
     val coroutineScope = rememberCoroutineScope()
     val isAuthorized = userRoles.any {
-        it.contains("ADMIN", ignoreCase = true) || it.contains("RECEPCION", ignoreCase = true)
+        it.contains("ADMIN", ignoreCase = true) || it.contains("RECEPCION", ignoreCase = true) || it.contains("GERENTE", ignoreCase = true)
     }
 
     var cameraGranted by remember { mutableStateOf(false) }

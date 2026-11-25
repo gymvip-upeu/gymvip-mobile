@@ -61,7 +61,7 @@ fun MembershipScreen(
     onNavigateToCatalog: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
-    val isStaff = userRoles.any { it.equals("ADMIN", ignoreCase = true) || it.equals("RECEPCION", ignoreCase = true) }
+    val isStaff = userRoles.any { it.equals("ADMIN", ignoreCase = true) || it.equals("RECEPCION", ignoreCase = true) || it.equals("GERENTE", ignoreCase = true) }
 
     Column(
         modifier = Modifier
@@ -231,7 +231,11 @@ private fun MembershipDetailTab(
 
 @Composable
 private fun AdminAccountMembershipNotice(userRoles: List<String>) {
-    val roleTitle = if (userRoles.any { it.equals("ADMIN", ignoreCase = true) }) "Administrador" else "Personal de Recepción"
+    val roleTitle = when {
+        userRoles.any { it.equals("GERENTE", ignoreCase = true) } -> "Gerente General"
+        userRoles.any { it.equals("ADMIN", ignoreCase = true) } -> "Administrador de Sistemas"
+        else -> "Personal de Recepción"
+    }
     Card(
         modifier = Modifier
             .fillMaxWidth()
