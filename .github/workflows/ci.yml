@@ -3,12 +3,14 @@ name: CI Mobile KMP GymVIP
 on:
   push:
     branches:
+      - develop
       - ACOSTA-MEJORAS-Y-ACTUALIZACIONES
       - S2-REVISION-QA
       - 'feature/**'
       - main
   pull_request:
     branches:
+      - develop
       - ACOSTA-MEJORAS-Y-ACTUALIZACIONES
       - S2-REVISION-QA
       - main
