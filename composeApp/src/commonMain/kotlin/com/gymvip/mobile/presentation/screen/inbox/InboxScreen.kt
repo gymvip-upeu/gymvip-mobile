@@ -33,6 +33,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,6 +51,8 @@ import com.gymvip.mobile.presentation.component.EmptyView
 import com.gymvip.mobile.presentation.component.ErrorRetryView
 import com.gymvip.mobile.presentation.component.LoadingView
 import com.gymvip.mobile.presentation.viewmodel.InboxViewModel
+import com.gymvip.mobile.presentation.permission.DevicePermissionStatus
+import com.gymvip.mobile.presentation.permission.rememberNotificationPermission
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
@@ -61,8 +64,10 @@ import com.gymvip.mobile.presentation.theme.accentForeground
 @Composable
 fun InboxScreen(viewModel: InboxViewModel) {
     val state by viewModel.uiState.collectAsState()
+    val notifications = rememberNotificationPermission()
     var unreadOnly by remember(viewModel) { mutableStateOf(false) }
     var selectedId by remember(viewModel) { mutableStateOf<String?>(null) }
+    LaunchedEffect(state.openedItemId) { state.openedItemId?.let { selectedId = it } }
     val visibleItems = if (unreadOnly) state.items.filterNot { it.isRead } else state.items
 
     when {
@@ -83,6 +88,25 @@ fun InboxScreen(viewModel: InboxViewModel) {
                     title = "Bandeja de Avisos",
                     description = "Aquí recibirá comunicados oficiales, recordatorios de vencimiento y novedades de GYM VIP. Puede filtrar por avisos leídos o pendientes."
                 )
+            }
+            if (notifications.status == DevicePermissionStatus.CAN_REQUEST || notifications.status == DevicePermissionStatus.DISABLED) {
+                item {
+                    Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("Alertas del dispositivo desactivadas", fontWeight = FontWeight.SemiBold)
+                            Text("Tus avisos siguen disponibles aquí. Activa las notificaciones si quieres recibir alertas en este teléfono.", style = MaterialTheme.typography.bodyMedium)
+                            TextButton(onClick = {
+                                if (notifications.status == DevicePermissionStatus.CAN_REQUEST) notifications.request() else notifications.openSettings()
+                            }) { Text("Activar notificaciones", color = MaterialTheme.colorScheme.accentForeground) }
+                        }
+                    }
+                }
+            }
+            state.pushErrorMessage?.let { message ->
+                item {
+                    Text(message, color = MaterialTheme.colorScheme.onSurface)
+                    TextButton(onClick = viewModel::refresh, enabled = !state.isLoading) { Text("Reintentar") }
+                }
             }
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -153,7 +177,7 @@ fun InboxScreen(viewModel: InboxViewModel) {
     }
 
     state.items.firstOrNull { it.id == selectedId }?.let { item ->
-        InboxDetail(item, state.readingId == item.id, state.readErrorMessage, onMarkRead = { viewModel.markAsRead(item.id) }, onClose = { selectedId = null })
+        InboxDetail(item, state.readingId == item.id, state.readErrorMessage, onMarkRead = { viewModel.markAsRead(item.id) }, onClose = { selectedId = null; viewModel.dismissPush() })
     }
 }
 

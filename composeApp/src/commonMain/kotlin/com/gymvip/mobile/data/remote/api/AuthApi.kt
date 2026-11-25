@@ -81,6 +81,15 @@ class AuthApi(
         }
     }
 
+    suspend fun requestOwnPasswordReset(): Result<PasswordResetResponseDto> = runCatching {
+        val response = client.post("$baseUrl/api/v1/member-app/password-reset")
+        if (response.status == HttpStatusCode.OK) {
+            response.body<PasswordResetResponseDto>()
+        } else {
+            throw GymVipHttpClient.parseResponseError(response)
+        }
+    }
+
     suspend fun confirmPasswordReset(request: PasswordResetConfirmRequestDto): Result<PasswordResetConfirmResponseDto> = runCatching {
         val response = client.post("$baseUrl/api/v1/auth/password-reset/confirm") {
             contentType(ContentType.Application.Json)

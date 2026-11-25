@@ -84,6 +84,12 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
             )
         }
         val authState by authViewModel.uiState.collectAsState()
+        LaunchedEffect(authState.isAuthenticated) {
+            while (authState.isAuthenticated) {
+                AppContainer.authRepository.validateActiveSession()
+                kotlinx.coroutines.delay(15_000)
+            }
+        }
 
         LaunchedEffect(authState.isAuthenticated, authState.authenticatedProfile?.accountId) {
             val accountId = authState.authenticatedProfile?.accountId?.takeIf { authState.isAuthenticated }
@@ -104,6 +110,9 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
         var currentTab by remember { mutableStateOf(MainTab.HOME) }
 
         val profileAccountId = authState.authenticatedProfile?.accountId?.takeIf { it.isNotBlank() }
+        val pendingPush by com.gymvip.mobile.notification.PushNavigation.pending.collectAsState()
+        val inboxRevision by com.gymvip.mobile.notification.PushNavigation.inboxRevision.collectAsState()
+        var requestedInboxItem by remember(profileAccountId) { mutableStateOf<String?>(null) }
         var shoppingCart by remember(profileAccountId) { mutableStateOf(ShoppingCart()) }
         var orders by remember(profileAccountId) { mutableStateOf<List<SupplementOrder>>(emptyList()) }
         var paymentLink by remember(profileAccountId) { mutableStateOf<DigitalPaymentLink?>(null) }
@@ -160,7 +169,11 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
         val coroutineScope = rememberCoroutineScope()
 
         // Una sesión autenticada no entra al contenido hasta aceptar términos y privacidad.
-        LaunchedEffect(authState.isAuthenticated, authState.authenticatedProfile?.accountId) {
+        LaunchedEffect(authState.isAuthenticated, authState.authenticatedProfile?.accountId, authState.mustChangePassword) {
+            if (authState.mustChangePassword) {
+                currentDestination = NavDestination.FirstPassword
+                return@LaunchedEffect
+            }
             if (authState.isAuthenticated) {
                 val accountId = authState.authenticatedProfile?.accountId
                 if (accountId.isNullOrBlank()) {
@@ -210,7 +223,31 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
             }
         }
 
+        LaunchedEffect(pendingPush, profileAccountId, authState.isAuthenticated, currentDestination) {
+            val target = pendingPush ?: return@LaunchedEffect
+            if (!authState.isAuthenticated) return@LaunchedEffect
+            if (target.accountId != profileAccountId || authState.authenticatedProfile?.roles?.contains("CLIENTE") != true) {
+                com.gymvip.mobile.notification.PushNavigation.clear()
+                return@LaunchedEffect
+            }
+            val destination = currentDestination
+            if (destination is NavDestination.Splash || destination is NavDestination.Login ||
+                destination is NavDestination.PostLoginPermissions ||
+                (destination is NavDestination.TermsAndPrivacy && destination.requiresAcceptance)) return@LaunchedEffect
+            if (target.destination == com.gymvip.mobile.notification.PushDestination.ORDERS) {
+                currentDestination = NavDestination.Cart
+                com.gymvip.mobile.notification.PushNavigation.clear()
+                refreshOrders()
+                return@LaunchedEffect
+            }
+            requestedInboxItem = target.itemId
+            currentTab = MainTab.INBOX
+            currentDestination = NavDestination.Main(MainTab.INBOX)
+            com.gymvip.mobile.notification.PushNavigation.clear()
+        }
+
         when (val dest = currentDestination) {
+            NavDestination.FirstPassword -> com.gymvip.mobile.presentation.screen.auth.FirstPasswordScreen(authViewModel)
             is NavDestination.Splash -> {
                 SplashScreen(
                     onResolved = { isActive ->
@@ -397,6 +434,7 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
             is NavDestination.ConfirmEmail -> {
                 ConfirmEmailScreen(
                     viewModel = authViewModel,
+                    registeredEmail = authState.authenticatedProfile?.email.orEmpty(),
                     onBack = { currentDestination = NavDestination.AccountSecurity }
                 )
             }
@@ -493,6 +531,12 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                 DisposableEffect(inboxViewModel) {
                     onDispose { inboxViewModel.onCleared() }
                 }
+                LaunchedEffect(requestedInboxItem, accountId) {
+                    requestedInboxItem?.let { inboxViewModel.openFromPush(it); requestedInboxItem = null }
+                }
+                LaunchedEffect(inboxRevision) {
+                    if (inboxRevision > 0) inboxViewModel.refresh()
+                }
 
                 Scaffold(
                     topBar = {
@@ -523,6 +567,7 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                                 if (tab in visibleTabs) {
                                     currentTab = tab
                                     currentDestination = NavDestination.Main(tab)
+                                    com.gymvip.mobile.telemetry.VipAnalyticsTracker.logScreenView(tab.name)
                                 }
                             }
                         )

@@ -8,17 +8,22 @@ import com.gymvip.mobile.data.repository.*
 import com.gymvip.mobile.data.sync.SyncQueueManager
 import com.gymvip.mobile.domain.repository.*
 import com.gymvip.mobile.domain.usecase.*
+import io.ktor.client.engine.HttpClientEngine
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.KoinAppDeclaration
 import org.koin.dsl.module
 
-fun appModules(driverFactory: DatabaseDriverFactory, tokenStore: SecureTokenStore): List<Module> = listOf(
+fun appModules(
+    driverFactory: DatabaseDriverFactory,
+    tokenStore: SecureTokenStore,
+    clientEngine: HttpClientEngine? = null
+): List<Module> = listOf(
     module {
         single { driverFactory.createDriver() }
         single { GymVipDatabase(get()) }
         single { tokenStore }
-        single { GymVipHttpClient.create(tokenStore = get()) }
+        single { GymVipHttpClient.create(engine = clientEngine ?: getPlatformHttpEngine(), tokenStore = get()) }
         single { AuthApi(get()) }
         single { MemberApi(get()) }
         single { SupplementOrderApi(get()) }
@@ -53,9 +58,10 @@ fun appModules(driverFactory: DatabaseDriverFactory, tokenStore: SecureTokenStor
 fun initKoin(
     driverFactory: DatabaseDriverFactory,
     tokenStore: SecureTokenStore,
-    appDeclaration: KoinAppDeclaration = {}
+    appDeclaration: KoinAppDeclaration = {},
+    clientEngine: HttpClientEngine? = null
 ) = startKoin {
     appDeclaration()
-    modules(appModules(driverFactory, tokenStore))
+    modules(appModules(driverFactory, tokenStore, clientEngine))
 }
 

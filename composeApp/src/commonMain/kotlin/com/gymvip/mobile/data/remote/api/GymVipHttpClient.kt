@@ -165,6 +165,9 @@ object GymVipHttpClient {
     fun mapThrowableToAppError(e: Throwable): AppError {
         if (e is CancellationException) throw e
         if (e is AppError) return e
+        if (e is kotlinx.serialization.SerializationException || e is io.ktor.serialization.JsonConvertException) {
+            return AppError.Sync("No se pudo interpretar la información recibida del gimnasio. Intenta actualizar nuevamente.")
+        }
 
         val msg = e.message ?: ""
         val className = e::class.simpleName ?: ""

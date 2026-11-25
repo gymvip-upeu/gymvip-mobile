@@ -8,7 +8,8 @@ import kotlinx.coroutines.flow.asStateFlow
 
 class ConfigRepositoryImpl(private val database: GymVipDatabase) : ConfigRepository {
 
-    override val receptionWhatsAppNumber: String = "+51 905 436 989"
+    override val receptionWhatsAppNumber: String
+        get() = com.gymvip.mobile.config.RuntimeSettings.receptionWhatsAppNumber
 
     private val _themePreference = MutableStateFlow("SYSTEM") // SYSTEM, DARK, LIGHT, DARK_GOLD
     private val _fontScale = MutableStateFlow(1.0f) // 1.0f, 1.15f, 1.3f
@@ -37,7 +38,7 @@ class ConfigRepositoryImpl(private val database: GymVipDatabase) : ConfigReposit
         if (activeAccountId == resolved) return
         activeAccountId = resolved
         _themePreference.value = resolved?.let { read(it, "theme") }
-            ?.takeIf { it in setOf("SYSTEM", "DARK", "LIGHT", "DARK_GOLD") } ?: "SYSTEM"
+            ?.takeIf { it in setOf("SYSTEM", "DARK", "LIGHT", "DARK_GOLD", "BLUE_DARK", "BLUE_LIGHT") } ?: "SYSTEM"
         _fontScale.value = resolved?.let { read(it, "font_scale") }
             ?.toFloatOrNull()?.coerceIn(0.85f, 1.4f) ?: 1.0f
         _highContrast.value = resolved?.let { read(it, "high_contrast") } == "true"
@@ -60,7 +61,7 @@ class ConfigRepositoryImpl(private val database: GymVipDatabase) : ConfigReposit
     override fun getThemePreference(): Flow<String> = _themePreference.asStateFlow()
 
     override suspend fun setThemePreference(theme: String) {
-        if (theme in listOf("SYSTEM", "DARK", "LIGHT", "DARK_GOLD")) {
+        if (theme in listOf("SYSTEM", "DARK", "LIGHT", "DARK_GOLD", "BLUE_DARK", "BLUE_LIGHT")) {
             val scope = activeAccountId ?: return
             write(scope, "theme", theme)
             _themePreference.value = theme

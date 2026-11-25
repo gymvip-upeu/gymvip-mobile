@@ -7,10 +7,10 @@ class ActivateAccountUseCase(private val authRepository: AuthRepository) {
     suspend operator fun invoke(token: String, newPassword: String, confirmPassword: String): Result<Unit> {
         val trimmedToken = token.trim()
         if (trimmedToken.isBlank()) {
-            return Result.failure(AppError.Validation("El código de activación presencial es obligatorio"))
+            return Result.failure(AppError.Validation("El código del enlace de activación es obligatorio"))
         }
-        if (newPassword.length < 8) {
-            return Result.failure(AppError.Validation("La nueva contraseña debe tener al menos 8 caracteres"))
+        if (newPassword.length < 12 || newPassword.encodeToByteArray().size > 72) {
+            return Result.failure(AppError.Validation("La nueva contraseña debe tener al menos 12 caracteres y como máximo 72 bytes"))
         }
         val hasUpper = newPassword.any { it.isUpperCase() }
         val hasLower = newPassword.any { it.isLowerCase() }

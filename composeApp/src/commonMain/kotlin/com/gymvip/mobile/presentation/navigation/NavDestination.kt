@@ -14,6 +14,7 @@ sealed class NavDestination {
     data object Login : NavDestination()
     data object PasswordRecovery : NavDestination()
     data object Activation : NavDestination()
+    data object FirstPassword : NavDestination()
     data class Main(val selectedTab: MainTab = MainTab.HOME) : NavDestination()
     data object Faq : NavDestination()
     data object Settings : NavDestination()

@@ -5,6 +5,7 @@ import com.gymvip.mobile.data.local.GymVipDatabase
 import com.gymvip.mobile.data.local.SecureTokenStore
 import com.gymvip.mobile.domain.repository.*
 import com.gymvip.mobile.domain.usecase.*
+import io.ktor.client.engine.HttpClientEngine
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.get
 import org.koin.core.context.GlobalContext
@@ -82,12 +83,13 @@ object AppContainer : KoinComponent {
 
     fun initialize(
         driverFactory: DatabaseDriverFactory,
-        tokenStore: SecureTokenStore
+        tokenStore: SecureTokenStore,
+        clientEngine: HttpClientEngine? = null
     ) {
         if (initialized) return
 
         if (GlobalContext.getOrNull() == null) {
-            initKoin(driverFactory, tokenStore)
+            initKoin(driverFactory, tokenStore, clientEngine = clientEngine)
         }
 
         database = get<GymVipDatabase>()

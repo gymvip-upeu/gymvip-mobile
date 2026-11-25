@@ -8,10 +8,28 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.sqldelight)
-    alias(libs.plugins.googleServices)
-    alias(libs.plugins.firebaseCrashlytics)
-    alias(libs.plugins.firebasePerf)
+    alias(libs.plugins.googleServices) apply false
+    alias(libs.plugins.firebaseCrashlytics) apply false
+    alias(libs.plugins.firebasePerf) apply false
 }
+
+val firebaseConfigPresent = listOf("google-services.json", "src/debug/google-services.json", "src/release/google-services.json")
+    .any { file(it).isFile }
+val firebaseEnabled = providers.gradleProperty("gymvip.firebase").orNull?.toBooleanStrictOrNull() ?: firebaseConfigPresent
+if (firebaseEnabled) {
+    require(firebaseConfigPresent) { "Firebase requiere google-services.json del proyecto del equipo." }
+    apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
+    apply(plugin = "com.google.firebase.firebase-perf")
+}
+val debugBackendUrl = providers.gradleProperty("gymvip.backendUrl").orElse("https://gymvip-backend.onrender.com").get()
+require(debugBackendUrl.matches(Regex("https?://[A-Za-z0-9.:-]+"))) { "gymvip.backendUrl debe ser una URL HTTP(S) sin credenciales." }
+val releaseBackendUrl = providers.gradleProperty("gymvip.releaseBackendUrl").orElse("https://gymvip-backend.onrender.com").get()
+require(releaseBackendUrl.matches(Regex("https://[A-Za-z0-9.:-]+"))) { "gymvip.releaseBackendUrl debe ser HTTPS sin credenciales." }
+val debugAppId = providers.gradleProperty("gymvip.debugApplicationId").orElse("com.gymvip.mobile").get()
+require(debugAppId == "com.gymvip.mobile" || debugAppId.startsWith("com.gymvip.mobile.")) { "Identificador Android inválido" }
+val receptionNumber = providers.gradleProperty("gymvip.receptionWhatsApp").orElse("+51905436989").get()
+require(receptionNumber.matches(Regex("[+]?[0-9]{8,15}"))) { "Número de recepción inválido" }
 
 kotlin {
     androidTarget {
@@ -106,6 +124,12 @@ kotlin {
             implementation(libs.ktor.client.mock)
             implementation(libs.sqldelight.sqlite.driver)
         }
+        val androidInstrumentedTest by getting {
+            dependencies {
+                implementation("androidx.test:runner:1.6.2")
+                implementation("junit:junit:4.13.2")
+            }
+        }
     }
 }
 
@@ -117,6 +141,8 @@ android {
         applicationId = "com.gymvip.mobile"
         minSdk = 24
         targetSdk = 34
+        buildConfigField("boolean", "FIREBASE_ENABLED", firebaseEnabled.toString())
+        buildConfigField("String", "RECEPTION_WHATSAPP", "\"$receptionNumber\"")
         versionCode = 6
         versionName = "1.1.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -181,13 +207,14 @@ android {
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
-            buildConfigField("String", "DEFAULT_SERVER_URL", "\"https://gymvip-backend.onrender.com\"")
+            buildConfigField("String", "DEFAULT_SERVER_URL", "\"$releaseBackendUrl\"")
             signingConfig = signingConfigs.getByName("release")
         }
         getByName("debug") {
             isDebuggable = true
+            applicationIdSuffix = debugAppId.removePrefix("com.gymvip.mobile").ifBlank { null }
             signingConfig = signingConfigs.getByName("debug")
-            buildConfigField("String", "DEFAULT_SERVER_URL", "\"https://gymvip-backend.onrender.com\"")
+            buildConfigField("String", "DEFAULT_SERVER_URL", "\"$debugBackendUrl\"")
         }
     }
 
@@ -220,7 +247,18 @@ tasks.register("validateReleaseConfiguration") {
     description = "Valida que las compilaciones de producción no dependan de localhost o emuladores"
     group = "verification"
     doLast {
-        val configuredUrl = "https://gymvip-backend.onrender.com"
+        require(firebaseEnabled && (file("google-services.json").isFile || file("src/release/google-services.json").isFile)) {
+            "Release requiere configuración Firebase real del equipo (google-services.json)."
+        }
+        val releaseSignature = android.signingConfigs.getByName("release")
+        require(releaseSignature.storeFile?.isFile == true &&
+                releaseSignature.storeFile?.canonicalPath != android.signingConfigs.getByName("debug").storeFile?.canonicalPath &&
+                !releaseSignature.storePassword.isNullOrBlank() &&
+                !releaseSignature.keyAlias.isNullOrBlank() &&
+                !releaseSignature.keyPassword.isNullOrBlank()) {
+            "Release requiere el keystore privado del equipo, no la firma debug."
+        }
+        val configuredUrl = releaseBackendUrl
         if (configuredUrl.contains("localhost") || configuredUrl.contains("10.0.2.2") || configuredUrl.contains("127.0.0.1")) {
             throw GradleException("ERROR DE SEGURIDAD CRÍTICO: La compilación de release no puede apuntar a IP local o emulador ($configuredUrl)")
         }
