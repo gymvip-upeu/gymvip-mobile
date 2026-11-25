@@ -3,11 +3,13 @@ name: CI Mobile KMP GymVIP
 on:
   push:
     branches:
+      - ACOSTA-MEJORAS-Y-ACTUALIZACIONES
       - S2-REVISION-QA
       - 'feature/**'
       - main
   pull_request:
     branches:
+      - ACOSTA-MEJORAS-Y-ACTUALIZACIONES
       - S2-REVISION-QA
       - main
 
@@ -27,9 +29,9 @@ jobs:
           distribution: 'temurin'
 
       - name: Configurar Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Ejecutar Pruebas Unitarias de Dominio y Carrito KMP
+      - name: Ejecutar Pruebas Unitarias y Compilación Debug
         run: |
           chmod +x ./gradlew
-          ./gradlew test --stacktrace
+          ./gradlew :composeApp:testDebugUnitTest :composeApp:assembleDebug --stacktrace
