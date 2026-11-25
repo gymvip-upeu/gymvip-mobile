@@ -101,7 +101,19 @@ class SyncQueueManagerTest {
         val api = FavoriteApi(client)
         val queueManager = SyncQueueManager(database, api)
 
-        // Encolar y procesar
+        // Encolar registro local provisional (contrato idéntico a FavoriteRepositoryImpl) y procesar cola
+        database.gymVipDatabaseQueries.insertOrReplaceFavorite(
+            id = "temp_local_id",
+            accountId = "acc_1",
+            productId = "prod_1",
+            productName = "Proteína",
+            productCategory = "SUPLEMENTO",
+            productPriceCents = 16500L,
+            personalNote = "Nota de prueba",
+            createdAt = "2026-10-15T10:00:00Z",
+            updatedAt = "2026-10-15T10:00:00Z",
+            syncStatus = "PENDING_CREATE"
+        )
         queueManager.enqueueFavoriteCreate("temp_local_id", "acc_1", "prod_1", "Nota de prueba")
         val processed = queueManager.processQueue("acc_1").getOrThrow()
 
