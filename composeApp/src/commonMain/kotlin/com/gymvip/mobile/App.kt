@@ -404,6 +404,18 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                 )
             }
 
+            is NavDestination.Journal -> {
+                val profile = authState.authenticatedProfile
+                if (authState.isAuthenticated && profile?.roles?.contains("CLIENTE") == true) {
+                    com.gymvip.mobile.features.journal.JournalScreen(
+                        accountId = profile.accountId,
+                        memberName = profile.fullName,
+                        repository = AppContainer.journalRepository,
+                        onBack = { currentDestination = NavDestination.Main(MainTab.TRAINING) }
+                    )
+                }
+            }
+
             is NavDestination.ExerciseCatalog -> {
                 val accountId = authState.authenticatedProfile?.accountId ?: "public"
                 ExerciseCatalogScreen(
@@ -694,6 +706,7 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                                 MainTab.TRAINING -> if (!isStaff) TrainingHubScreen(
                                     accountId = accountId,
                                     repository = AppContainer.enterpriseTrainingRepository,
+                                    onOpenJournal = { currentDestination = NavDestination.Journal },
                                     onOpenExercises = { currentDestination = NavDestination.ExerciseCatalog },
                                     onOpenProgress = { currentDestination = NavDestination.TrainingProgress },
                                     onOpenClasses = { currentDestination = NavDestination.ClassReservations }
