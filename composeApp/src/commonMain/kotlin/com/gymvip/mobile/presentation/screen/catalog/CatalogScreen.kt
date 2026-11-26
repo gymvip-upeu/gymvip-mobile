@@ -2,8 +2,6 @@ package com.gymvip.mobile.presentation.screen.catalog
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material.icons.outlined.ShoppingCart
@@ -48,9 +47,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.domain.model.Product
 import com.gymvip.mobile.presentation.component.ContextualHelpCard
+import com.gymvip.mobile.presentation.screen.faq.receptionWhatsAppUrl
 import kotlinx.coroutines.CancellationException
 import com.gymvip.mobile.domain.model.ProductCategory
 import com.gymvip.mobile.presentation.component.EmptyView
@@ -61,7 +62,6 @@ import com.gymvip.mobile.presentation.viewmodel.CatalogViewModel
 import com.gymvip.mobile.presentation.viewmodel.FavoritesViewModel
 import com.gymvip.mobile.presentation.theme.accentForeground
 import com.gymvip.mobile.presentation.theme.vipOutlinedTextFieldColors
-import com.gymvip.mobile.presentation.theme.VipTypography
 
 @Composable
 fun CatalogScreen(
@@ -86,7 +86,7 @@ fun CatalogScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
         OfflineBanner(
-            isOffline = false,
+            isOffline = catalogState.errorMessage != null,
             pendingSyncCount = favoritesState.pendingCount
         )
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
@@ -129,12 +129,23 @@ fun CatalogScreen(
         ) {
             Tab(
                 selected = catalogState.selectedSubTab == 0,
-                onClick = { catalogViewModel.setSubTab(0) },
+                onClick = {
+                    catalogViewModel.setSubTab(0)
+                    catalogViewModel.togglePromotionsOnly(false)
+                },
                 text = { Text("Productos", style = MaterialTheme.typography.titleSmall) }
             )
             Tab(
                 selected = catalogState.selectedSubTab == 1,
-                onClick = { catalogViewModel.setSubTab(1) },
+                onClick = {
+                    catalogViewModel.setSubTab(1)
+                    catalogViewModel.togglePromotionsOnly(true)
+                },
+                text = { Text("Promociones", style = MaterialTheme.typography.titleSmall) }
+            )
+            Tab(
+                selected = catalogState.selectedSubTab == 2,
+                onClick = { catalogViewModel.setSubTab(2) },
                 text = {
                     val count = favoritesState.favorites.size
                     Row(
@@ -151,16 +162,27 @@ fun CatalogScreen(
         when (catalogState.selectedSubTab) {
             0 -> CatalogTab(
                 state = catalogState,
-                favoriteProductIds = favoritesState.favorites.filter { it.syncStatus != com.gymvip.mobile.domain.model.SyncStatus.PENDING_DELETE }.map { it.productId }.toSet(),
+                promotionsOnlyTab = false,
                 onFilterCategory = { catalogViewModel.setCategoryFilter(it) },
                 onFilterPromotions = catalogViewModel::togglePromotionsOnly,
                 onRefresh = catalogViewModel::refresh,
                 loadThumbnail = catalogViewModel::getThumbnail,
                 receptionWhatsAppNumber = receptionWhatsAppNumber,
                 onAddToFavorites = { favoritesViewModel.openAddDialog(it) },
-                onAddToCart = if (canPurchase && !catalogState.isStale && !catalogState.isLoading) onAddToCart else null
+                onAddToCart = if (canPurchase) onAddToCart else null
             )
-            1 -> FavoritesTab(
+            1 -> CatalogTab(
+                state = catalogState,
+                promotionsOnlyTab = true,
+                onFilterCategory = { catalogViewModel.setCategoryFilter(it) },
+                onFilterPromotions = catalogViewModel::togglePromotionsOnly,
+                onRefresh = catalogViewModel::refresh,
+                loadThumbnail = catalogViewModel::getThumbnail,
+                receptionWhatsAppNumber = receptionWhatsAppNumber,
+                onAddToFavorites = { favoritesViewModel.openAddDialog(it) },
+                onAddToCart = if (canPurchase) onAddToCart else null
+            )
+            2 -> FavoritesTab(
                 state = favoritesState,
                 onEditNote = { favoritesViewModel.openEditNoteDialog(it) },
                 onDelete = { favoritesViewModel.deleteFavorite(it) },
@@ -283,7 +305,7 @@ fun CatalogScreen(
 @Composable
 private fun CatalogTab(
     state: com.gymvip.mobile.presentation.viewmodel.CatalogUiState,
-    favoriteProductIds: Set<String>,
+    promotionsOnlyTab: Boolean,
     onFilterCategory: (ProductCategory?) -> Unit,
     onFilterPromotions: (Boolean) -> Unit,
     onRefresh: () -> Unit,
@@ -304,7 +326,12 @@ private fun CatalogTab(
         ?.takeIf { it.isFinite() && it >= 0 }
     val badLimit = maxPrice.isNotBlank() && limit == null
     val visibleProducts = if (badLimit) emptyList() else state.products.filterCatalog(
-        query, state.selectedCategory, supplementCategory, state.onlyPromotions && !finishedOnly, limit, finishedOnly
+        query = query,
+        category = state.selectedCategory,
+        supplementCategory = supplementCategory,
+        onlyPromotions = !finishedOnly && (promotionsOnlyTab || state.onlyPromotions),
+        maxPrice = limit,
+        finishedOnly = finishedOnly
     )
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -321,20 +348,28 @@ private fun CatalogTab(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            FilterChip(
-                selected = !state.onlyPromotions && !finishedOnly,
-                onClick = { finishedOnly = false; onFilterPromotions(false) },
-                label = { Text("Todos") },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+            if (promotionsOnlyTab) {
+                FilterChip(
+                    selected = !finishedOnly,
+                    onClick = { finishedOnly = false; onFilterPromotions(true) },
+                    label = { Text("Vigentes") }
                 )
-            )
-            FilterChip(
-                selected = state.onlyPromotions && !finishedOnly,
-                onClick = { finishedOnly = false; onFilterPromotions(true) },
-                label = { Text("Promociones") }
-            )
+            } else {
+                FilterChip(
+                    selected = !state.onlyPromotions && !finishedOnly,
+                    onClick = { finishedOnly = false; onFilterPromotions(false) },
+                    label = { Text("Todos") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+                FilterChip(
+                    selected = state.onlyPromotions && !finishedOnly,
+                    onClick = { finishedOnly = false; onFilterPromotions(true) },
+                    label = { Text("Promociones") }
+                )
+            }
             FilterChip(
                 selected = finishedOnly,
                 onClick = { finishedOnly = true; onFilterPromotions(false) },
@@ -374,43 +409,31 @@ private fun CatalogTab(
             }
         }
 
-        if (state.isLoading) {
-            androidx.compose.material3.LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            Text(if (state.hasLoaded) "Actualizando catálogo… Mostrando información anterior hasta completar la consulta." else "Actualizando catálogo…",
-                modifier = Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodySmall)
-        }
         if (state.errorMessage != null) {
-            Text(if (state.isStale) "No se pudo actualizar. Información anterior: el precio y la disponibilidad pueden haber cambiado." else state.errorMessage,
-                modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.error)
-            OutlinedButton(onClick = onRefresh, enabled = !state.isLoading, modifier = Modifier.padding(horizontal = 16.dp)) {
+            Text(state.errorMessage, modifier = Modifier.padding(horizontal = 16.dp))
+            OutlinedButton(onClick = onRefresh, modifier = Modifier.padding(horizontal = 16.dp)) {
                 Text("Reintentar")
             }
-        }
-        if (state.isLoading && state.products.isEmpty()) {
+        } else if (state.isLoading && state.products.isEmpty()) {
             LoadingView("Cargando catálogo...")
-        } else if (visibleProducts.isEmpty() && !badLimit && state.errorMessage == null) {
+        } else if (visibleProducts.isEmpty() && !badLimit) {
             EmptyView(
                 icon = Icons.Outlined.ShoppingBag,
-                title = if (state.onlyPromotions || finishedOnly) "Sin promociones" else "Sin productos",
+                title = if (promotionsOnlyTab || state.onlyPromotions || finishedOnly) "Sin promociones" else "Sin productos",
                 message = "No se encontraron elementos en esta categoría."
             )
         } else {
-            BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
-                val textScale = MaterialTheme.typography.bodyLarge.fontSize.value / VipTypography.bodyLarge.fontSize.value
-                val columns = catalogColumnCount(maxWidth.value, LocalDensity.current.fontScale * textScale)
-                LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    visibleProducts.chunked(columns).forEach { row ->
-                        item(key = row.joinToString("-") { it.id }) {
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                row.forEach { product ->
-                                    CatalogShopCard(product, finishedOnly, { selectedId = product.id },
-                                        onAddToFavorites, onAddToCart,
-                                        { CatalogImage(product, loadThumbnail, Modifier.fillMaxSize()) },
-                                        Modifier.weight(1f), isFavorite = product.id in favoriteProductIds, compact = columns == 2)
-                                }
-                                if (columns == 2 && row.size == 1) Spacer(Modifier.weight(1f))
+            LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                visibleProducts.chunked(2).forEach { pair ->
+                    item(key = pair.joinToString("-") { it.id }) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            pair.forEach { product ->
+                                CatalogShopCard(product, finishedOnly, { selectedId = product.id },
+                                    onAddToFavorites, onAddToCart, { CatalogImage(product, loadThumbnail) },
+                                    Modifier.weight(1f))
                             }
+                            if (pair.size == 1) Spacer(Modifier.weight(1f))
                         }
                     }
                 }
@@ -418,15 +441,55 @@ private fun CatalogTab(
         }
     }
     state.products.firstOrNull { it.id == selectedId }?.let { product ->
-        CatalogDetailSheet(product, finishedOnly, receptionWhatsAppNumber,
-            onDismiss = { selectedId = null }, onAddToCart = onAddToCart,
-            catalogNotice = if (state.isStale || state.isLoading) "Información anterior. Actualiza el catálogo para comprobar el precio y la disponibilidad antes de agregar al carrito." else null,
-            image = { CatalogImage(product, loadThumbnail, Modifier.fillMaxWidth().height(240.dp)) })
+        val uriHandler = LocalUriHandler.current
+        val whatsApp = receptionWhatsAppUrl(receptionWhatsAppNumber)
+        var contactFailed by remember(product.id) { mutableStateOf(false) }
+        AlertDialog(
+            onDismissRequest = { selectedId = null },
+            title = { Text(product.name) },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CatalogImage(product, loadThumbnail)
+                    product.brand?.let { Text(it) }
+                    Text(product.description)
+                    listOfNotNull(product.presentation, product.netContent, product.flavor)
+                        .filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }
+                        ?.let { Text(it.joinToString(" · ")) }
+                    product.ingredients?.takeIf { it.isNotBlank() }?.let { Text(it) }
+                    product.availability?.let {
+                        Text(if (it == "DISPONIBLE") "Disponible" else "Agotado")
+                    }
+                    Text((if (finishedOnly) product.price else product.currentPrice).amountInSoles)
+                    (if (finishedOnly) product.finishedOffer else product.offer)?.let { offer ->
+                        Text(offer.name, style = MaterialTheme.typography.titleSmall)
+                        Text(offer.description)
+                        Text(if (finishedOnly) "Finalizada · Precio anterior ${offer.price.amountInSoles}"
+                             else "Ahorras ${(product.price - offer.price).amountInSoles}")
+                        Text("Vigencia del ${offer.startDate} al ${offer.endDate}")
+                        Text(offer.conditions)
+                    }
+                    if (contactFailed) Text("No se pudo abrir WhatsApp.")
+                }
+            },
+            confirmButton = { OutlinedButton(onClick = { selectedId = null }) { Text("Cerrar") } },
+            dismissButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (onAddToCart != null && product.category == ProductCategory.SUPLEMENTO && product.availability == "DISPONIBLE" && !finishedOnly) {
+                        Button(onClick = { onAddToCart(product); selectedId = null }) { Text("Añadir al carrito") }
+                    }
+                    if (whatsApp != null) {
+                        OutlinedButton(onClick = {
+                            contactFailed = runCatching { uriHandler.openUri(whatsApp) }.isFailure
+                        }) { Text("WhatsApp") }
+                    }
+                }
+            }
+        )
     }
 }
 
 @Composable
-private fun CatalogImage(product: Product, loadThumbnail: suspend (String) -> ByteArray, modifier: Modifier = Modifier.fillMaxWidth().height(184.dp)) {
+private fun CatalogImage(product: Product, loadThumbnail: suspend (String) -> ByteArray) {
     val bitmap by produceState<ImageBitmap?>(initialValue = null, product.imageUrl, product.id) {
         value = null
         val path = product.imageUrl ?: return@produceState
@@ -438,11 +501,11 @@ private fun CatalogImage(product: Product, loadThumbnail: suspend (String) -> By
             // The product details remain available if the thumbnail fails.
         }
     }
-    Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant),
+    Box(Modifier.fillMaxWidth().height(164.dp).background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center) {
         bitmap?.let {
             androidx.compose.foundation.Image(bitmap = it, contentDescription = product.name,
-                modifier = Modifier.fillMaxSize().padding(14.dp), contentScale = ContentScale.Fit)
+                modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
         } ?: Icon(Icons.Outlined.ShoppingBag, contentDescription = "Imagen no disponible de ${product.name}",
             modifier = Modifier.size(38.dp), tint = MaterialTheme.colorScheme.primary)
     }

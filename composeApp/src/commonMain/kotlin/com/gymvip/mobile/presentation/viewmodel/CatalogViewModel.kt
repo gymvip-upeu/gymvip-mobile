@@ -18,10 +18,8 @@ data class CatalogUiState(
     val products: List<Product> = emptyList(),
     val selectedCategory: ProductCategory? = null,
     val onlyPromotions: Boolean = false,
-    val selectedSubTab: Int = 0, // 0 = Catálogo de Productos y Planes, 1 = Mis Favoritos
-    val errorMessage: String? = null,
-    val hasLoaded: Boolean = false,
-    val isStale: Boolean = false
+    val selectedSubTab: Int = 0, // 0 = productos, 1 = promociones, 2 = favoritos
+    val errorMessage: String? = null
 )
 
 class CatalogViewModel(
@@ -40,7 +38,7 @@ class CatalogViewModel(
     }
 
     fun setSubTab(tab: Int) {
-        _uiState.value = _uiState.value.copy(selectedSubTab = tab)
+        _uiState.update { it.copy(selectedSubTab = tab.coerceIn(0, 2)) }
     }
 
     fun refresh() {
@@ -51,12 +49,12 @@ class CatalogViewModel(
                 .onFailure {
                     _uiState.update { state -> state.copy(
                         isLoading = false,
-                        isStale = state.hasLoaded,
+                        products = emptyList(),
                         errorMessage = "No pudimos consultar el catálogo."
                     ) }
                 }
                 .onSuccess { products ->
-                    _uiState.update { it.copy(isLoading = false, products = products.distinctBy { product -> product.id }, errorMessage = null, hasLoaded = true, isStale = false) }
+                    _uiState.update { it.copy(isLoading = false, products = products.distinctBy { product -> product.id }, errorMessage = null) }
                 }
         }
     }

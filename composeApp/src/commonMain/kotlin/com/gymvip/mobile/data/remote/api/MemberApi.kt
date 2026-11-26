@@ -23,6 +23,12 @@ class MemberApi(
     private val explicitBaseUrl: String? = baseUrl
     private val baseUrl: String get() = explicitBaseUrl ?: GymVipHttpClient.baseUrl
 
+    suspend fun getAvailablePlans(): Result<List<AvailableMembershipPlanDto>> = GymVipHttpClient.safeApiCall {
+        val response = client.get("$baseUrl/api/v1/member-app/plans")
+        if (response.status == HttpStatusCode.OK) response.body<List<AvailableMembershipPlanDto>>()
+        else throw GymVipHttpClient.parseResponseError(response)
+    }
+
     suspend fun updateOwnProfile(firstName: String, lastName: String, phone: String): Result<MemberClientDto> =
         GymVipHttpClient.safeApiCall {
             val response = client.patch("$baseUrl/api/v1/member-app/profile") {

@@ -69,7 +69,10 @@ fun MembershipSummaryDto.toDomain(accountId: String, lastSyncedAt: String): Memb
         endDate = endDate,
         status = domainStatus,
         daysRemaining = daysRemaining,
-        lastSyncedAt = lastSyncedAt
+        lastSyncedAt = lastSyncedAt,
+        durationDays = durationDays,
+        conditions = conditions,
+        benefits = benefits
     )
 }
 

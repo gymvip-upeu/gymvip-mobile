@@ -64,6 +64,7 @@ fun TrainingHubScreen(
     repository: EnterpriseTrainingRepository,
     onOpenExercises: () -> Unit,
     onOpenProgress: () -> Unit,
+    onOpenJournal: () -> Unit = {},
     onOpenClasses: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -116,6 +117,8 @@ fun TrainingHubScreen(
         if (!statusMessage.isNullOrBlank()) {
             Text(statusMessage ?: "", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
         }
+
+        OutlinedButton(onClick = onOpenJournal, modifier = Modifier.fillMaxWidth()) { Text("Mi Bitácora · registrar mi día") }
 
         val current = activeRoutine
         if (current != null) {

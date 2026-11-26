@@ -60,8 +60,7 @@ class CatalogTest {
         repo.result = Result.failure(IllegalStateException("offline"))
         viewModel.refresh()
         runCurrent()
-        assertEquals(listOf(whey), viewModel.uiState.value.products)
-        assertTrue(viewModel.uiState.value.isStale)
+        assertTrue(viewModel.uiState.value.products.isEmpty())
         assertNotNull(viewModel.uiState.value.errorMessage)
 
         repo.result = Result.success(emptyList())

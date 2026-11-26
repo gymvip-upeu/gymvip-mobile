@@ -23,6 +23,9 @@ object AppContainer : KoinComponent {
     lateinit var memberApi: com.gymvip.mobile.data.remote.api.MemberApi
         private set
 
+    lateinit var membershipPlansRepository: com.gymvip.mobile.data.repository.MembershipPlansRepository
+        private set
+
     lateinit var supplementOrderApi: com.gymvip.mobile.data.remote.api.SupplementOrderApi
         private set
 
@@ -54,6 +57,9 @@ object AppContainer : KoinComponent {
         private set
 
     lateinit var enterpriseTrainingRepository: com.gymvip.mobile.features.training.EnterpriseTrainingRepository
+        private set
+
+    lateinit var journalRepository: com.gymvip.mobile.features.journal.JournalRepository
         private set
 
     // UseCases
@@ -98,6 +104,7 @@ object AppContainer : KoinComponent {
         database = get<GymVipDatabase>()
         secureTokenStore = get<SecureTokenStore>()
         memberApi = get<com.gymvip.mobile.data.remote.api.MemberApi>()
+        membershipPlansRepository = com.gymvip.mobile.data.repository.MembershipPlansRepository(memberApi, database)
         supplementOrderApi = get<com.gymvip.mobile.data.remote.api.SupplementOrderApi>()
 
         authRepository = get<AuthRepository>()
@@ -110,6 +117,8 @@ object AppContainer : KoinComponent {
         legalConsentRepository = get<LegalConsentRepository>()
         configRepository = get<ConfigRepository>()
         enterpriseTrainingRepository = get<com.gymvip.mobile.features.training.EnterpriseTrainingRepository>()
+
+        journalRepository = get<com.gymvip.mobile.features.journal.JournalRepository>()
 
         loginUseCase = get<LoginUseCase>()
         activateAccountUseCase = get<ActivateAccountUseCase>()

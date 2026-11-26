@@ -35,6 +35,14 @@
             </intent-filter>
         </activity>
 
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.journal.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/journal_file_paths" />
+        </provider>
+
         <!-- Servicio de Mensajería Push Firebase FCM -->
         <service
             android:name=".notification.GymVipFirebaseMessagingService"

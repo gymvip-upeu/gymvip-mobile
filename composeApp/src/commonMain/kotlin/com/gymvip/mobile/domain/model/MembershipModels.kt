@@ -15,7 +15,10 @@ data class MembershipSummary(
     val endDate: String,
     val status: MembershipStatus,
     val daysRemaining: Int,
-    val lastSyncedAt: String
+    val lastSyncedAt: String,
+    val durationDays: Int? = null,
+    val conditions: String? = null,
+    val benefits: String? = null
 ) {
     val isAccessAllowed: Boolean get() = status == MembershipStatus.VIGENTE || status == MembershipStatus.PROXIMA_A_VENCER
 }

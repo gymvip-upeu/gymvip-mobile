@@ -45,6 +45,7 @@ fun appModules(
         single<LegalConsentRepository> { LegalConsentRepositoryImpl(get(), get()) }
         single<ConfigRepository> { ConfigRepositoryImpl(get()) }
         single { EnterpriseTrainingRepository(get(), get(), get()) }
+        single { com.gymvip.mobile.features.journal.JournalRepository(get()) }
     },
     module {
         factory { LoginUseCase(get()) }

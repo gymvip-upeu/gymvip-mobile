@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -46,7 +48,6 @@ import com.gymvip.mobile.domain.model.MembershipStatus
 import com.gymvip.mobile.presentation.component.ContextualHelpCard
 import com.gymvip.mobile.presentation.component.EmptyView
 import com.gymvip.mobile.presentation.component.LoadingView
-import com.gymvip.mobile.presentation.component.MembershipStatusCard
 import com.gymvip.mobile.presentation.component.OfflineBanner
 import com.gymvip.mobile.presentation.component.PaymentItemCard
 import com.gymvip.mobile.presentation.theme.GoldPrimary
@@ -57,11 +58,14 @@ import com.gymvip.mobile.presentation.viewmodel.MembershipViewModel
 @Composable
 fun MembershipScreen(
     viewModel: MembershipViewModel,
-    userRoles: List<String> = emptyList(),
-    onNavigateToCatalog: () -> Unit = {}
+    userRoles: List<String> = emptyList()
 ) {
     val state by viewModel.uiState.collectAsState()
     val isStaff = userRoles.any { it.equals("ADMIN", ignoreCase = true) || it.equals("RECEPCION", ignoreCase = true) || it.equals("GERENTE", ignoreCase = true) }
+
+    if (state.plansVisible && !isStaff) {
+        MembershipPlansSheet(state, onDismiss = viewModel::hidePlans, onRetry = viewModel::showPlans)
+    }
 
     Column(
         modifier = Modifier
@@ -74,7 +78,7 @@ fun MembershipScreen(
         ContextualHelpCard(
             screenKey = "membership_help",
             title = "Membresía y Vigencia",
-            description = "Consulte la vigencia de 30 días calendario y su historial de pagos en PEN. Recepción le indicará los medios disponibles para renovar."
+            description = "Consulte la vigencia de su plan y su historial de pagos en PEN. Recepción le indicará los medios disponibles para renovar."
         )
 
         TabRow(
@@ -145,7 +149,8 @@ fun MembershipScreen(
                     state = state,
                     isStaff = isStaff,
                     userRoles = userRoles,
-                    onNavigateToCatalog = onNavigateToCatalog
+                    onShowPlans = viewModel::showPlans,
+                    onOpenPayments = { viewModel.setSubTab(1) }
                 )
                 1 -> PaymentHistoryTab(
                     state = state,
@@ -161,20 +166,20 @@ private fun MembershipDetailTab(
     state: com.gymvip.mobile.presentation.viewmodel.MembershipUiState,
     isStaff: Boolean,
     userRoles: List<String>,
-    onNavigateToCatalog: () -> Unit
+    onShowPlans: () -> Unit,
+    onOpenPayments: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
         if (isStaff) {
             AdminAccountMembershipNotice(userRoles = userRoles)
         } else {
             val mem = state.membership
-            val hasActiveMembership = mem != null &&
-                    mem.status != MembershipStatus.SIN_MEMBRESIA &&
-                    mem.daysRemaining > 0
+            val hasMembership = mem != null && mem.status != MembershipStatus.SIN_MEMBRESIA
 
             if (state.isOffline && mem != null) {
                 Box(
@@ -193,10 +198,18 @@ private fun MembershipDetailTab(
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            if (hasActiveMembership) {
-                MembershipStatusCard(membership = mem)
+            if (hasMembership) {
+                CurrentMembershipCard(membership = mem)
+                Spacer(Modifier.height(16.dp))
+                val payment = state.payments.firstOrNull { it.membershipId == mem.id }
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    MembershipContractDetails(mem, payment?.paymentMethod?.name, onOpenPayments)
+                    OutlinedButton(onClick = onShowPlans, modifier = Modifier.fillMaxWidth()) {
+                        Text("Ver planes y precios disponibles")
+                    }
+                }
             } else {
-                NoActiveMembershipCard(onNavigateToCatalog = onNavigateToCatalog)
+                NoActiveMembershipCard(onShowPlans = onShowPlans)
             }
         }
 
@@ -217,7 +230,7 @@ private fun MembershipDetailTab(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "• Cada mensualidad otorga exactamente 30 días calendario continuos de acceso.\n" +
+                    text = "• La vigencia y duración corresponden al plan registrado por recepción.\n" +
                             "• No se aplican días de gracia ni extensiones automáticas (cero tolerancia).\n" +
                             "• Recepción puede registrar el pago en caja o compartir un enlace de pago disponible para su membresía.\n" +
                             "• Su historial permanece accesible en todo momento para su control contable.",
@@ -296,7 +309,7 @@ private fun AdminAccountMembershipNotice(userRoles: List<String>) {
 }
 
 @Composable
-private fun NoActiveMembershipCard(onNavigateToCatalog: () -> Unit) {
+private fun NoActiveMembershipCard(onShowPlans: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -343,7 +356,7 @@ private fun NoActiveMembershipCard(onNavigateToCatalog: () -> Unit) {
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
-                onClick = onNavigateToCatalog,
+                onClick = onShowPlans,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
