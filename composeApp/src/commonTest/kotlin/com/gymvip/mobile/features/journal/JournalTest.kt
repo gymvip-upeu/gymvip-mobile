@@ -10,6 +10,12 @@ import kotlinx.serialization.json.Json
 import kotlin.test.*
 
 class JournalTest {
+    @Test fun restoredServerRolesKeepClientAccessWithoutChangingAssignedPermissions() {
+        val dto = Json.decodeFromString<com.gymvip.mobile.data.remote.dto.CurrentUserDto>("""{"roles":[{"authority":"ROLE_CLIENTE"},"CLIENTE"]}""")
+        assertEquals(listOf("CLIENTE"), dto.normalizedRoles())
+        val staff = Json.decodeFromString<com.gymvip.mobile.data.remote.dto.CurrentUserDto>("""{"roles":[{"authority":"ROLE_ADMIN"}]}""")
+        assertEquals(listOf("ADMIN"), staff.normalizedRoles())
+    }
     private fun entry(date: String = "2026-11-25", id: String = "one") = JournalEntry(id,id,date,"09:00",45,"Fuerza",exercises = listOf(JournalExercise("Press",3,10,20.0)),createdAt="2026-11-25T14:00:00Z",updatedAt="2026-11-25T14:00:00Z")
     @Test fun streakCrossesMonthAndAllowsRestToday() {
         val dates = setOf("2026-10-30","2026-10-31","2026-11-01").map(LocalDate::parse).toSet()

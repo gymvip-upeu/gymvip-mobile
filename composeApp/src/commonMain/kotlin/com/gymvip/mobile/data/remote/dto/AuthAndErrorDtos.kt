@@ -88,5 +88,5 @@ data class CurrentUserDto(
             is JsonObject -> role["authority"]?.jsonPrimitive?.contentOrNull
             else -> null
         }
-    }.map { it.trim().uppercase() }.filter(String::isNotBlank).distinct()
+    }.map { it.trim().uppercase().removePrefix("ROLE_") }.filter(String::isNotBlank).distinct()
 }
