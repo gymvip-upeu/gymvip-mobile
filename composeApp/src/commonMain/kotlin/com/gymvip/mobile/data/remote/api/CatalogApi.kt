@@ -74,7 +74,8 @@ class CatalogApi(
     private fun CatalogSupplementDto.toProductDto(promotions: List<CatalogPromotionDto>): ProductDto {
         val currentOffer = promotions
             .filter { it.state.equals("VIGENTE", ignoreCase = true) && it.enabled }
-            .maxByOrNull { it.endDate }
+            .minWithOrNull(compareByDescending<CatalogPromotionDto> { it.priority }
+                .thenBy { it.offerPricePen }.thenBy { it.id })
         val previousOffer = promotions
             .filter { it.state.equals("FINALIZADA", ignoreCase = true) }
             .maxByOrNull { it.endDate }
@@ -192,7 +193,8 @@ private data class CatalogPromotionDto(
     val startDate: String,
     val endDate: String,
     val state: String,
-    val enabled: Boolean = true
+    val enabled: Boolean = true,
+    val priority: Int = 0
 )
 
 @Serializable

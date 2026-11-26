@@ -18,6 +18,25 @@ class CatalogApiTest {
     private val jsonHeaders = headersOf(HttpHeaders.ContentType, "application/json")
 
     @Test
+    fun promotionPriceMatchesBackendPriorityAndTieBreaks() = runTest {
+        val supplement = "11111111-1111-4111-8111-111111111111"
+        fun promotion(id: String, priority: Int, price: Int, endDate: String) =
+            """{"id":"$id","supplement":{"id":"$supplement"},"name":"Oferta $id","offerPricePen":$price,"startDate":"2026-11-01","endDate":"$endDate","state":"VIGENTE","priority":$priority}"""
+        val engine = MockEngine { request ->
+            val body = if (request.url.encodedPath.endsWith("/supplements"))
+                """{"content":[{"id":"$supplement","name":"Proteína","category":"PROTEINA","pricePen":200}],"totalPages":1}"""
+            else """{"content":[${promotion("low", 0, 50, "2026-12-31")},${promotion("z", 10, 100, "2026-11-30")},${promotion("b", 10, 80, "2026-11-29")},${promotion("a", 10, 80, "2026-11-28")}],"totalPages":1}"""
+            respond(body, HttpStatusCode.OK, jsonHeaders)
+        }
+        val client = GymVipHttpClient.create(engine = engine, enableLogging = false)
+        try {
+            val product = CatalogApi(client, "https://mock.gymvip.pe").getCatalogProducts().getOrThrow().single()
+            assertEquals("a", product.offer?.id)
+            assertEquals(80.0, product.offer?.pricePen)
+        } finally { client.close() }
+    }
+
+    @Test
     fun loadsEveryCatalogPageAndMapsBackendOffersAndImages() = runTest {
         val requests = mutableListOf<String>()
         val supplementId = "11111111-1111-4111-8111-111111111111"
