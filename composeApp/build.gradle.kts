@@ -22,7 +22,11 @@ if (firebaseEnabled) {
     apply(plugin = "com.google.firebase.crashlytics")
     apply(plugin = "com.google.firebase.firebase-perf")
 }
-val debugBackendUrl = providers.gradleProperty("gymvip.backendUrl").orElse("https://gymvip-backend.onrender.com").get()
+val localBuildProperties = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.isFile }?.inputStream()?.use { load(it) }
+}
+val debugBackendUrl = providers.gradleProperty("gymvip.backendUrl")
+    .orElse(localBuildProperties.getProperty("gymvip.backendUrl", "https://gymvip-backend.onrender.com")).get()
 require(debugBackendUrl.matches(Regex("https?://[A-Za-z0-9.:-]+"))) { "gymvip.backendUrl debe ser una URL HTTP(S) sin credenciales." }
 val releaseBackendUrl = providers.gradleProperty("gymvip.releaseBackendUrl").orElse("https://gymvip-backend.onrender.com").get()
 require(releaseBackendUrl.matches(Regex("https://[A-Za-z0-9.:-]+"))) { "gymvip.releaseBackendUrl debe ser HTTPS sin credenciales." }
@@ -130,12 +134,20 @@ kotlin {
             }
         }
 
-        commonTest.dependencies {
-            implementation(kotlin("test"))
-            implementation(libs.kotlinx.coroutines.test)
-            implementation(libs.ktor.client.mock)
-            implementation(libs.sqldelight.sqlite.driver)
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.ktor.client.mock)
+            }
         }
+        // JDBC es de JVM: compartir estas pruebas entre Android host y escritorio, nunca iOS.
+        val jvmTest by creating {
+            dependsOn(commonTest)
+            dependencies { implementation(libs.sqldelight.sqlite.driver) }
+        }
+        val desktopTest by getting { dependsOn(jvmTest) }
+        val androidUnitTest by getting { dependsOn(jvmTest) }
         val androidInstrumentedTest by getting {
             dependencies {
                 implementation("androidx.test:runner:1.6.2")
@@ -224,7 +236,9 @@ android {
 
     // Valida también release al invocar tareas agregadas como build o assemble.
     gradle.taskGraph.whenReady {
-        if (allTasks.any { it.project == project && it.name.contains("Release") }) {
+        // La importación del IDE genera recursos/modelos de ambas variantes: eso no
+        // produce un APK release y no debe exigir credenciales de firma.
+        if (allTasks.any { it.project == project && it.name.matches(Regex("(assemble|bundle|package|validateSigning).*Release")) }) {
             val releaseSigning = signingConfigs.getByName("release")
             check(releaseSigning.storeFile?.isFile == true &&
                 !releaseSigning.storePassword.isNullOrBlank() &&

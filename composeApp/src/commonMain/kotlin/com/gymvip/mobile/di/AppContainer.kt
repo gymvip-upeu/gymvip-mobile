@@ -23,6 +23,9 @@ object AppContainer : KoinComponent {
     lateinit var memberApi: com.gymvip.mobile.data.remote.api.MemberApi
         private set
 
+    lateinit var membershipPlansRepository: com.gymvip.mobile.data.repository.MembershipPlansRepository
+        private set
+
     lateinit var supplementOrderApi: com.gymvip.mobile.data.remote.api.SupplementOrderApi
         private set
 
@@ -101,6 +104,7 @@ object AppContainer : KoinComponent {
         database = get<GymVipDatabase>()
         secureTokenStore = get<SecureTokenStore>()
         memberApi = get<com.gymvip.mobile.data.remote.api.MemberApi>()
+        membershipPlansRepository = com.gymvip.mobile.data.repository.MembershipPlansRepository(memberApi, database)
         supplementOrderApi = get<com.gymvip.mobile.data.remote.api.SupplementOrderApi>()
 
         authRepository = get<AuthRepository>()

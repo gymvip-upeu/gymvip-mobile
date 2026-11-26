@@ -24,7 +24,12 @@ data class MembershipUiState(
     val selectedSubTab: Int = 0, // 0 = Resumen de Membresía, 1 = Historial de Pagos
     val isOffline: Boolean = false,
     val noticeType: ConnectionNoticeType = ConnectionNoticeType.NONE,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val plansVisible: Boolean = false,
+    val plansLoading: Boolean = false,
+    val plans: List<com.gymvip.mobile.data.remote.dto.AvailableMembershipPlanDto> = emptyList(),
+    val plansCached: Boolean = false,
+    val plansError: String? = null
 )
 
 class MembershipViewModel(
@@ -32,7 +37,8 @@ class MembershipViewModel(
     private val getPaymentHistoryUseCase: GetPaymentHistoryUseCase,
     private val accountId: String,
     private val isStaff: Boolean = false,
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main),
+    private val plansRepository: com.gymvip.mobile.data.repository.MembershipPlansRepository? = null
 ) {
     private val _uiState = MutableStateFlow(MembershipUiState())
     val uiState: StateFlow<MembershipUiState> = _uiState.asStateFlow()
@@ -55,6 +61,28 @@ class MembershipViewModel(
     fun setSubTab(tabIndex: Int) {
         _uiState.value = _uiState.value.copy(selectedSubTab = tabIndex)
     }
+
+    fun showPlans() {
+        if (isStaff) return
+        if (_uiState.value.plansLoading) {
+            _uiState.value = _uiState.value.copy(plansVisible = true)
+            return
+        }
+        _uiState.value = _uiState.value.copy(plansVisible = true, plansLoading = true, plansError = null)
+        scope.launch {
+            val result = plansRepository?.load(accountId)
+            val data = result?.getOrNull()
+            _uiState.value = _uiState.value.copy(
+                plansLoading = false,
+                plans = data?.plans ?: emptyList(),
+                plansCached = data?.isCached ?: false,
+                plansError = if (data != null) null else result?.exceptionOrNull()?.message
+                    ?: "No se pudieron consultar los planes. Inténtelo nuevamente."
+            )
+        }
+    }
+
+    fun hidePlans() { _uiState.value = _uiState.value.copy(plansVisible = false) }
 
     fun refresh() {
         if (isStaff) {

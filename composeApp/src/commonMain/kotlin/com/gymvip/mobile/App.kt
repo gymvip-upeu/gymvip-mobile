@@ -572,7 +572,8 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                         getMembershipSummaryUseCase = AppContainer.getMembershipSummaryUseCase,
                         getPaymentHistoryUseCase = AppContainer.getPaymentHistoryUseCase,
                         accountId = accountId,
-                        isStaff = isStaff
+                        isStaff = isStaff,
+                        plansRepository = AppContainer.membershipPlansRepository
                     )
                 }
 
@@ -697,11 +698,7 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                                 )
                                 MainTab.MEMBERSHIP -> if (!isStaff) MembershipScreen(
                                     viewModel = membershipViewModel,
-                                    userRoles = userRoles,
-                                    onNavigateToCatalog = {
-                                        currentTab = MainTab.CATALOG
-                                        currentDestination = NavDestination.Main(MainTab.CATALOG)
-                                    }
+                                    userRoles = userRoles
                                 )
                                 MainTab.TRAINING -> if (!isStaff) TrainingHubScreen(
                                     accountId = accountId,

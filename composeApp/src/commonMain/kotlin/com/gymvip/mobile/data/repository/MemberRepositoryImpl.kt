@@ -16,6 +16,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import com.gymvip.mobile.data.local.Membership_summary
+import com.gymvip.mobile.data.remote.dto.MembershipSummaryDto
 
 class MemberRepositoryImpl(
     private val memberApi: MemberApi,
@@ -23,6 +27,20 @@ class MemberRepositoryImpl(
 ) : MemberRepository {
 
     private val syncMutex = Mutex()
+    private val json = Json { ignoreUnknownKeys = true }
+
+    private fun saveContractDetails(accountId: String, dto: MembershipSummaryDto) {
+        database.gymVipDatabaseQueries.upsertPreference(accountId, "membership_contract_v1", json.encodeToString(dto))
+    }
+
+    private fun Membership_summary.withContractDetails(): MembershipSummary {
+        val summary = toDomain()
+        val raw = database.gymVipDatabaseQueries.selectPreference(accountId, "membership_contract_v1").executeAsOneOrNull()
+        val details = raw?.let { runCatching { json.decodeFromString<MembershipSummaryDto>(it) }.getOrNull() }
+        return if (details != null && details.id == id && details.startDate == startDate && details.endDate == endDate) {
+            summary.copy(durationDays = details.durationDays, conditions = details.conditions, benefits = details.benefits)
+        } else summary
+    }
     private var lastWorkspaceSyncTime: Long = 0L
     private var lastWorkspaceAccountId: String? = null
     private val syncCooldownMillis: Long = 5_000L // 5 segundos de reutilización coherente
@@ -41,6 +59,7 @@ class MemberRepositoryImpl(
             val payments = workspace.toPaymentsDto().map { it.toDomain(accountId, nowStr) }
 
             database.gymVipDatabaseQueries.transaction {
+                saveContractDetails(accountId, workspace.toMembershipDto())
                 database.gymVipDatabaseQueries.insertOrReplaceProfile(
                     accountId = profile.accountId,
                     email = profile.email,
@@ -97,7 +116,7 @@ class MemberRepositoryImpl(
             .selectMembershipByAccountId(accountId)
             .asFlow()
             .mapToOneOrNull(Dispatchers.Default)
-            .map { it?.toDomain() }
+            .map { it?.withContractDetails() }
     }
 
     override fun observePayments(accountId: String): Flow<List<PaymentSummary>> {
@@ -162,7 +181,7 @@ class MemberRepositoryImpl(
         if (syncResult.isSuccess) {
             val local = database.gymVipDatabaseQueries.selectMembershipByAccountId(accountId).executeAsOneOrNull()
             if (local != null) {
-                return Result.success(local.toDomain())
+                return Result.success(local.withContractDetails())
             }
         }
 
@@ -170,6 +189,7 @@ class MemberRepositoryImpl(
         return result.map { dto ->
             val now = Clock.System.now().toString()
             val domain = dto.toDomain(accountId, now)
+            saveContractDetails(accountId, dto)
             database.gymVipDatabaseQueries.insertOrReplaceMembership(
                 id = domain.id,
                 accountId = accountId,

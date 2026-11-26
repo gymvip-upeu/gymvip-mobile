@@ -1,6 +1,10 @@
 package com.gymvip.mobile.data.remote.dto
 
 import kotlinx.serialization.Serializable
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.plus
+import kotlinx.datetime.minus
 
 @Serializable
 data class MemberProfileDto(
@@ -22,7 +26,21 @@ data class MembershipSummaryDto(
     val startDate: String,
     val endDate: String,
     val status: String,
-    val daysRemaining: Int = 0
+    val daysRemaining: Int = 0,
+    val durationDays: Int? = null,
+    val conditions: String? = null,
+    val benefits: String? = null
+)
+
+@Serializable
+data class AvailableMembershipPlanDto(
+    val id: String,
+    val name: String,
+    val description: String? = null,
+    val durationDays: Int,
+    val pricePen: Double,
+    val benefits: String? = null,
+    val conditions: String? = null
 )
 
 @Serializable
@@ -154,7 +172,8 @@ data class MemberPeriodDto(
     val price_pen: Double? = null,
     val benefits: String? = null,
     val conditions: String? = null,
-    val paid: Boolean = false
+    val paid: Boolean = false,
+    val cancelled_at_utc: String? = null
 )
 
 @Serializable
@@ -206,20 +225,31 @@ data class MemberWorkspaceDto(
 
     fun toMembershipDto(): MembershipSummaryDto {
         val cov = coverage
-        val firstPeriod = periods.firstOrNull()
+        // La cobertura vigente puede corresponder a otro periodo que el primero del historial.
+        val periodEndExclusive = cov?.endExclusive ?: cov?.lastIncludedDate?.let {
+            runCatching { (LocalDate.parse(it) + DatePeriod(days = 1)).toString() }.getOrNull()
+        }
+        val firstPeriod = if (cov?.startDate != null) periods.firstOrNull {
+            it.cancelled_at_utc == null && it.start_date == cov.startDate && it.end_date == periodEndExclusive
+        } else periods.firstOrNull { it.cancelled_at_utc == null }
         val pName = cov?.planName ?: firstPeriod?.plan_name ?: "Sin Plan"
         val start = cov?.startDate ?: firstPeriod?.start_date ?: ""
-        val end = cov?.lastIncludedDate ?: firstPeriod?.end_date ?: ""
+        val end = cov?.lastIncludedDate ?: firstPeriod?.end_date?.let {
+            runCatching { (LocalDate.parse(it) - DatePeriod(days = 1)).toString() }.getOrNull()
+        } ?: ""
         val stat = cov?.state ?: cov?.contractStatus ?: "SIN_MEMBRESIA"
         val rem = cov?.daysRemaining?.toInt() ?: 0
         return MembershipSummaryDto(
-            id = firstPeriod?.id ?: "m_none",
+            id = firstPeriod?.id ?: "coverage_${client?.id ?: cov?.clientId ?: "unknown"}",
             clientId = client?.id,
             planName = pName,
             startDate = start,
             endDate = end,
             status = stat,
-            daysRemaining = rem
+            daysRemaining = rem,
+            durationDays = firstPeriod?.duration_days,
+            conditions = firstPeriod?.conditions,
+            benefits = firstPeriod?.benefits
         )
     }
 
