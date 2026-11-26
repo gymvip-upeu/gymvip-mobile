@@ -19,7 +19,9 @@ data class CatalogUiState(
     val selectedCategory: ProductCategory? = null,
     val onlyPromotions: Boolean = false,
     val selectedSubTab: Int = 0, // 0 = Catálogo de Productos y Planes, 1 = Mis Favoritos
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val hasLoaded: Boolean = false,
+    val isStale: Boolean = false
 )
 
 class CatalogViewModel(
@@ -49,12 +51,12 @@ class CatalogViewModel(
                 .onFailure {
                     _uiState.update { state -> state.copy(
                         isLoading = false,
-                        products = emptyList(),
+                        isStale = state.hasLoaded,
                         errorMessage = "No pudimos consultar el catálogo."
                     ) }
                 }
                 .onSuccess { products ->
-                    _uiState.update { it.copy(isLoading = false, products = products, errorMessage = null) }
+                    _uiState.update { it.copy(isLoading = false, products = products.distinctBy { product -> product.id }, errorMessage = null, hasLoaded = true, isStale = false) }
                 }
         }
     }
