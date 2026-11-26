@@ -49,4 +49,4 @@ La cuenta ficticia usada para revisión se creó solo en localhost. Sus credenci
 
 Comandos y resultados definitivos se detallan en VALIDACION_BITACORA.md. No se puede compilar ni ejecutar iOS desde Windows; los actual de esa plataforma son mínimos, sin APIs nativas añadidas. La cámara física y las apps de terceros requieren revisión en un teléfono real.
 
-En el backend Docker local actual, el módulo previo de Entreno puede responder que no tiene permiso/endpoints de rutinas. Mi Bitácora no depende de esas llamadas: los vínculos y sesiones aparecen cuando ya están en la caché existente.
+La incompatibilidad inicial del Docker con Entreno se resolvió ejecutando el backend existente de develop sobre una copia de la base. Rutinas, ejercicios y progreso responden 200. Véase REVISION_BITACORA_QUISPE.md. Mi Bitácora conserva su funcionamiento local.

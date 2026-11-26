@@ -1,5 +1,7 @@
 # Validación de Mi Bitácora — 26 de noviembre de 2026
 
+> Historial de la primera entrega. La revisión posterior amplía la suite a 85 pruebas por target y resuelve la incompatibilidad del Docker con Entreno. Resultados actuales: REVISION_BITACORA_QUISPE.md.
+
 ## Compilación y pruebas
 
 Entorno: Windows, JDK 21, Gradle 8.11.1, Kotlin 2.0.21, Compose Multiplatform 1.6.11. Android principal; Pixel 8 Pro API 37.1.
@@ -39,5 +41,3 @@ Dos pruebas instrumentadas pasaron en el emulador: generación PNG para las tres
 ## Cambios de integración exactos
 
 Ver INTEGRACION_BITACORA.patch: contiene el diff de las líneas de integración y las dos correcciones previas justificadas frente a origin/develop (5f95e1c). El catálogo está en su propio commit de esta rama. El esquema SQLDelight no tiene cambios.
-
-
