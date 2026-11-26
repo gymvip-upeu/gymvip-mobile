@@ -5,13 +5,13 @@
 [![Compose Multiplatform](https://img.shields.io/badge/Compose%20Multiplatform-1.7.1-green.svg)]()
 [![Android Target](https://img.shields.io/badge/Android-API%2034%20(minSdk%2024)-orange.svg)]()
 [![iOS Target](https://img.shields.io/badge/iOS-arm64%20ready-lightgrey.svg)]()
-[![Branch](https://img.shields.io/badge/branch-ACOSTA--MEJORAS--Y--ACTUALIZACIONES-yellow.svg)]()
+[![Branch](https://img.shields.io/badge/branch-develop-yellow.svg)]()
 [![License](https://img.shields.io/badge/license-Academic%20Proprietary-lightgrey.svg)]()
 
 > **Ubicación en el Workspace:** `gymvip-mobile/`  
 > **Organización Oficial:** [gymvip-upeu/gymvip-mobile](https://github.com/gymvip-upeu/gymvip-mobile)  
 > **Documentación Centralizada:** `../documentos/`  
-> **Fecha de Actualización:** 23 de Noviembre de 2026 | Revisión Canónica v2.5
+> **Fecha de Actualización:** 26 de Noviembre de 2026 | Revisión Enterprise & MFA (`develop`)
 
 ---
 
