@@ -3,6 +3,7 @@ package com.gymvip.mobile.presentation.viewmodel
 import com.gymvip.mobile.domain.model.MemberProfile
 import com.gymvip.mobile.domain.repository.AuthRepository
 import com.gymvip.mobile.domain.repository.AuthState
+import com.gymvip.mobile.domain.repository.MfaChallengePendingException
 import com.gymvip.mobile.domain.usecase.ActivateAccountUseCase
 import com.gymvip.mobile.domain.usecase.LoginUseCase
 import kotlinx.coroutines.CoroutineScope
@@ -20,6 +21,10 @@ data class AuthUiState(
     val isLoading: Boolean = false,
     val isAuthenticated: Boolean = false,
     val mustChangePassword: Boolean = false,
+    val mfaRequired: Boolean = false,
+    val mfaChallengeToken: String? = null,
+    val mfaEmail: String? = null,
+    val mfaMessage: String? = null,
     val accessEmail: String? = null,
     val isCachedOffline: Boolean = false,
     val authenticatedProfile: MemberProfile? = null,
@@ -59,9 +64,24 @@ class AuthViewModel(
                         isLoading = false,
                         isAuthenticated = true,
                         mustChangePassword = false,
+                        mfaRequired = false,
+                        mfaChallengeToken = null,
+                        mfaEmail = null,
+                        mfaMessage = null,
                         accessEmail = null,
                         isCachedOffline = state.isCachedOffline,
                         authenticatedProfile = state.profile,
+                        errorMessage = null
+                    )
+                }
+                is AuthState.MfaChallengeRequired -> {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        isAuthenticated = false,
+                        mfaRequired = true,
+                        mfaChallengeToken = state.challengeToken,
+                        mfaEmail = state.email,
+                        mfaMessage = state.message,
                         errorMessage = null
                     )
                 }
@@ -154,13 +174,43 @@ class AuthViewModel(
                     }
                 },
                 onFailure = { error ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        errorMessage = error.message ?: "Error al autenticar"
-                    )
+                    if (error !is MfaChallengePendingException) {
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            errorMessage = error.message ?: "Error al autenticar"
+                        )
+                    }
                 }
             )
         }
+    }
+
+    fun verifyMfaLogin(code: String) {
+        val challengeToken = _uiState.value.mfaChallengeToken ?: return
+        if (code.trim().isEmpty()) {
+            _uiState.value = _uiState.value.copy(errorMessage = "Ingrese su código TOTP o recuperación.")
+            return
+        }
+        scope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            val result = authRepository.verifyMfaLogin(challengeToken, code)
+            result.onFailure { err ->
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = err.message ?: "Código MFA inválido o expirado."
+                )
+            }
+        }
+    }
+
+    fun cancelMfaChallenge() {
+        _uiState.value = _uiState.value.copy(
+            mfaRequired = false,
+            mfaChallengeToken = null,
+            mfaEmail = null,
+            mfaMessage = null,
+            errorMessage = null
+        )
     }
 
     fun activateAccount(token: String, newPass: String, confirmPass: String) {

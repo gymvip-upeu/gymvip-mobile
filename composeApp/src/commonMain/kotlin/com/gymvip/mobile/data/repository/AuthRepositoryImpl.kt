@@ -7,6 +7,8 @@ import com.gymvip.mobile.data.remote.api.AuthApi
 import com.gymvip.mobile.data.remote.api.MemberApi
 import com.gymvip.mobile.data.remote.dto.ActivationRequestDto
 import com.gymvip.mobile.data.remote.dto.LoginRequestDto
+import com.gymvip.mobile.data.remote.dto.LoginResponseDto
+import com.gymvip.mobile.data.remote.dto.MfaLoginVerifyRequestDto
 import com.gymvip.mobile.data.remote.dto.PasswordResetConfirmRequestDto
 import com.gymvip.mobile.data.remote.dto.PasswordResetRequestDto
 import com.gymvip.mobile.domain.error.AppError
@@ -15,6 +17,7 @@ import com.gymvip.mobile.domain.model.MemberProfile
 import com.gymvip.mobile.domain.model.normalizedAccountRoles
 import com.gymvip.mobile.domain.repository.AuthRepository
 import com.gymvip.mobile.domain.repository.AuthState
+import com.gymvip.mobile.domain.repository.MfaChallengePendingException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -135,12 +138,28 @@ class AuthRepositoryImpl(
     override suspend fun login(email: String, password: String): Result<MemberProfile> {
         _authState.value = AuthState.Loading
         val loginResult = authApi.login(LoginRequestDto(email.trim(), password))
+        return processLoginDtoResult(loginResult)
+    }
 
+    override suspend fun verifyMfaLogin(challengeToken: String, code: String): Result<MemberProfile> {
+        _authState.value = AuthState.Loading
+        val verifyResult = authApi.verifyMfaLogin(MfaLoginVerifyRequestDto(challengeToken, code.trim()))
+        return processLoginDtoResult(verifyResult)
+    }
+
+    private suspend fun processLoginDtoResult(loginResult: Result<LoginResponseDto>): Result<MemberProfile> {
         return loginResult.fold(
             onSuccess = { dto ->
+                if (dto.mfaRequired && !dto.challengeToken.isNullOrBlank()) {
+                    val prompt = dto.message ?: "Ingrese el código TOTP de 6 dígitos o código de recuperación."
+                    _authState.value = AuthState.MfaChallengeRequired(dto.challengeToken, dto.email, prompt)
+                    return@fold Result.failure(MfaChallengePendingException(dto.challengeToken, dto.email, prompt))
+                }
+                val token = dto.token?.takeIf { it.isNotBlank() }
+                    ?: return@fold Result.failure(IllegalStateException("El servidor no devolvió un token de sesión válido."))
                 val accountId = dto.resolvedAccountId
                 secureTokenStore.saveTokens(
-                    accessToken = dto.token,
+                    accessToken = token,
                     refreshToken = null,
                     accountId = accountId
                 )

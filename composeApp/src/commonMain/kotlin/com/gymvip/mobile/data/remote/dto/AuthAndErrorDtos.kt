@@ -17,16 +17,25 @@ data class LoginRequestDto(
 
 @Serializable
 data class LoginResponseDto(
-    val token: String,
+    val token: String? = null,
     val id: String? = null,
     val accountId: String? = null,
-    val email: String,
+    val email: String = "",
     val roles: List<String> = emptyList(),
-    val expiresAt: String? = null
+    val expiresAt: String? = null,
+    val mfaRequired: Boolean = false,
+    val challengeToken: String? = null,
+    val message: String? = null
 ) {
     val resolvedAccountId: String
         get() = accountId ?: id ?: ""
 }
+
+@Serializable
+data class MfaLoginVerifyRequestDto(
+    val challengeToken: String,
+    val code: String
+)
 
 @Serializable
 data class ActivationRequestDto(

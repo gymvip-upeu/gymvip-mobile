@@ -59,6 +59,7 @@ fun LoginScreen(
     val state by viewModel.uiState.collectAsState()
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var mfaCode by remember { mutableStateOf("") }
     var rememberCredentials by remember { mutableStateOf(false) }
     var showPassword by remember { mutableStateOf(false) }
 
@@ -105,6 +106,64 @@ fun LoginScreen(
             )
 
             Spacer(modifier = Modifier.height(20.dp))
+            if (state.mfaRequired) {
+                Text(
+                    text = "Verificación MFA Requerida",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = state.mfaMessage ?: "Ingresa el código de 6 dígitos de tu autenticador para ${state.mfaEmail.orEmpty()}.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                OutlinedTextField(
+                    value = mfaCode,
+                    onValueChange = { mfaCode = it },
+                    label = { Text("Código TOTP o recuperación") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = vipOutlinedTextFieldColors()
+                )
+                if (state.errorMessage != null) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = state.errorMessage.orEmpty(),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                Spacer(modifier = Modifier.height(18.dp))
+                Button(
+                    onClick = { viewModel.verifyMfaLogin(mfaCode) },
+                    enabled = !state.isLoading && mfaCode.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    if (state.isLoading) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
+                    } else {
+                        Text("Verificar y acceder", style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(
+                    onClick = {
+                        mfaCode = ""
+                        viewModel.cancelMfaChallenge()
+                    },
+                    enabled = !state.isLoading
+                ) {
+                    Text("Volver / Cambiar cuenta", color = MaterialTheme.colorScheme.accentForeground)
+                }
+            } else {
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
@@ -214,6 +273,7 @@ fun LoginScreen(
                 TextButton(onClick = onNavigateToActivation) {
                     Text("Activar cuenta", color = MaterialTheme.colorScheme.accentForeground)
                 }
+            }
             }
         }
     }

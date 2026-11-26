@@ -8,13 +8,22 @@ sealed class AuthState {
     data object Loading : AuthState()
     data class Authenticated(val profile: MemberProfile, val isCachedOffline: Boolean = false) : AuthState()
     data class PasswordChangeRequired(val accountId: String, val email: String) : AuthState()
+    data class MfaChallengeRequired(val challengeToken: String, val email: String, val message: String) : AuthState()
     data object Unauthenticated : AuthState()
     data class Error(val message: String) : AuthState()
 }
 
+class MfaChallengePendingException(
+    val challengeToken: String,
+    val email: String,
+    override val message: String
+) : Exception(message)
+
 interface AuthRepository {
     fun getAuthState(): Flow<AuthState>
     suspend fun login(email: String, password: String): Result<MemberProfile>
+    suspend fun verifyMfaLogin(challengeToken: String, code: String): Result<MemberProfile> =
+        Result.failure(IllegalStateException("Verificación MFA no disponible"))
     suspend fun logout(): Result<Unit>
     suspend fun createFirstPassword(newPassword: String): Result<Unit> = Result.failure(IllegalStateException("Cambio no disponible"))
     suspend fun revokeOtherSessions(): Result<Unit>

@@ -4,6 +4,7 @@ import com.gymvip.mobile.data.remote.dto.CurrentUserDto
 import com.gymvip.mobile.data.remote.dto.ActivationRequestDto
 import com.gymvip.mobile.data.remote.dto.LoginRequestDto
 import com.gymvip.mobile.data.remote.dto.LoginResponseDto
+import com.gymvip.mobile.data.remote.dto.MfaLoginVerifyRequestDto
 import com.gymvip.mobile.data.remote.dto.PasswordResetRequestDto
 import com.gymvip.mobile.data.remote.dto.PasswordResetResponseDto
 import com.gymvip.mobile.data.remote.dto.PasswordResetConfirmRequestDto
@@ -26,6 +27,18 @@ class AuthApi(
     private val baseUrl: String get() = explicitBaseUrl ?: GymVipHttpClient.baseUrl
     suspend fun login(request: LoginRequestDto): Result<LoginResponseDto> = runCatching {
         val response = client.post("$baseUrl/api/v1/auth/login") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (response.status == HttpStatusCode.OK) {
+            response.body<LoginResponseDto>()
+        } else {
+            throw GymVipHttpClient.parseResponseError(response)
+        }
+    }
+
+    suspend fun verifyMfaLogin(request: MfaLoginVerifyRequestDto): Result<LoginResponseDto> = runCatching {
+        val response = client.post("$baseUrl/api/v1/auth/mfa/verify-login") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }
