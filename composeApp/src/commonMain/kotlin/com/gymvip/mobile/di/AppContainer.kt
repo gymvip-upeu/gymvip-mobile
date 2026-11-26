@@ -62,6 +62,9 @@ object AppContainer : KoinComponent {
     lateinit var journalRepository: com.gymvip.mobile.features.journal.JournalRepository
         private set
 
+    lateinit var saasExperienceApi: com.gymvip.mobile.features.saas.SaasExperienceApi
+        private set
+
     // UseCases
     lateinit var loginUseCase: LoginUseCase
         private set
@@ -119,6 +122,7 @@ object AppContainer : KoinComponent {
         enterpriseTrainingRepository = get<com.gymvip.mobile.features.training.EnterpriseTrainingRepository>()
 
         journalRepository = get<com.gymvip.mobile.features.journal.JournalRepository>()
+        saasExperienceApi = get<com.gymvip.mobile.features.saas.SaasExperienceApi>()
 
         loginUseCase = get<LoginUseCase>()
         activateAccountUseCase = get<ActivateAccountUseCase>()

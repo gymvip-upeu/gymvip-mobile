@@ -32,6 +32,7 @@ fun appModules(
         single { CatalogApi(get()) }
         single { FavoriteApi(get()) }
         single { EnterpriseTrainingApi(get()) }
+        single { com.gymvip.mobile.features.saas.SaasExperienceApi(get()) }
         single { SyncQueueManager(get(), get()) }
     },
     module {

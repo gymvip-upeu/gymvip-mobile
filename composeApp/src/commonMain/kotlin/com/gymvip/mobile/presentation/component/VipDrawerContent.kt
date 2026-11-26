@@ -137,6 +137,9 @@ fun VipDrawerContent(
                 DrawerNavItem(label = "Mi Bitácora", icon = Icons.Outlined.CalendarMonth,
                     selected = currentDestination == NavDestination.Journal,
                     onClick = { onNavigate(NavDestination.Journal); onCloseDrawer() })
+                DrawerNavItem(label = "Perfil Físico y Plan", icon = Icons.Outlined.FitnessCenter,
+                    selected = currentDestination == NavDestination.WellnessPlanner,
+                    onClick = { onNavigate(NavDestination.WellnessPlanner); onCloseDrawer() })
 
                 DrawerSectionHeader("RESERVAS")
                 DrawerNavItem(

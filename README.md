@@ -11,7 +11,7 @@
 > **Ubicación en el Workspace:** `gymvip-mobile/`  
 > **Organización Oficial:** [gymvip-upeu/gymvip-mobile](https://github.com/gymvip-upeu/gymvip-mobile)  
 > **Documentación Centralizada:** `../documentos/`  
-> **Fecha de Actualización:** 26 de Noviembre de 2026 | Revisión Enterprise & MFA (`develop`)
+> **Fecha de Actualización:** 26 de Noviembre de 2026 | Revisión GYM VIP 2.0 B2B2C + Bitácora + FCM Segmentado (`develop`)
 
 ---
 

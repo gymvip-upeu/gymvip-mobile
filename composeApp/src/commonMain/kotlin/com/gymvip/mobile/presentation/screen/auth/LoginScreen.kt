@@ -54,7 +54,8 @@ import com.gymvip.mobile.presentation.theme.vipOutlinedTextFieldColors
 fun LoginScreen(
     viewModel: AuthViewModel,
     onNavigateToActivation: () -> Unit,
-    onNavigateToRecovery: () -> Unit
+    onNavigateToRecovery: () -> Unit,
+    onExploreGyms: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     var email by remember { mutableStateOf("") }
@@ -273,6 +274,10 @@ fun LoginScreen(
                 TextButton(onClick = onNavigateToActivation) {
                     Text("Activar cuenta", color = MaterialTheme.colorScheme.accentForeground)
                 }
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            TextButton(onClick = onExploreGyms) {
+                Text("Explorar gimnasios publicados (sin cuenta)", color = MaterialTheme.colorScheme.primary)
             }
             }
         }

@@ -65,6 +65,7 @@ fun TrainingHubScreen(
     onOpenExercises: () -> Unit,
     onOpenProgress: () -> Unit,
     onOpenJournal: () -> Unit = {},
+    onOpenWellnessPlanner: () -> Unit = {},
     onOpenClasses: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -119,6 +120,7 @@ fun TrainingHubScreen(
         }
 
         OutlinedButton(onClick = onOpenJournal, modifier = Modifier.fillMaxWidth()) { Text("Mi Bitácora · registrar mi día") }
+        OutlinedButton(onClick = onOpenWellnessPlanner, modifier = Modifier.fillMaxWidth()) { Text("Perfil Físico (IMC OMS) y Plan Semanal") }
 
         val current = activeRoutine
         if (current != null) {

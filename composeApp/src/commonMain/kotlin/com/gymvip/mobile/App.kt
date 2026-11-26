@@ -235,7 +235,8 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                 currentDestination !is NavDestination.Onboarding &&
                 currentDestination !is NavDestination.Login &&
                 currentDestination !is NavDestination.PasswordRecovery &&
-                currentDestination !is NavDestination.Activation
+                currentDestination !is NavDestination.Activation &&
+                currentDestination !is NavDestination.GymExplorer
             ) {
                 currentTab = MainTab.HOME
                 val onboardingSeen = AppContainer.configRepository.getBooleanPreference("onboarding_completed", false)
@@ -320,7 +321,8 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                 LoginScreen(
                     viewModel = authViewModel,
                     onNavigateToActivation = { currentDestination = NavDestination.Activation },
-                    onNavigateToRecovery = { currentDestination = NavDestination.PasswordRecovery }
+                    onNavigateToRecovery = { currentDestination = NavDestination.PasswordRecovery },
+                    onExploreGyms = { currentDestination = NavDestination.GymExplorer }
                 )
             }
 
@@ -407,8 +409,22 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                     accountId = accountId,
                     preferredBranchName = preferencesState.preferredBranchName,
                     repository = AppContainer.enterpriseTrainingRepository,
-                    onBranchSelected = { currentDestination = NavDestination.Main(currentTab) },
-                    onBack = { currentDestination = NavDestination.Main(currentTab) }
+                    saasApi = AppContainer.saasExperienceApi,
+                    isAuthenticated = authState.isAuthenticated,
+                    onBranchSelected = {
+                        currentDestination = if (authState.isAuthenticated) NavDestination.Main(currentTab) else NavDestination.Login
+                    },
+                    onBack = {
+                        currentDestination = if (authState.isAuthenticated) NavDestination.Main(currentTab) else NavDestination.Login
+                    }
+                )
+            }
+
+            is NavDestination.WellnessPlanner -> {
+                com.gymvip.mobile.features.saas.WellnessPlannerScreen(
+                    saasApi = AppContainer.saasExperienceApi,
+                    onOpenExercises = { currentDestination = NavDestination.ExerciseCatalog },
+                    onBack = { currentDestination = NavDestination.Main(MainTab.TRAINING) }
                 )
             }
 
@@ -714,6 +730,7 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                                     accountId = accountId,
                                     repository = AppContainer.enterpriseTrainingRepository,
                                     onOpenJournal = { currentDestination = NavDestination.Journal },
+                                    onOpenWellnessPlanner = { currentDestination = NavDestination.WellnessPlanner },
                                     onOpenExercises = { currentDestination = NavDestination.ExerciseCatalog },
                                     onOpenProgress = { currentDestination = NavDestination.TrainingProgress },
                                     onOpenClasses = { currentDestination = NavDestination.ClassReservations }

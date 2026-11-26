@@ -29,8 +29,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -126,6 +128,64 @@ internal fun SettingsScreen(
         }
         SettingsSection("Legal") {
             SettingsRow("Términos y privacidad", Icons.Outlined.Description, onTermsAndPrivacy)
+        }
+        var pushPromoOptIn by remember { mutableStateOf(false) }
+        var emailPromoOptIn by remember { mutableStateOf(false) }
+        var releaseStatusText by remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(Unit) {
+            AppContainer.saasExperienceApi.getNotificationPreferences().onSuccess { p ->
+                pushPromoOptIn = p.channelPushPromotions
+                emailPromoOptIn = p.channelEmailPromotions
+            }
+            AppContainer.saasExperienceApi.getLatestAppRelease(200).onSuccess { rel ->
+                releaseStatusText = if (rel.updateAvailable) {
+                    "Actualización v${rel.versionName} disponible (${rel.downloadUrl})"
+                } else {
+                    "App v${rel.versionName} al día (SHA-256 verificado)"
+                }
+            }
+        }
+        SettingsSection("Notificaciones Opt-in y Versión App") {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Push promociones (opcional)", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                Switch(checked = pushPromoOptIn, onCheckedChange = { checked ->
+                    pushPromoOptIn = checked
+                    scope.launch {
+                        AppContainer.saasExperienceApi.updateNotificationPreferences(
+                            com.gymvip.mobile.features.saas.NotificationPreferencesDto(
+                                channelPushPromotions = checked,
+                                channelEmailPromotions = emailPromoOptIn
+                            )
+                        )
+                    }
+                })
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Email promociones (opcional)", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                Switch(checked = emailPromoOptIn, onCheckedChange = { checked ->
+                    emailPromoOptIn = checked
+                    scope.launch {
+                        AppContainer.saasExperienceApi.updateNotificationPreferences(
+                            com.gymvip.mobile.features.saas.NotificationPreferencesDto(
+                                channelPushPromotions = pushPromoOptIn,
+                                channelEmailPromotions = checked
+                            )
+                        )
+                    }
+                })
+            }
+            releaseStatusText?.let { msg ->
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Text(msg, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
+            }
         }
         OutlinedButton(
             onClick = onLogout,

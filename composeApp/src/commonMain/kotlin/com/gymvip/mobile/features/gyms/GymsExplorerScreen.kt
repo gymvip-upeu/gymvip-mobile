@@ -42,6 +42,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.gymvip.mobile.features.saas.CreateGymReviewRequest
+import com.gymvip.mobile.features.saas.GroupPromotionDto
+import com.gymvip.mobile.features.saas.GymReviewDto
+import com.gymvip.mobile.features.saas.PublicGymShowcaseDto
+import com.gymvip.mobile.features.saas.SaasExperienceApi
 import com.gymvip.mobile.features.training.EnterpriseTrainingRepository
 import com.gymvip.mobile.features.training.PublishedBranchDto
 import com.gymvip.mobile.features.training.PublishedGymDto
@@ -54,6 +59,8 @@ fun GymsExplorerScreen(
     accountId: String,
     preferredBranchName: String,
     repository: EnterpriseTrainingRepository,
+    saasApi: SaasExperienceApi? = null,
+    isAuthenticated: Boolean = true,
     onBranchSelected: (PublishedBranchDto) -> Unit,
     onBack: () -> Unit
 ) {
@@ -61,6 +68,13 @@ fun GymsExplorerScreen(
     var query by remember { mutableStateOf("") }
     var districtFilter by remember { mutableStateOf("Todos") }
     var gyms by remember { mutableStateOf<List<PublishedGymDto>>(emptyList()) }
+    var showcaseMap by remember { mutableStateOf<Map<String, PublicGymShowcaseDto>>(emptyMap()) }
+    var compareIds by remember { mutableStateOf<List<String>>(emptyList()) }
+    var activeReviewsGymId by remember { mutableStateOf<String?>(null) }
+    var reviews by remember { mutableStateOf<List<GymReviewDto>>(emptyList()) }
+    var promos by remember { mutableStateOf<List<GroupPromotionDto>>(emptyList()) }
+    var reviewComment by remember { mutableStateOf("") }
+    var reviewRating by remember { mutableStateOf(5) }
     var favorites by remember { mutableStateOf(repository.getFavoriteGymIds(accountId)) }
     var loading by remember { mutableStateOf(true) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
@@ -73,6 +87,8 @@ fun GymsExplorerScreen(
         repository.fetchGyms(query = query.ifBlank { null }, district = dist, scopeId = accountId)
             .onSuccess { gyms = it }
             .onFailure { errorMsg = it.message ?: "No se pudieron cargar los gimnasios." }
+        saasApi?.listPublicGymsShowcase(query = query.ifBlank { null }, district = dist)
+            ?.onSuccess { list -> showcaseMap = list.associateBy { it.id } }
         loading = false
     }
 
@@ -132,6 +148,35 @@ fun GymsExplorerScreen(
                 Text(errorMsg ?: "", color = MaterialTheme.colorScheme.error)
             }
 
+            if (compareIds.size == 2) {
+                val left = gyms.firstOrNull { it.id == compareIds[0] }
+                val right = gyms.firstOrNull { it.id == compareIds[1] }
+                if (left != null && right != null) {
+                    val leftSc = showcaseMap[left.id]
+                    val rightSc = showcaseMap[right.id]
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("Comparador Directo", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(left.name, fontWeight = FontWeight.Bold)
+                                    Text("Desde: S/ ${left.minPricePen ?: "—"}")
+                                    Text("Sedes: ${left.branches.size}")
+                                    Text("Rating: ★ ${leftSc?.avgRating ?: 0.0} (${leftSc?.reviewsCount ?: 0})")
+                                }
+                                Column(Modifier.weight(1f)) {
+                                    Text(right.name, fontWeight = FontWeight.Bold)
+                                    Text("Desde: S/ ${right.minPricePen ?: "—"}")
+                                    Text("Sedes: ${right.branches.size}")
+                                    Text("Rating: ★ ${rightSc?.avgRating ?: 0.0} (${rightSc?.reviewsCount ?: 0})")
+                                }
+                            }
+                            OutlinedButton(onClick = { compareIds = emptyList() }) { Text("Limpiar comparador") }
+                        }
+                    }
+                }
+            }
+
             if (loading) {
                 CircularProgressIndicator(modifier = Modifier.padding(16.dp))
             } else if (gyms.isEmpty()) {
@@ -139,6 +184,8 @@ fun GymsExplorerScreen(
             } else {
                 gyms.forEach { gym ->
                     val isFav = gym.id in favorites
+                    val sc = showcaseMap[gym.id]
+                    val isComparing = gym.id in compareIds
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -147,9 +194,14 @@ fun GymsExplorerScreen(
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(gym.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                    if (!gym.description.isNullOrBlank()) {
-                                        Text(gym.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(sc?.headline ?: gym.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    val desc = sc?.tagline ?: gym.description
+                                    if (!desc.isNullOrBlank()) {
+                                        Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    if (sc != null) {
+                                        Text("★ ${sc.avgRating} (${sc.reviewsCount} reseñas verificadas) · ${sc.activeGroupPromosCount} promos grupales",
+                                            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                                     }
                                     if (gym.minPricePen != null && gym.maxPricePen != null) {
                                         Text(
@@ -167,6 +219,83 @@ fun GymsExplorerScreen(
                                         contentDescription = "Marcar gimnasio favorito",
                                         tint = MaterialTheme.colorScheme.primary
                                     )
+                                }
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(onClick = {
+                                    compareIds = if (isComparing) compareIds - gym.id else (compareIds + gym.id).takeLast(2)
+                                }) {
+                                    Text(if (isComparing) "En comparador" else "Comparar")
+                                }
+                                if (saasApi != null) {
+                                    OutlinedButton(onClick = {
+                                        if (activeReviewsGymId == gym.id) {
+                                            activeReviewsGymId = null
+                                        } else {
+                                            activeReviewsGymId = gym.id
+                                            scope.launch {
+                                                saasApi.listGymReviews(gym.id).onSuccess { reviews = it }
+                                                saasApi.listGroupPromotions(gym.id).onSuccess { promos = it }
+                                            }
+                                        }
+                                    }) {
+                                        Text(if (activeReviewsGymId == gym.id) "Ocultar detalles" else "Reseñas y Promos")
+                                    }
+                                }
+                            }
+                            if (activeReviewsGymId == gym.id && saasApi != null) {
+                                promos.forEach { promo ->
+                                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                                        Column(Modifier.fillMaxWidth().padding(10.dp)) {
+                                            Text("Promo Grupal: ${promo.title} (-${promo.discountPercent}%)", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                                            Text("${promo.minParticipants}-${promo.maxParticipants} personas · Vigente hasta ${promo.validUntil}", style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+                                }
+                                if (reviews.isEmpty()) {
+                                    Text("Aún no existen reseñas verificadas publicadas.", style = MaterialTheme.typography.bodySmall)
+                                } else {
+                                    reviews.forEach { r ->
+                                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                                            Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                                Text("★ ${r.ratingOverall}/5 · ${r.verifiedEligibilitySource}", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelSmall)
+                                                Text(r.comment, style = MaterialTheme.typography.bodySmall)
+                                                if (!r.gymReply.isNullOrBlank()) {
+                                                    Text("Respuesta del gimnasio: ${r.gymReply}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                if (isAuthenticated) {
+                                    OutlinedTextField(
+                                        value = reviewComment,
+                                        onValueChange = { reviewComment = it },
+                                        label = { Text("Comparte tu experiencia verificada (mín. 10 car.)") },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Button(onClick = {
+                                        scope.launch {
+                                            errorMsg = null
+                                            saasApi.createGymReview(
+                                                gym.id,
+                                                CreateGymReviewRequest(
+                                                    ratingOverall = reviewRating,
+                                                    ratingCleanliness = reviewRating,
+                                                    ratingEquipment = reviewRating,
+                                                    ratingAttention = reviewRating,
+                                                    ratingValue = reviewRating,
+                                                    comment = reviewComment
+                                                )
+                                            ).onSuccess {
+                                                reviewComment = ""
+                                                noticeMsg = "Reseña verificada publicada correctamente."
+                                                saasApi.listGymReviews(gym.id).onSuccess { reviews = it }
+                                            }.onFailure { errorMsg = it.message }
+                                        }
+                                    }) {
+                                        Text("Publicar reseña")
+                                    }
                                 }
                             }
 

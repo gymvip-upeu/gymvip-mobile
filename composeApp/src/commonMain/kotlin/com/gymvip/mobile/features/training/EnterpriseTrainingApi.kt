@@ -31,7 +31,7 @@ class EnterpriseTrainingApi(
 
     suspend fun listPublishedGyms(query: String? = null, district: String? = null): Result<List<PublishedGymDto>> =
         execute {
-            client.get("$baseUrl/api/v1/enterprise/gyms") {
+            client.get("$baseUrl/api/v1/public/gyms") {
                 if (!query.isNullOrBlank()) parameter("q", query)
                 if (!district.isNullOrBlank()) parameter("district", district)
             }
