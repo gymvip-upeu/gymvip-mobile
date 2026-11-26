@@ -191,21 +191,12 @@ android {
                 ?: "release.keystore"
             val resolvedFile = if (file(rawPath).isAbsolute) file(rawPath) else rootProject.file(rawPath)
 
-            val releaseRequested = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
-            if (releaseRequested && !resolvedFile.exists()) {
-                throw GradleException("ERROR DE SEGURIDAD CRÍTICO: No se encontró el archivo keystore de producción en '${resolvedFile.absolutePath}'. El fallback a debug ha sido revocado permanentemente.")
-            }
-
             val storePwd = System.getenv("GYMVIP_KEYSTORE_PASSWORD")
                 ?: keystoreProps.getProperty("storePassword")
             val keyAliasProp = System.getenv("GYMVIP_KEY_ALIAS")
                 ?: keystoreProps.getProperty("keyAlias")
             val keyPwd = System.getenv("GYMVIP_KEY_PASSWORD")
                 ?: keystoreProps.getProperty("keyPassword")
-
-            if (releaseRequested && (storePwd.isNullOrBlank() || keyAliasProp.isNullOrBlank() || keyPwd.isNullOrBlank())) {
-                throw GradleException("ERROR DE SEGURIDAD CRÍTICO: Credenciales de firma de release incompletas (storePassword, keyAlias o keyPassword ausentes).")
-            }
 
             storeFile = resolvedFile.takeIf { it.exists() }
             storePassword = storePwd
@@ -231,6 +222,18 @@ android {
         }
     }
 
+    // Valida también release al invocar tareas agregadas como build o assemble.
+    gradle.taskGraph.whenReady {
+        if (allTasks.any { it.project == project && it.name.contains("Release") }) {
+            val releaseSigning = signingConfigs.getByName("release")
+            check(releaseSigning.storeFile?.isFile == true &&
+                !releaseSigning.storePassword.isNullOrBlank() &&
+                !releaseSigning.keyAlias.isNullOrBlank() &&
+                !releaseSigning.keyPassword.isNullOrBlank()) {
+                "La compilación release requiere el keystore y las credenciales de producción."
+            }
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
@@ -286,5 +289,3 @@ tasks.matching { it.name.startsWith("assembleRelease") || it.name.startsWith("bu
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask<*>>().configureEach {
     compilerOptions.freeCompilerArgs.add("-Xexpect-actual-classes")
 }
-
-
