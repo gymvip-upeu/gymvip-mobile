@@ -190,11 +190,6 @@ android {
                 ?: keystoreProps.getProperty("storeFile")
                 ?: "release.keystore"
             val resolvedFile = if (file(rawPath).isAbsolute) file(rawPath) else rootProject.file(rawPath)
-
-            if (!resolvedFile.exists()) {
-                throw GradleException("ERROR DE SEGURIDAD CRÍTICO: No se encontró el archivo keystore de producción en '${resolvedFile.absolutePath}'. El fallback a debug ha sido revocado permanentemente.")
-            }
-
             val storePwd = System.getenv("GYMVIP_KEYSTORE_PASSWORD")
                 ?: keystoreProps.getProperty("storePassword")
             val keyAliasProp = System.getenv("GYMVIP_KEY_ALIAS")
@@ -202,14 +197,26 @@ android {
             val keyPwd = System.getenv("GYMVIP_KEY_PASSWORD")
                 ?: keystoreProps.getProperty("keyPassword")
 
-            if (storePwd.isNullOrBlank() || keyAliasProp.isNullOrBlank() || keyPwd.isNullOrBlank()) {
-                throw GradleException("ERROR DE SEGURIDAD CRÍTICO: Credenciales de firma de release incompletas (storePassword, keyAlias o keyPassword ausentes).")
+            val releaseTaskRequested = gradle.startParameter.taskNames.any {
+                it.contains("Release", ignoreCase = true) ||
+                    it.contains("Bundle", ignoreCase = true) ||
+                    it.contains("publish", ignoreCase = true)
+            }
+            if (releaseTaskRequested) {
+                if (!resolvedFile.exists()) {
+                    throw GradleException("ERROR DE SEGURIDAD CRÍTICO: No se encontró el archivo keystore de producción en '${resolvedFile.absolutePath}'. El fallback a debug ha sido revocado permanentemente.")
+                }
+                if (storePwd.isNullOrBlank() || keyAliasProp.isNullOrBlank() || keyPwd.isNullOrBlank()) {
+                    throw GradleException("ERROR DE SEGURIDAD CRÍTICO: Credenciales de firma de release incompletas (storePassword, keyAlias o keyPassword ausentes).")
+                }
             }
 
-            storeFile = resolvedFile
-            storePassword = storePwd
-            keyAlias = keyAliasProp
-            keyPassword = keyPwd
+            if (resolvedFile.exists() && !storePwd.isNullOrBlank() && !keyAliasProp.isNullOrBlank() && !keyPwd.isNullOrBlank()) {
+                storeFile = resolvedFile
+                storePassword = storePwd
+                keyAlias = keyAliasProp
+                keyPassword = keyPwd
+            }
             enableV1Signing = true
             enableV2Signing = true
             enableV3Signing = true
@@ -278,7 +285,10 @@ tasks.register("validateReleaseConfiguration") {
     }
 }
 
-tasks.matching { it.name.startsWith("assembleRelease") || it.name.startsWith("bundleRelease") }.configureEach {
+tasks.matching {
+    it.name.contains("Release") &&
+        (it.name.startsWith("assemble") || it.name.startsWith("bundle") || it.name.startsWith("package") || it.name.startsWith("sign"))
+}.configureEach {
     dependsOn("validateReleaseConfiguration")
 }
 
