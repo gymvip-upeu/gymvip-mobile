@@ -1,0 +1,172 @@
+diff --git a/composeApp/build.gradle.kts b/composeApp/build.gradle.kts
+index f1c701e..b47cfd1 100644
+--- a/composeApp/build.gradle.kts
++++ b/composeApp/build.gradle.kts
+@@ -191,7 +191,8 @@ android {
+                 ?: "release.keystore"
+             val resolvedFile = if (file(rawPath).isAbsolute) file(rawPath) else rootProject.file(rawPath)
+ 
+-            if (!resolvedFile.exists()) {
++            val releaseRequested = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
++            if (releaseRequested && !resolvedFile.exists()) {
+                 throw GradleException("ERROR DE SEGURIDAD CRÍTICO: No se encontró el archivo keystore de producción en '${resolvedFile.absolutePath}'. El fallback a debug ha sido revocado permanentemente.")
+             }
+ 
+@@ -202,11 +203,11 @@ android {
+             val keyPwd = System.getenv("GYMVIP_KEY_PASSWORD")
+                 ?: keystoreProps.getProperty("keyPassword")
+ 
+-            if (storePwd.isNullOrBlank() || keyAliasProp.isNullOrBlank() || keyPwd.isNullOrBlank()) {
++            if (releaseRequested && (storePwd.isNullOrBlank() || keyAliasProp.isNullOrBlank() || keyPwd.isNullOrBlank())) {
+                 throw GradleException("ERROR DE SEGURIDAD CRÍTICO: Credenciales de firma de release incompletas (storePassword, keyAlias o keyPassword ausentes).")
+             }
+ 
+-            storeFile = resolvedFile
++            storeFile = resolvedFile.takeIf { it.exists() }
+             storePassword = storePwd
+             keyAlias = keyAliasProp
+             keyPassword = keyPwd
+diff --git a/composeApp/src/androidMain/AndroidManifest.xml b/composeApp/src/androidMain/AndroidManifest.xml
+index b4cd986..267b999 100644
+--- a/composeApp/src/androidMain/AndroidManifest.xml
++++ b/composeApp/src/androidMain/AndroidManifest.xml
+@@ -35,6 +35,14 @@
+             </intent-filter>
+         </activity>
+ 
++        <provider
++            android:name="androidx.core.content.FileProvider"
++            android:authorities="${applicationId}.journal.files"
++            android:exported="false"
++            android:grantUriPermissions="true">
++            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/journal_file_paths" />
++        </provider>
++
+         <!-- Servicio de Mensajería Push Firebase FCM -->
+         <service
+             android:name=".notification.GymVipFirebaseMessagingService"
+diff --git a/composeApp/src/commonMain/kotlin/com/gymvip/mobile/App.kt b/composeApp/src/commonMain/kotlin/com/gymvip/mobile/App.kt
+index 531f0fa..d5507b4 100644
+--- a/composeApp/src/commonMain/kotlin/com/gymvip/mobile/App.kt
++++ b/composeApp/src/commonMain/kotlin/com/gymvip/mobile/App.kt
+@@ -404,6 +404,18 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
+                 )
+             }
+ 
++            is NavDestination.Journal -> {
++                val profile = authState.authenticatedProfile
++                if (authState.isAuthenticated && profile?.roles?.contains("CLIENTE") == true) {
++                    com.gymvip.mobile.features.journal.JournalScreen(
++                        accountId = profile.accountId,
++                        memberName = profile.fullName,
++                        repository = AppContainer.journalRepository,
++                        onBack = { currentDestination = NavDestination.Main(MainTab.TRAINING) }
++                    )
++                }
++            }
++
+             is NavDestination.ExerciseCatalog -> {
+                 val accountId = authState.authenticatedProfile?.accountId ?: "public"
+                 ExerciseCatalogScreen(
+@@ -694,6 +706,7 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
+                                 MainTab.TRAINING -> if (!isStaff) TrainingHubScreen(
+                                     accountId = accountId,
+                                     repository = AppContainer.enterpriseTrainingRepository,
++                                    onOpenJournal = { currentDestination = NavDestination.Journal },
+                                     onOpenExercises = { currentDestination = NavDestination.ExerciseCatalog },
+                                     onOpenProgress = { currentDestination = NavDestination.TrainingProgress },
+                                     onOpenClasses = { currentDestination = NavDestination.ClassReservations }
+diff --git a/composeApp/src/commonMain/kotlin/com/gymvip/mobile/data/remote/dto/AuthAndErrorDtos.kt b/composeApp/src/commonMain/kotlin/com/gymvip/mobile/data/remote/dto/AuthAndErrorDtos.kt
+index e33aee3..40828ac 100644
+--- a/composeApp/src/commonMain/kotlin/com/gymvip/mobile/data/remote/dto/AuthAndErrorDtos.kt
++++ b/composeApp/src/commonMain/kotlin/com/gymvip/mobile/data/remote/dto/AuthAndErrorDtos.kt
+@@ -88,5 +88,5 @@ data class CurrentUserDto(
+             is JsonObject -> role["authority"]?.jsonPrimitive?.contentOrNull
+             else -> null
+         }
+-    }.map { it.trim().uppercase() }.filter(String::isNotBlank).distinct()
++    }.map { it.trim().uppercase().removePrefix("ROLE_") }.filter(String::isNotBlank).distinct()
+ }
+diff --git a/composeApp/src/commonMain/kotlin/com/gymvip/mobile/di/AppContainer.kt b/composeApp/src/commonMain/kotlin/com/gymvip/mobile/di/AppContainer.kt
+index 25b72de..d48e5e9 100644
+--- a/composeApp/src/commonMain/kotlin/com/gymvip/mobile/di/AppContainer.kt
++++ b/composeApp/src/commonMain/kotlin/com/gymvip/mobile/di/AppContainer.kt
+@@ -56,6 +56,9 @@ object AppContainer : KoinComponent {
+     lateinit var enterpriseTrainingRepository: com.gymvip.mobile.features.training.EnterpriseTrainingRepository
+         private set
+ 
++    lateinit var journalRepository: com.gymvip.mobile.features.journal.JournalRepository
++        private set
++
+     // UseCases
+     lateinit var loginUseCase: LoginUseCase
+         private set
+@@ -111,6 +114,8 @@ object AppContainer : KoinComponent {
+         configRepository = get<ConfigRepository>()
+         enterpriseTrainingRepository = get<com.gymvip.mobile.features.training.EnterpriseTrainingRepository>()
+ 
++        journalRepository = get<com.gymvip.mobile.features.journal.JournalRepository>()
++
+         loginUseCase = get<LoginUseCase>()
+         activateAccountUseCase = get<ActivateAccountUseCase>()
+         getMembershipSummaryUseCase = get<GetMembershipSummaryUseCase>()
+diff --git a/composeApp/src/commonMain/kotlin/com/gymvip/mobile/di/KoinModules.kt b/composeApp/src/commonMain/kotlin/com/gymvip/mobile/di/KoinModules.kt
+index 59dab22..51d803e 100644
+--- a/composeApp/src/commonMain/kotlin/com/gymvip/mobile/di/KoinModules.kt
++++ b/composeApp/src/commonMain/kotlin/com/gymvip/mobile/di/KoinModules.kt
+@@ -45,6 +45,7 @@ fun appModules(
+         single<LegalConsentRepository> { LegalConsentRepositoryImpl(get(), get()) }
+         single<ConfigRepository> { ConfigRepositoryImpl(get()) }
+         single { EnterpriseTrainingRepository(get(), get(), get()) }
++        single { com.gymvip.mobile.features.journal.JournalRepository(get()) }
+     },
+     module {
+         factory { LoginUseCase(get()) }
+diff --git a/composeApp/src/commonMain/kotlin/com/gymvip/mobile/features/training/TrainingScreens.kt b/composeApp/src/commonMain/kotlin/com/gymvip/mobile/features/training/TrainingScreens.kt
+index aa6c04c..6c63425 100644
+--- a/composeApp/src/commonMain/kotlin/com/gymvip/mobile/features/training/TrainingScreens.kt
++++ b/composeApp/src/commonMain/kotlin/com/gymvip/mobile/features/training/TrainingScreens.kt
+@@ -64,6 +64,7 @@ fun TrainingHubScreen(
+     repository: EnterpriseTrainingRepository,
+     onOpenExercises: () -> Unit,
+     onOpenProgress: () -> Unit,
++    onOpenJournal: () -> Unit = {},
+     onOpenClasses: () -> Unit
+ ) {
+     val scope = rememberCoroutineScope()
+@@ -117,6 +118,8 @@ fun TrainingHubScreen(
+             Text(statusMessage ?: "", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
+         }
+ 
++        OutlinedButton(onClick = onOpenJournal, modifier = Modifier.fillMaxWidth()) { Text("Mi Bitácora · registrar mi día") }
++
+         val current = activeRoutine
+         if (current != null) {
+             Card(
+diff --git a/composeApp/src/commonMain/kotlin/com/gymvip/mobile/presentation/component/VipDrawerContent.kt b/composeApp/src/commonMain/kotlin/com/gymvip/mobile/presentation/component/VipDrawerContent.kt
+index c348bda..43539a1 100644
+--- a/composeApp/src/commonMain/kotlin/com/gymvip/mobile/presentation/component/VipDrawerContent.kt
++++ b/composeApp/src/commonMain/kotlin/com/gymvip/mobile/presentation/component/VipDrawerContent.kt
+@@ -134,6 +134,10 @@ fun VipDrawerContent(
+                     onClick = { onNavigate(NavDestination.TrainingProgress); onCloseDrawer() }
+                 )
+ 
++                DrawerNavItem(label = "Mi Bitácora", icon = Icons.Outlined.CalendarMonth,
++                    selected = currentDestination == NavDestination.Journal,
++                    onClick = { onNavigate(NavDestination.Journal); onCloseDrawer() })
++
+                 DrawerSectionHeader("RESERVAS")
+                 DrawerNavItem(
+                     label = "Clases y reservas",
+diff --git a/composeApp/src/commonMain/kotlin/com/gymvip/mobile/presentation/navigation/NavDestination.kt b/composeApp/src/commonMain/kotlin/com/gymvip/mobile/presentation/navigation/NavDestination.kt
+index f1b879c..b5b8e47 100644
+--- a/composeApp/src/commonMain/kotlin/com/gymvip/mobile/presentation/navigation/NavDestination.kt
++++ b/composeApp/src/commonMain/kotlin/com/gymvip/mobile/presentation/navigation/NavDestination.kt
+@@ -19,6 +19,7 @@ sealed class NavDestination {
+     data class Main(val selectedTab: MainTab = MainTab.HOME) : NavDestination()
+     data object GymExplorer : NavDestination()
+     data object ExerciseCatalog : NavDestination()
++    data object Journal : NavDestination()
+     data object TrainingProgress : NavDestination()
+     data object ClassReservations : NavDestination()
+     data object Faq : NavDestination()
