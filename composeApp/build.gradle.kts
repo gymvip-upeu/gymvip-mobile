@@ -191,7 +191,8 @@ android {
                 ?: "release.keystore"
             val resolvedFile = if (file(rawPath).isAbsolute) file(rawPath) else rootProject.file(rawPath)
 
-            if (!resolvedFile.exists()) {
+            val releaseRequested = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
+            if (releaseRequested && !resolvedFile.exists()) {
                 throw GradleException("ERROR DE SEGURIDAD CRÍTICO: No se encontró el archivo keystore de producción en '${resolvedFile.absolutePath}'. El fallback a debug ha sido revocado permanentemente.")
             }
 
@@ -202,11 +203,11 @@ android {
             val keyPwd = System.getenv("GYMVIP_KEY_PASSWORD")
                 ?: keystoreProps.getProperty("keyPassword")
 
-            if (storePwd.isNullOrBlank() || keyAliasProp.isNullOrBlank() || keyPwd.isNullOrBlank()) {
+            if (releaseRequested && (storePwd.isNullOrBlank() || keyAliasProp.isNullOrBlank() || keyPwd.isNullOrBlank())) {
                 throw GradleException("ERROR DE SEGURIDAD CRÍTICO: Credenciales de firma de release incompletas (storePassword, keyAlias o keyPassword ausentes).")
             }
 
-            storeFile = resolvedFile
+            storeFile = resolvedFile.takeIf { it.exists() }
             storePassword = storePwd
             keyAlias = keyAliasProp
             keyPassword = keyPwd
