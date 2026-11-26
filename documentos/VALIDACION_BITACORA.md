@@ -26,7 +26,7 @@ Dos pruebas instrumentadas pasaron en el emulador: generación PNG para las tres
 - ACTION_SEND abrió el selector nativo con miniatura. No se enviaron mensajes ni se publicó contenido.
 - Photo Picker abrió la galería y aceptó una imagen del dispositivo.
 - Denegar CAMERA produjo el mensaje de alternativa por galería; con permiso concedido se abrió la cámara del emulador, se tomó y confirmó una foto y volvió a la vista previa.
-- Tema claro observado; el módulo utiliza tokens de tema para las superficies y textos. Las tarjetas exportadas usan fondos de marca oscuros propios.
+- Tema claro y Azul Deportivo Oficial (Oscuro) observados en el emulador, con calendario, registro persistido y controles legibles. La app queda abierta en Mi Bitácora con el tema oscuro. Las tarjetas exportadas usan fondos de marca oscuros propios.
 
 ## Límites de la comprobación
 
@@ -39,4 +39,5 @@ Dos pruebas instrumentadas pasaron en el emulador: generación PNG para las tres
 ## Cambios de integración exactos
 
 Ver INTEGRACION_BITACORA.patch: contiene el diff de las líneas de integración y las dos correcciones previas justificadas frente a origin/develop (5f95e1c). El catálogo está en su propio commit de esta rama. El esquema SQLDelight no tiene cambios.
+
 
