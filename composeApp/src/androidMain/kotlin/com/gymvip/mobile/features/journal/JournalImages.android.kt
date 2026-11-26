@@ -21,6 +21,8 @@ import com.gymvip.mobile.presentation.permission.DevicePermissionStatus
 import com.gymvip.mobile.presentation.permission.rememberCameraPermission
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import java.io.ByteArrayOutputStream
 import java.io.File
 
@@ -56,7 +58,10 @@ actual fun rememberJournalImageService(onMessage: (String) -> Unit): JournalImag
         else if (awaitingPermission && permission.status == DevicePermissionStatus.DISABLED) { awaitingPermission = false; callback?.invoke(null); callback = null; message("Permiso de cámara denegado. Puedes usar una foto de la galería.") }
     }
     return object : JournalImageService {
-        override suspend fun render(card: JournalShareCard): ByteArray = withContext(Dispatchers.Default) { renderJournal(context, card) }
+        override suspend fun render(card: JournalShareCard): ByteArray = withContext(Dispatchers.Default) {
+            val jobContext = currentCoroutineContext()
+            renderJournal(context, card) { jobContext.ensureActive() }
+        }
         override suspend fun save(bytes: ByteArray): String = withContext(Dispatchers.IO) {
             if (Build.VERSION.SDK_INT < 29) return@withContext share(bytes)
             val values = ContentValues().apply {
@@ -76,7 +81,7 @@ actual fun rememberJournalImageService(onMessage: (String) -> Unit): JournalImag
         override suspend fun share(bytes: ByteArray): String {
             val uri = withContext(Dispatchers.IO) {
                 val dir = File(context.cacheDir, "journal").apply { mkdirs() }
-                dir.listFiles()?.filter { System.currentTimeMillis() - it.lastModified() > 24 * 60 * 60 * 1000L }?.forEach { it.delete() }
+                dir.listFiles()?.filter { it.name.startsWith("GymVIP-") && System.currentTimeMillis() - it.lastModified() > 24 * 60 * 60 * 1000L }?.forEach { it.delete() }
                 val file = File.createTempFile("GymVIP-", ".png", dir).apply { writeBytes(bytes) }
                 FileProvider.getUriForFile(context, context.packageName + ".journal.files", file)
             }
@@ -108,7 +113,7 @@ actual fun rememberJournalImageService(onMessage: (String) -> Unit): JournalImag
 
 actual fun decodeJournalPreview(bytes: ByteArray): ImageBitmap? = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
 
-internal fun renderJournal(context: Context, card: JournalShareCard): ByteArray {
+internal fun renderJournal(context: Context, card: JournalShareCard, checkActive: () -> Unit = {}): ByteArray {
     val width = 1080; val height = if (card.story) 1920 else 1080
     val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
     try {
@@ -117,6 +122,7 @@ internal fun renderJournal(context: Context, card: JournalShareCard): ByteArray 
         paint.shader = LinearGradient(0f, 0f, 1080f, height.toFloat(), intArrayOf(Color.rgb(11,19,32), Color.rgb(20,32,51)), null, Shader.TileMode.CLAMP)
         canvas.drawRect(0f, 0f, 1080f, height.toFloat(), paint); paint.shader = null
         card.photo?.let { raw ->
+            checkActive()
             val uri = Uri.parse(raw)
             val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
@@ -137,11 +143,12 @@ internal fun renderJournal(context: Context, card: JournalShareCard): ByteArray 
                 }
             }
             val photo = if (orientation in 2..8) Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, matrix, true).also { if (it !== decoded) decoded.recycle() } else decoded
-            photo?.let {
+            try {
+                val it = photo
                 val scale = maxOf(width.toFloat() / it.width, height.toFloat() / it.height)
                 val w = it.width * scale; val h = it.height * scale
-                canvas.drawBitmap(it, null, RectF((width-w)/2, (height-h)/2, (width+w)/2, (height+h)/2), paint); it.recycle()
-            }
+                canvas.drawBitmap(it, null, RectF((width-w)/2, (height-h)/2, (width+w)/2, (height+h)/2), paint)
+            } finally { photo.recycle() }
             paint.shader = LinearGradient(0f, 0f, 0f, height.toFloat(), intArrayOf(0xC90B1320.toInt(), 0xEB0B1320.toInt()), null, Shader.TileMode.CLAMP)
             canvas.drawRect(0f,0f,1080f,height.toFloat(),paint); paint.shader = null
         }
@@ -164,24 +171,41 @@ internal fun renderJournal(context: Context, card: JournalShareCard): ByteArray 
         text(if (card.template == "Bold") "HOY ME SUPERÉ" else "MI DÍA DE ENTRENO", 72f, 342f, if (card.story) 56f else 48f, Color.WHITE, true)
         var y = if (card.story) 520f else 420f
         var fontSize = if (card.story) 40f else 30f
-        fun estimatedLines(): Int {
+        fun wrappedLines(): List<Triple<String, Boolean, Boolean>> {
             paint.textSize = fontSize
-            return card.lines.sumOf { line -> (paint.measureText(line) / 850f).toInt() + 1 }
-        }
-        while (estimatedLines() * (fontSize * 1.5f + if (card.template == "Estadísticas") 12f else 0f) > height - y - 110 && fontSize > 20f) fontSize -= 1f
-        val lineHeight = fontSize * 1.5f
-        for (line in card.lines) {
-            paint.textSize = fontSize; paint.typeface = Typeface.create("sans-serif", Typeface.NORMAL)
-            var remaining = line.replace('\n', ' ')
-            while (remaining.isNotEmpty() && y < height - 110) {
-                var count = paint.breakText(remaining, true, 920f, null)
-                if (count < remaining.length) { val split = remaining.lastIndexOf(' ', count); if (split > 0) count = split }
-                if (count <= 0) break
-                text(remaining.take(count), 72f, y, fontSize, if (line.startsWith("Racha") || line.startsWith("Mejor")) gold else Color.WHITE)
-                y += lineHeight; remaining = remaining.drop(count).trimStart()
+            paint.typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+            return card.lines.filter { it.isNotBlank() }.flatMap { line ->
+                checkActive()
+                var remaining = line.replace(Regex("\\s+"), " ").trim()
+                val result = mutableListOf<String>()
+                while (remaining.isNotEmpty()) {
+                    var count = paint.breakText(remaining, true, 920f, null)
+                    require(count > 0) { "No se pudo ajustar el texto" }
+                    if (count < remaining.length) {
+                        val split = remaining.lastIndexOf(' ', count - 1)
+                        if (split > 0) count = split
+                    }
+                    result.add(remaining.take(count))
+                    remaining = remaining.drop(count).trimStart()
+                }
+                result.mapIndexed { index, text -> Triple(text, line.startsWith("Racha") || line.startsWith("Mejor"), index == result.lastIndex) }
             }
-            if (card.template == "Estadísticas") { paint.color = blue; canvas.drawRect(72f,y-14f, 1008f,y-11f,paint); y += 12f }
         }
+        var lines = wrappedLines()
+        fun requiredHeight() = lines.size * fontSize * 1.5f + if (card.template == "Estadísticas") lines.count { it.third } * 12f else 0f
+        while (requiredHeight() > height - y - 110 && fontSize > 16f) {
+            fontSize -= 1f; lines = wrappedLines()
+        }
+        require(requiredHeight() <= height - y - 110) { "Reduce el contenido de la tarjeta para que todos los datos sean legibles." }
+        for ((line, highlighted, lastInGroup) in lines) {
+            checkActive()
+            text(line, 72f, y, fontSize, if (highlighted) gold else Color.WHITE)
+            y += fontSize * 1.5f
+            if (card.template == "Estadísticas" && lastInGroup) {
+                paint.color = blue; canvas.drawRect(72f,y-14f,1008f,y-11f,paint); y += 12f
+            }
+        }
+        checkActive()
         text("MI CONSTANCIA CUENTA",72f,height-62f,26f,gold,true)
         return ByteArrayOutputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG,100,it); it.toByteArray() }
     } finally { bitmap.recycle() }

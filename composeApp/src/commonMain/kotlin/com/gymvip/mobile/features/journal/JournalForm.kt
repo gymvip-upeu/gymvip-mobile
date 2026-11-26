@@ -1,6 +1,7 @@
 package com.gymvip.mobile.features.journal
 
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -10,9 +11,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.input.KeyboardType
 import com.gymvip.mobile.features.training.WorkoutRoutineDto
 import kotlinx.coroutines.delay
 import kotlinx.datetime.Clock
+import kotlinx.datetime.toLocalDateTime
 import kotlin.random.Random
 
 private data class ExerciseDraft(val name: String = "", val sets: String = "3", val reps: String = "10", val kg: String = "0")
@@ -20,7 +23,7 @@ private data class ExerciseDraft(val name: String = "", val sets: String = "3", 
 @Composable
 internal fun JournalForm(initial: JournalEntry?, defaultDate: String, routines: List<WorkoutRoutineDto>, saving: Boolean, onCancel: () -> Unit, onSave: (JournalEntry) -> Unit) {
     var date by rememberSaveable { mutableStateOf(initial?.date ?: defaultDate) }
-    var time by rememberSaveable { mutableStateOf(initial?.startTime ?: "08:00") }
+    var time by rememberSaveable { mutableStateOf(initial?.startTime ?: Clock.System.now().toLocalDateTime(journalZone()).time.toString().take(5)) }
     var hours by rememberSaveable { mutableStateOf(((initial?.durationMinutes ?: 0) / 60).toString()) }
     var minutes by rememberSaveable { mutableStateOf(((initial?.durationMinutes ?: 0) % 60).toString()) }
     var type by rememberSaveable { mutableStateOf(initial?.type ?: "Fuerza") }
@@ -40,20 +43,31 @@ internal fun JournalForm(initial: JournalEntry?, defaultDate: String, routines: 
     var errors by remember { mutableStateOf<List<String>>(emptyList()) }
     var timerStart by rememberSaveable { mutableStateOf<Long?>(null) }
     var elapsed by rememberSaveable { mutableStateOf(0L) }
-    LaunchedEffect(timerStart) { while (timerStart != null) { elapsed = ((Clock.System.now().toEpochMilliseconds() - timerStart!!) / 1000).coerceAtLeast(0); delay(500) } }
+    var accumulated by rememberSaveable { mutableStateOf(0L) }
+    LaunchedEffect(timerStart) { while (timerStart != null) { elapsed = timerElapsedMillis(timerStart, accumulated, Clock.System.now().toEpochMilliseconds()); delay(250) } }
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("¿Cómo te fue hoy?", style = MaterialTheme.typography.headlineSmall)
         Text("Registra tu experiencia a tu ritmo. Los campos de ejercicios y notas son opcionales.")
         OutlinedTextField(date, { date = it.take(10) }, label = { Text("Fecha (AAAA-MM-DD)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(time, { time = it.take(5) }, label = { Text("Hora de inicio (HH:mm)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(hours, { hours = it.filter(Char::isDigit).take(2) }, label = { Text("Horas") }, singleLine = true, modifier = Modifier.weight(1f))
-            OutlinedTextField(minutes, { minutes = it.filter(Char::isDigit).take(2) }, label = { Text("Minutos (0–59)") }, singleLine = true, modifier = Modifier.weight(1f))
+            OutlinedTextField(hours, { hours = it.filter(Char::isDigit).take(2) }, label = { Text("Horas") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
+            OutlinedTextField(minutes, { minutes = it.filter(Char::isDigit).take(2) }, label = { Text("Minutos (0–59)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
         }
         OutlinedButton(onClick = {
-            if (timerStart == null) { timerStart = Clock.System.now().toEpochMilliseconds() - elapsed * 1000 }
-            else { timerStart = null; val total = (elapsed / 60).coerceAtLeast(1); hours = (total / 60).toString(); minutes = (total % 60).toString() }
-        }) { Text(if (timerStart == null) "Iniciar cronómetro" else "Detener · ${elapsed / 60}:${(elapsed % 60).toString().padStart(2, '0')}") }
+            val now = Clock.System.now()
+            if (timerStart == null) {
+                if (accumulated == 0L) time = now.toLocalDateTime(journalZone()).time.toString().take(5)
+                timerStart = now.toEpochMilliseconds()
+            } else {
+                accumulated = timerElapsedMillis(timerStart, accumulated, now.toEpochMilliseconds())
+                elapsed = accumulated; timerStart = null
+                val total = timerDurationMinutes(elapsed)
+                hours = (total / 60).toString(); minutes = (total % 60).toString()
+            }
+        }, enabled = !saving) { Text(if (timerStart == null) { if (accumulated == 0L) "Iniciar cronómetro" else "Reanudar cronómetro" } else "Detener · ${elapsed / 60_000}:${(elapsed / 1000 % 60).toString().padStart(2, '0')}") }
+        if (accumulated > 0 || timerStart != null) TextButton(onClick = { timerStart = null; elapsed = 0; accumulated = 0 }, enabled = !saving) { Text("Reiniciar cronómetro") }
+        Text("El cronómetro redondea la duración al siguiente minuto al detenerlo.", style = MaterialTheme.typography.bodySmall)
         Text("Tipo de entrenamiento", style = MaterialTheme.typography.titleMedium)
         JournalChips(listOf("Fuerza", "Cardio", "Clase", "Otro"), listOf(type)) { type = it }
         Text("Músculos trabajados", style = MaterialTheme.typography.titleMedium)
@@ -65,9 +79,9 @@ internal fun JournalForm(initial: JournalEntry?, defaultDate: String, routines: 
                 fun update(value: ExerciseDraft) { exercises = exercises.mapIndexed { i, e -> if (i == index) value else e } }
                 OutlinedTextField(draft.name, { update(draft.copy(name = it.take(100))) }, label = { Text("Nombre del ejercicio") }, modifier = Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(draft.sets, { update(draft.copy(sets = it.take(3))) }, label = { Text("Series") }, modifier = Modifier.weight(1f))
-                    OutlinedTextField(draft.reps, { update(draft.copy(reps = it.take(4))) }, label = { Text("Reps") }, modifier = Modifier.weight(1f))
-                    OutlinedTextField(draft.kg, { update(draft.copy(kg = it.take(8))) }, label = { Text("Kg") }, modifier = Modifier.weight(1f))
+                    OutlinedTextField(draft.sets, { update(draft.copy(sets = it.filter(Char::isDigit).take(3))) }, label = { Text("Series") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
+                    OutlinedTextField(draft.reps, { update(draft.copy(reps = it.filter(Char::isDigit).take(4))) }, label = { Text("Reps") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
+                    OutlinedTextField(draft.kg, { update(draft.copy(kg = it.filter { ch -> ch.isDigit() || ch == '.' || ch == ',' }.take(8))) }, label = { Text("Kg") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f))
                 }
                 TextButton(onClick = { exercises = exercises.filterIndexed { i, _ -> i != index } }) { Text("Quitar ejercicio") }
             }
@@ -90,7 +104,7 @@ internal fun JournalForm(initial: JournalEntry?, defaultDate: String, routines: 
             errors = validateJournal(entry) + if (minutes.toIntOrNull() !in 0..59 || hours.toIntOrNull() == null) listOf("Revisa las horas y los minutos (0–59).") else emptyList()
             if (errors.isEmpty()) onSave(entry)
         }, modifier = Modifier.fillMaxWidth()) { Text(if (initial == null) "Guardar registro" else "Guardar cambios") }
-        TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) { Text("Cancelar") }
+        TextButton(onClick = onCancel, enabled = !saving, modifier = Modifier.fillMaxWidth()) { Text("Cancelar") }
         Spacer(Modifier.height(24.dp))
     }
 }

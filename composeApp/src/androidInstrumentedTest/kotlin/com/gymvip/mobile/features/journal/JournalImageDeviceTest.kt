@@ -12,9 +12,28 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 
 class JournalImageDeviceTest {
+    @Test fun excessiveContentFailsExplicitlyInsteadOfExportingTruncatedData() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        try {
+            renderJournal(context, JournalShareCard("2026-11-26", List(100) { "Texto muy largo ".repeat(30) }, "Estadísticas", false, null))
+            fail("La exportación no debe ocultar contenido seleccionado")
+        } catch (e: IllegalArgumentException) {
+            assertTrue(e.message!!.contains("Reduce el contenido"))
+        }
+    }
+
+    @Test fun cancelledRenderStopsAndAllowsNextImage() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val card = JournalShareCard("2026-11-26", listOf("45 minutos"), "Minimal", true, null)
+        try {
+            renderJournal(context, card) { throw kotlinx.coroutines.CancellationException("Cancelado para prueba") }
+            fail("Debe propagarse la cancelación")
+        } catch (_: kotlinx.coroutines.CancellationException) { }
+        assertTrue(renderJournal(context, card).isNotEmpty())
+    }
     /** Opt-in para renovar únicamente los roles cacheados de la sesión local usando /auth/me real. */
     @Test fun prepareExistingMemberForManualReviewWhenRequested() = runBlocking {
-        if (InstrumentationRegistry.getArguments().getString("journal.prepareMember") != "true") return@runBlocking
+        org.junit.Assume.assumeTrue(InstrumentationRegistry.getArguments().getString("journal.prepareMember") == "true")
         val store = AppContainer.secureTokenStore
         assertNotNull("Se necesita una sesión existente", store.getAccessToken())
         val client = GymVipHttpClient.create(tokenStore = store)

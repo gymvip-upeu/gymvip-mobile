@@ -18,8 +18,8 @@ import com.gymvip.mobile.features.training.WorkoutRoutineDto
 import com.gymvip.mobile.presentation.component.VipTopAppBar
 import com.gymvip.mobile.presentation.navigation.AppBackHandler
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import kotlinx.datetime.*
-import kotlin.random.Random
 
 @Composable
 fun JournalScreen(accountId: String, memberName: String, repository: JournalRepository, onBack: () -> Unit) {
@@ -27,29 +27,35 @@ fun JournalScreen(accountId: String, memberName: String, repository: JournalRepo
     var days by remember(accountId) { mutableStateOf<List<JournalDay>>(emptyList()) }
     var routines by remember(accountId) { mutableStateOf<List<WorkoutRoutineDto>>(emptyList()) }
     var error by remember(accountId) { mutableStateOf<String?>(null) }
+    var warnings by remember(accountId) { mutableStateOf<List<String>>(emptyList()) }
     var loading by remember(accountId) { mutableStateOf(true) }
-    var revision by remember { mutableStateOf(0) }
+    var revision by remember(accountId) { mutableStateOf(0) }
     var selectedDate by remember(accountId) { mutableStateOf<String?>(null) }
     var editing by remember(accountId) { mutableStateOf<JournalEntry?>(null) }
     var form by remember(accountId) { mutableStateOf(false) }
     var sharing by remember(accountId) { mutableStateOf(false) }
     var savingEntry by remember(accountId) { mutableStateOf(false) }
-    var deleteId by remember { mutableStateOf<String?>(null) }
-    var tab by remember { mutableStateOf(0) }
-    var month by remember { mutableStateOf(LocalDate(journalToday().year, journalToday().monthNumber, 1)) }
+    var deleteId by remember(accountId) { mutableStateOf<String?>(null) }
+    var tab by remember(accountId) { mutableStateOf(0) }
+    var month by remember(accountId) { mutableStateOf(LocalDate(journalToday().year, journalToday().monthNumber, 1)) }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(accountId, revision) {
         loading = true
-        try { days = repository.days(accountId); routines = repository.routines(accountId); error = null }
+        try {
+            val snapshot = repository.snapshot(accountId)
+            days = snapshot.days; routines = snapshot.routines; warnings = snapshot.warnings; error = null
+        }
+        catch (e: CancellationException) { throw e }
         catch (e: Exception) { error = "No se pudo leer tu bitácora. Tus datos se conservan. Intenta de nuevo." }
         finally { loading = false }
     }
     val day = days.firstOrNull { it.date == selectedDate } ?: JournalDay(selectedDate ?: journalToday().toString(), emptyList(), emptyList())
-    fun back() { when { sharing -> sharing = false; form -> form = false; selectedDate != null -> selectedDate = null; else -> onBack() } }
+    fun back() { if (!savingEntry) when { sharing -> sharing = false; form -> form = false; selectedDate != null -> selectedDate = null; else -> onBack() } }
     AppBackHandler(enabled = true) { back() }
     Scaffold(topBar = { VipTopAppBar(title = if (sharing) "Compartir mi día" else "Mi Bitácora") }, snackbarHost = { SnackbarHost(snackbar) }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
-            TextButton(onClick = { back() }) { Text("‹ Volver") }
+            TextButton(onClick = { back() }, enabled = !savingEntry) { Text("‹ Volver") }
+            warnings.forEach { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             when {
                 loading -> CircularProgressIndicator()
                 error != null -> { Text(error!!, color = MaterialTheme.colorScheme.error); Button(onClick = { revision++ }) { Text("Reintentar") } }
@@ -58,9 +64,14 @@ fun JournalScreen(accountId: String, memberName: String, repository: JournalRepo
                     if (savingEntry) return@JournalForm
                     savingEntry = true
                     scope.launch {
-                        try { repository.save(accountId, entry); form = false; selectedDate = entry.date; revision++; snackbar.showSnackbar("Registro guardado en este dispositivo") }
-                        catch (e: Exception) { snackbar.showSnackbar("No se pudo guardar. Revisa el registro e inténtalo de nuevo.") }
+                        val message = try {
+                            repository.save(accountId, entry)
+                            form = false; selectedDate = entry.date; revision++
+                            "Registro guardado en este dispositivo"
+                        } catch (e: CancellationException) { throw e }
+                        catch (e: Exception) { "No se pudo guardar. Revisa el registro e inténtalo de nuevo." }
                         finally { savingEntry = false }
+                        snackbar.showSnackbar(message)
                     }
                 }
                 selectedDate != null -> Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {

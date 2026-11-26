@@ -31,6 +31,7 @@ fun estimatedOneRepMax(kg: Double, reps: Int): Double =
     if (!kg.isFinite() || kg <= 0 || reps <= 0) 0.0 else kg * (1.0 + reps / 30.0)
 
 fun validateJournal(entry: JournalEntry, today: LocalDate = journalToday()): List<String> = buildList {
+    if (entry.id.isBlank() || entry.clientSyncId.isBlank()) add("El registro necesita un identificador válido.")
     val date = runCatching { LocalDate.parse(entry.date) }.getOrNull()
     if (date == null || date > today) add("Elige una fecha válida que no sea futura.")
     if (runCatching { LocalTime.parse(entry.startTime) }.isFailure) add("Usa una hora válida: HH:mm.")
@@ -41,6 +42,12 @@ fun validateJournal(entry: JournalEntry, today: LocalDate = journalToday()): Lis
     if (entry.exercises.size > 30 || entry.exercises.any { it.name.isBlank() || it.name.length > 100 || it.sets !in 1..100 || it.reps !in 1..1000 || !it.kg.isFinite() || it.kg !in 0.0..1000.0 })
         add("Revisa los ejercicios: nombre, series y repeticiones positivos, y peso entre 0 y 1000 kg.")
 }
+
+internal fun timerElapsedMillis(startedAt: Long?, accumulated: Long, now: Long): Long =
+    accumulated.coerceAtLeast(0) + if (startedAt == null) 0 else (now - startedAt).coerceAtLeast(0)
+
+internal fun timerDurationMinutes(millis: Long): Int =
+    ((millis.coerceAtLeast(0) + 59_999) / 60_000).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
 
 fun journalStreak(dates: Set<LocalDate>, today: LocalDate): Int {
     var cursor = if (today in dates) today else today.minus(1, DateTimeUnit.DAY)

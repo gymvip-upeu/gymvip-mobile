@@ -10,6 +10,57 @@ import kotlinx.serialization.json.Json
 import kotlin.test.*
 
 class JournalTest {
+    @Test fun exportNeverUsesImageFromPreviousPrivacySettings() {
+        val card = JournalShareCard("2026-11-25", listOf("Nombre visible"), "Minimal", true, null)
+        val rendered = JournalRenderedCard(card, byteArrayOf(1, 2, 3))
+        assertContentEquals(byteArrayOf(1, 2, 3), journalExportBytes(card, rendered))
+        assertNull(journalExportBytes(card.copy(lines = emptyList()), rendered))
+        assertNull(journalExportBytes(card.copy(story = false), rendered))
+        assertNull(journalExportBytes(card, null))
+    }
+
+    @Test fun stopwatchPreservesPartialSecondsAndRoundsOnlyWhenStopped() {
+        assertEquals(61_500L, timerElapsedMillis(1000, 500, 62_000))
+        assertEquals(500L, timerElapsedMillis(null, 500, 100_000))
+        assertEquals(500L, timerElapsedMillis(1000, 500, 900))
+        assertEquals(0, timerDurationMinutes(0))
+        assertEquals(1, timerDurationMinutes(500))
+        assertEquals(1, timerDurationMinutes(60_000))
+        assertEquals(2, timerDurationMinutes(60_001))
+    }
+
+    @Test fun brokenTrainingCachesDoNotBlockOrOverwriteManualJournal() = runTest {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        try {
+            GymVipDatabase.Schema.create(driver)
+            val db = GymVipDatabase(driver); val repo = JournalRepository(db)
+            repo.save("a", entry())
+            db.gymVipDatabaseQueries.upsertPreference("a", "local_workout_sessions_json", "invalid sessions")
+            db.gymVipDatabaseQueries.upsertPreference("a", "cache_routines_json", "invalid routines")
+            val snapshot = repo.snapshot("a")
+            assertEquals(1, snapshot.days.size)
+            assertEquals(2, snapshot.warnings.size)
+            assertTrue(snapshot.routines.isEmpty())
+            repo.save("a", entry().copy(notes = "Sigo registrando"))
+            assertEquals("invalid sessions", db.gymVipDatabaseQueries.selectPreference("a", "local_workout_sessions_json").executeAsOne())
+            assertEquals("invalid routines", db.gymVipDatabaseQueries.selectPreference("a", "cache_routines_json").executeAsOne())
+            db.gymVipDatabaseQueries.upsertPreference("a", "journal_entries_v1_json", "invalid journal")
+            assertFailsWith<Exception> { repo.save("a", entry(id = "other")) }
+            assertEquals("invalid journal", db.gymVipDatabaseQueries.selectPreference("a", "journal_entries_v1_json").executeAsOne())
+        } finally { driver.close() }
+    }
+
+    @Test fun duplicateSyncIdsAreRejectedWithoutLosingExistingRecord() = runTest {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        try {
+            GymVipDatabase.Schema.create(driver)
+            val repo = JournalRepository(GymVipDatabase(driver))
+            repo.save("a", entry())
+            assertFailsWith<IllegalArgumentException> { repo.save("a", entry(id = "two").copy(clientSyncId = "one")) }
+            assertEquals(1, repo.list("a").size)
+            assertTrue(validateJournal(entry().copy(id = ""), LocalDate.parse("2026-11-25")).isNotEmpty())
+        } finally { driver.close() }
+    }
     @Test fun restoredServerRolesKeepClientAccessWithoutChangingAssignedPermissions() {
         val dto = Json.decodeFromString<com.gymvip.mobile.data.remote.dto.CurrentUserDto>("""{"roles":[{"authority":"ROLE_CLIENTE"},"CLIENTE"]}""")
         assertEquals(listOf("CLIENTE"), dto.normalizedRoles())
