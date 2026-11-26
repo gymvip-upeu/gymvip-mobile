@@ -15,6 +15,8 @@ class ConfigRepositoryImpl(private val database: GymVipDatabase) : ConfigReposit
     private val _fontScale = MutableStateFlow(1.0f) // 1.0f, 1.15f, 1.3f
     private val _highContrast = MutableStateFlow(false)
     private val _reduceMotion = MutableStateFlow(false)
+    private val _showGuides = MutableStateFlow(true)
+    private val _preferredBranchName = MutableStateFlow<String?>("VIP Center Fit — Sede Central")
 
     private val deviceScope = "__device__"
     private val deviceKeys = setOf("onboarding_completed", "permissions_explainer_completed")
@@ -23,7 +25,14 @@ class ConfigRepositoryImpl(private val database: GymVipDatabase) : ConfigReposit
 
     private val localDefaults = mapOf(
         "feature_promotions_highlight" to true,
-        "feature_favorites_notes_enabled" to true
+        "feature_favorites_notes_enabled" to true,
+        "feature_gym_explorer" to true,
+        "feature_online_payments" to false,
+        "feature_training" to true,
+        "feature_trainer_booking" to false,
+        "feature_group_classes" to true,
+        "feature_rewards" to false,
+        "feature_offline_workout" to true
     )
 
     private fun read(scope: String, key: String): String? =
@@ -43,11 +52,12 @@ class ConfigRepositoryImpl(private val database: GymVipDatabase) : ConfigReposit
             ?.toFloatOrNull()?.coerceIn(0.85f, 1.4f) ?: 1.0f
         _highContrast.value = resolved?.let { read(it, "high_contrast") } == "true"
         _reduceMotion.value = resolved?.let { read(it, "reduce_motion") } == "true"
+        _showGuides.value = resolved?.let { read(it, "show_guides") }?.toBooleanStrictOrNull() ?: true
+        _preferredBranchName.value = resolved?.let { read(it, "preferred_branch_name") }?.takeIf(String::isNotBlank)
+            ?: "VIP Center Fit — Sede Central"
     }
 
     override suspend fun fetchNoticeBanner(): String? {
-        // Los avisos operativos reales provienen de la bandeja oficial del backend (/api/v1/member-app/inbox).
-        // Se evita cualquier banner estático no administrable de feriado.
         val remoteNotice = com.gymvip.mobile.config.SafeRemoteConfig.getString("notice_banner_text", "")
         return if (remoteNotice.isNotBlank()) remoteNotice else null
     }
@@ -55,7 +65,7 @@ class ConfigRepositoryImpl(private val database: GymVipDatabase) : ConfigReposit
     override suspend fun isFeatureEnabled(featureKey: String, defaultValue: Boolean): Boolean {
         val remoteValue = com.gymvip.mobile.config.SafeRemoteConfig.getBoolean(featureKey, defaultValue)
         val value = localDefaults[featureKey]
-        return if (value is Boolean) value else remoteValue
+        return if (value is Boolean && !remoteValue) defaultValue else remoteValue
     }
 
     override fun getThemePreference(): Flow<String> = _themePreference.asStateFlow()
@@ -93,6 +103,34 @@ class ConfigRepositoryImpl(private val database: GymVipDatabase) : ConfigReposit
         _reduceMotion.value = enabled
     }
 
+    override fun getShowGuides(): Flow<Boolean> = _showGuides.asStateFlow()
+
+    override suspend fun setShowGuides(enabled: Boolean) {
+        _showGuides.value = enabled
+        val scope = activeAccountId ?: return
+        write(scope, "show_guides", enabled.toString())
+    }
+
+    override suspend fun resetGuidesAndTutorials() {
+        _showGuides.value = true
+        val scope = activeAccountId ?: return
+        write(scope, "show_guides", "true")
+        database.gymVipDatabaseQueries.selectPreferencesByAccount(scope).executeAsList()
+            .filter { it.preferenceKey.startsWith("help_seen_") }
+            .forEach { write(scope, it.preferenceKey, "false") }
+    }
+
+    override fun getPreferredBranchName(): Flow<String?> = _preferredBranchName.asStateFlow()
+
+    override suspend fun setPreferredBranch(branchId: String?, branchName: String?) {
+        val scope = activeAccountId ?: return
+        if (branchId != null) write(scope, "preferred_branch_id", branchId)
+        if (!branchName.isNullOrBlank()) {
+            write(scope, "preferred_branch_name", branchName)
+            _preferredBranchName.value = branchName
+        }
+    }
+
     override suspend fun getBooleanPreference(key: String, defaultValue: Boolean): Boolean {
         val scope = if (key in deviceKeys) deviceScope else activeAccountId ?: return defaultValue
         return read(scope, key)?.toBooleanStrictOrNull() ?: defaultValue
@@ -119,5 +157,6 @@ class ConfigRepositoryImpl(private val database: GymVipDatabase) : ConfigReposit
         _fontScale.value = 1.0f
         _highContrast.value = false
         _reduceMotion.value = false
+        _showGuides.value = true
     }
 }

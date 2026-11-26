@@ -23,9 +23,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material3.Card
@@ -66,10 +69,14 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     isStaff: Boolean = false,
     userRoles: List<String> = emptyList(),
+    preferredBranchName: String = "VIP Center Fit — Sede Central",
     onNavigateServices: () -> Unit,
     onNavigateFaq: () -> Unit,
     onNavigateTab: (MainTab) -> Unit,
-    onNavigateCheckInScanner: () -> Unit = {}
+    onNavigateCheckInScanner: () -> Unit = {},
+    onNavigateGymExplorer: () -> Unit = {},
+    onNavigateClasses: () -> Unit = {},
+    onNavigateProgress: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
@@ -139,7 +146,27 @@ fun HomeScreen(
                     color = MaterialTheme.colorScheme.onBackground
                 )
             }
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth().clickable { onNavigateGymExplorer() },
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = GoldPrimary, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Sede preferida", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(preferredBranchName, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                    Text("Cambiar", style = MaterialTheme.typography.labelMedium, color = GoldPrimary, fontWeight = FontWeight.Bold)
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
 
             ContextualHelpCard(
                 screenKey = "home_checkin_help",
@@ -289,6 +316,44 @@ fun HomeScreen(
                     title = "Catálogo",
                     subtitle = "Planes y suplementos",
                     onClick = { onNavigateTab(MainTab.CATALOG) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                QuickActionCard(
+                    icon = Icons.Outlined.FitnessCenter,
+                    title = "Entrenamiento de hoy",
+                    subtitle = "Rutinas y timer",
+                    onClick = { onNavigateTab(MainTab.TRAINING) },
+                    modifier = Modifier.weight(1f)
+                )
+                QuickActionCard(
+                    icon = Icons.Outlined.CalendarMonth,
+                    title = "Clases y reservas",
+                    subtitle = "Horarios y cupos",
+                    onClick = onNavigateClasses,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                QuickActionCard(
+                    icon = Icons.Outlined.BarChart,
+                    title = "Mi progreso",
+                    subtitle = "Cargas y récords",
+                    onClick = onNavigateProgress,
+                    modifier = Modifier.weight(1f)
+                )
+                QuickActionCard(
+                    icon = Icons.Outlined.LocationOn,
+                    title = "Gimnasios y sedes",
+                    subtitle = "Explorar ubicaciones",
+                    onClick = onNavigateGymExplorer,
                     modifier = Modifier.weight(1f)
                 )
             }

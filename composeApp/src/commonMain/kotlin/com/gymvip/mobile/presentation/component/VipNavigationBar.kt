@@ -2,6 +2,7 @@ package com.gymvip.mobile.presentation.component
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Badge
+import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.PersonOutline
@@ -23,6 +24,7 @@ internal val MainTab.navigationIcon: ImageVector
     get() = when (this) {
         MainTab.HOME -> Icons.Outlined.Home
         MainTab.MEMBERSHIP -> Icons.Outlined.Badge
+        MainTab.TRAINING -> Icons.Outlined.FitnessCenter
         MainTab.CATALOG -> Icons.Outlined.ShoppingBag
         MainTab.INBOX -> Icons.Outlined.Notifications
         MainTab.PROFILE -> Icons.Outlined.PersonOutline
@@ -33,7 +35,7 @@ fun VipNavigationBar(
     currentTab: MainTab,
     onTabSelected: (MainTab) -> Unit,
     modifier: Modifier = Modifier,
-    visibleTabs: List<MainTab> = MainTab.entries
+    visibleTabs: List<MainTab> = listOf(MainTab.HOME, MainTab.MEMBERSHIP, MainTab.TRAINING, MainTab.CATALOG, MainTab.PROFILE)
 ) {
     val colors = MaterialTheme.colorScheme
     val followsSystem = LocalGymVipSystemTheme.current
@@ -43,7 +45,7 @@ fun VipNavigationBar(
         contentColor = MaterialTheme.colorScheme.onSurface,
         tonalElevation = 0.dp
     ) {
-        visibleTabs.forEach { tab ->
+        visibleTabs.take(5).forEach { tab ->
             val isSelected = currentTab == tab
             NavigationBarItem(
                 selected = isSelected,

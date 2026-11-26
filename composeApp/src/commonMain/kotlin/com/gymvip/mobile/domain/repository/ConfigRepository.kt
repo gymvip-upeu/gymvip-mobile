@@ -21,6 +21,13 @@ interface ConfigRepository {
     
     fun getReduceMotion(): Flow<Boolean>
     suspend fun setReduceMotion(enabled: Boolean)
+
+    fun getShowGuides(): Flow<Boolean>
+    suspend fun setShowGuides(enabled: Boolean)
+    suspend fun resetGuidesAndTutorials()
+
+    fun getPreferredBranchName(): Flow<String?>
+    suspend fun setPreferredBranch(branchId: String?, branchName: String?)
     
     // Preferencias de banderas (onboarding, ayudas contextuales, permisos)
     suspend fun getBooleanPreference(key: String, defaultValue: Boolean = false): Boolean

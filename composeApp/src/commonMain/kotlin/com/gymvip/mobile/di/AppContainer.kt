@@ -53,6 +53,9 @@ object AppContainer : KoinComponent {
     lateinit var configRepository: ConfigRepository
         private set
 
+    lateinit var enterpriseTrainingRepository: com.gymvip.mobile.features.training.EnterpriseTrainingRepository
+        private set
+
     // UseCases
     lateinit var loginUseCase: LoginUseCase
         private set
@@ -106,6 +109,7 @@ object AppContainer : KoinComponent {
         gymServiceRepository = get<GymServiceRepository>()
         legalConsentRepository = get<LegalConsentRepository>()
         configRepository = get<ConfigRepository>()
+        enterpriseTrainingRepository = get<com.gymvip.mobile.features.training.EnterpriseTrainingRepository>()
 
         loginUseCase = get<LoginUseCase>()
         activateAccountUseCase = get<ActivateAccountUseCase>()

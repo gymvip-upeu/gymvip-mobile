@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Contrast
 import androidx.compose.material.icons.outlined.FormatSize
+import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.MotionPhotosOff
 import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material3.Button
@@ -201,6 +202,60 @@ fun PreferencesScreen(
                         checked = state.reduceMotion,
                         onCheckedChange = { viewModel.setReduceMotion(it) }
                     )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // ==========================================
+        // 2.5 GUÍAS Y EXPERIENCIA (MODO GUIADO vs COMPACTO)
+        // ==========================================
+        Text(
+            text = "GUÍAS Y EXPERIENCIA DE USO",
+            style = MaterialTheme.typography.labelLarge,
+            color = accent,
+            fontWeight = FontWeight.Bold
+        )
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Outlined.Lightbulb, contentDescription = null, tint = accent)
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Mostrar guías y consejos", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            if (state.showGuides) {
+                                "Modo guiado: muestra ayudas y consejos contextuales"
+                            } else {
+                                "Modo compacto: oculta textos explicativos opcionales"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = state.showGuides,
+                        onCheckedChange = { viewModel.setShowGuides(it) }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedButton(
+                    onClick = { viewModel.resetGuides() },
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Restablecer guías y tutoriales")
                 }
             }
         }

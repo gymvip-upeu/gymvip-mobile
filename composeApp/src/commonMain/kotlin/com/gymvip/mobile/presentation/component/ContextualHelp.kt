@@ -20,7 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -45,11 +45,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gymvip.mobile.di.AppContainer
 import com.gymvip.mobile.presentation.theme.LocalGymVipSystemTheme
+import com.gymvip.mobile.presentation.theme.LocalShowGuides
 import kotlinx.coroutines.launch
 
 /**
- * Gestor y componente de ayudas contextuales breves no intrusivas.
- * Recuerda si el socio ya interactuó con la ayuda para no mostrarla en cada apertura.
+ * Guía contextual breve y reutilizable. Respeta la preferencia global "Mostrar guías y consejos"
+ * (`LocalShowGuides`) para permitir un Modo Compacto sin ocultamiento de errores ni alertas de seguridad.
  */
 @Composable
 fun ContextualHelpCard(
@@ -60,6 +61,9 @@ fun ContextualHelpCard(
     modifier: Modifier = Modifier,
     screenKey: String = helpKey
 ) {
+    val showGuidesGlobally = LocalShowGuides.current
+    if (!showGuidesGlobally) return
+
     val key = helpKey.ifBlank { screenKey }
     val followsSystem = LocalGymVipSystemTheme.current
     val accent = if (followsSystem) Color(0xFF008DDA) else Color(0xFFD4AF37)
@@ -68,9 +72,9 @@ fun ContextualHelpCard(
     var isVisible by remember { mutableStateOf(false) }
 
     // Verificar en preferencias si ya fue vista o descartada
-    androidx.compose.runtime.LaunchedEffect(key) {
+    androidx.compose.runtime.LaunchedEffect(key, showGuidesGlobally) {
         val seen = AppContainer.configRepository.getBooleanPreference("help_seen_$key", false)
-        isVisible = !seen
+        isVisible = showGuidesGlobally && !seen
     }
 
     fun dismissHelp(neverShowAgain: Boolean) {
@@ -172,6 +176,35 @@ fun ContextualHelpCard(
                         Text("Entendido", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun GuideHint(
+    title: String,
+    description: String,
+    modifier: Modifier = Modifier,
+    icon: ImageVector = Icons.AutoMirrored.Outlined.HelpOutline
+) {
+    if (!LocalShowGuides.current) return
+    val accent = if (LocalGymVipSystemTheme.current) Color(0xFF008DDA) else Color(0xFFD4AF37)
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color(0xFF142033))
+            .border(1.dp, accent.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+            .padding(12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(10.dp))
+            Column {
+                Text(title, style = MaterialTheme.typography.titleSmall, color = Color.White, fontWeight = FontWeight.Bold)
+                Text(description, style = MaterialTheme.typography.bodySmall, color = Color(0xFFCBD5E1))
             }
         }
     }

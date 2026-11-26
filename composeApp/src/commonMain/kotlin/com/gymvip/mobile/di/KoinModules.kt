@@ -8,6 +8,8 @@ import com.gymvip.mobile.data.repository.*
 import com.gymvip.mobile.data.sync.SyncQueueManager
 import com.gymvip.mobile.domain.repository.*
 import com.gymvip.mobile.domain.usecase.*
+import com.gymvip.mobile.features.training.EnterpriseTrainingApi
+import com.gymvip.mobile.features.training.EnterpriseTrainingRepository
 import io.ktor.client.engine.HttpClientEngine
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
@@ -29,6 +31,7 @@ fun appModules(
         single { SupplementOrderApi(get()) }
         single { CatalogApi(get()) }
         single { FavoriteApi(get()) }
+        single { EnterpriseTrainingApi(get()) }
         single { SyncQueueManager(get(), get()) }
     },
     module {
@@ -41,6 +44,7 @@ fun appModules(
         single<GymServiceRepository> { GymServiceRepositoryImpl(get(), get()) }
         single<LegalConsentRepository> { LegalConsentRepositoryImpl(get(), get()) }
         single<ConfigRepository> { ConfigRepositoryImpl(get()) }
+        single { EnterpriseTrainingRepository(get(), get(), get()) }
     },
     module {
         factory { LoginUseCase(get()) }

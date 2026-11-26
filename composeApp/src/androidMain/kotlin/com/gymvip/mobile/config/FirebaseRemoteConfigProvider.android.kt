@@ -20,7 +20,14 @@ class FirebaseRemoteConfigProvider : RemoteConfigProvider {
         // Valores predeterminados seguros locales
         val defaults = mapOf(
             "feature_promotions_highlight" to true,
-            "feature_favorites_notes_enabled" to true
+            "feature_favorites_notes_enabled" to true,
+            "feature_gym_explorer" to true,
+            "feature_online_payments" to false,
+            "feature_training" to true,
+            "feature_trainer_booking" to false,
+            "feature_group_classes" to true,
+            "feature_rewards" to false,
+            "feature_offline_workout" to true
         )
         config.setDefaultsAsync(defaults)
         config

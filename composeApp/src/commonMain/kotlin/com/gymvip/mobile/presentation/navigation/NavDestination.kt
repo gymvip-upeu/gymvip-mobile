@@ -3,7 +3,8 @@ package com.gymvip.mobile.presentation.navigation
 enum class MainTab(val title: String) {
     HOME("Inicio"),
     MEMBERSHIP("Membresía"),
-    CATALOG("Catálogo"),
+    TRAINING("Entreno"),
+    CATALOG("Tienda"),
     INBOX("Avisos"),
     PROFILE("Perfil")
 }
@@ -16,6 +17,10 @@ sealed class NavDestination {
     data object Activation : NavDestination()
     data object FirstPassword : NavDestination()
     data class Main(val selectedTab: MainTab = MainTab.HOME) : NavDestination()
+    data object GymExplorer : NavDestination()
+    data object ExerciseCatalog : NavDestination()
+    data object TrainingProgress : NavDestination()
+    data object ClassReservations : NavDestination()
     data object Faq : NavDestination()
     data object Settings : NavDestination()
     data object EditProfile : NavDestination()

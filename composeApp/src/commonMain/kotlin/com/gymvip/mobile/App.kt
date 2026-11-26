@@ -3,7 +3,10 @@ package com.gymvip.mobile
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -16,6 +19,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.gymvip.mobile.di.AppContainer
 import com.gymvip.mobile.notification.syncPushRegistration
+import com.gymvip.mobile.features.gyms.GymsExplorerScreen
+import com.gymvip.mobile.features.reservations.ClassesReservationsScreen
+import com.gymvip.mobile.features.training.ExerciseCatalogScreen
+import com.gymvip.mobile.features.training.TrainingHubScreen
+import com.gymvip.mobile.features.training.TrainingProgressScreen
+import com.gymvip.mobile.presentation.component.VipDrawerContent
 import com.gymvip.mobile.presentation.component.VipNavigationBar
 import com.gymvip.mobile.presentation.component.VipTopAppBar
 import com.gymvip.mobile.presentation.navigation.AppBackHandler
@@ -74,6 +83,7 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
         fontScale = preferencesState.fontScale,
         highContrast = preferencesState.highContrast,
         reduceMotion = preferencesState.reduceMotion,
+        showGuides = preferencesState.showGuides,
         onDarkThemeChanged = onDarkThemeChanged
     ) {
         val authViewModel = remember {
@@ -154,7 +164,9 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
 
         val parentDestination = when (val destination = currentDestination) {
             NavDestination.Settings -> NavDestination.Main(MainTab.PROFILE)
-            NavDestination.Faq, NavDestination.Services, NavDestination.MemberCheckInScanner -> NavDestination.Main(MainTab.HOME)
+            NavDestination.Faq, NavDestination.Services, NavDestination.MemberCheckInScanner,
+            NavDestination.GymExplorer, NavDestination.ClassReservations -> NavDestination.Main(MainTab.HOME)
+            NavDestination.ExerciseCatalog, NavDestination.TrainingProgress -> NavDestination.Main(MainTab.TRAINING)
             NavDestination.EditProfile, NavDestination.Preferences, NavDestination.Permissions,
             NavDestination.AccountSecurity -> NavDestination.Settings
             NavDestination.ConfirmEmail -> NavDestination.AccountSecurity
@@ -381,6 +393,42 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                 )
             }
 
+            is NavDestination.GymExplorer -> {
+                val accountId = authState.authenticatedProfile?.accountId ?: "public"
+                GymsExplorerScreen(
+                    accountId = accountId,
+                    preferredBranchName = preferencesState.preferredBranchName,
+                    repository = AppContainer.enterpriseTrainingRepository,
+                    onBranchSelected = { currentDestination = NavDestination.Main(currentTab) },
+                    onBack = { currentDestination = NavDestination.Main(currentTab) }
+                )
+            }
+
+            is NavDestination.ExerciseCatalog -> {
+                val accountId = authState.authenticatedProfile?.accountId ?: "public"
+                ExerciseCatalogScreen(
+                    accountId = accountId,
+                    repository = AppContainer.enterpriseTrainingRepository,
+                    onBack = { currentDestination = NavDestination.Main(MainTab.TRAINING) }
+                )
+            }
+
+            is NavDestination.TrainingProgress -> {
+                val accountId = authState.authenticatedProfile?.accountId ?: "public"
+                TrainingProgressScreen(
+                    accountId = accountId,
+                    repository = AppContainer.enterpriseTrainingRepository,
+                    onBack = { currentDestination = NavDestination.Main(MainTab.TRAINING) }
+                )
+            }
+
+            is NavDestination.ClassReservations -> {
+                ClassesReservationsScreen(
+                    repository = AppContainer.enterpriseTrainingRepository,
+                    onBack = { currentDestination = NavDestination.Main(MainTab.HOME) }
+                )
+            }
+
             is NavDestination.Activation -> {
                 ActivationScreen(
                     viewModel = authViewModel,
@@ -481,13 +529,19 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                 }
                 val accountId = authState.authenticatedProfile?.accountId ?: "unknown_account"
                 val userRoles = authState.authenticatedProfile?.roles.orEmpty()
-                val isStaff = userRoles.any { it == "ADMIN" || it == "GERENTE" || it == "RECEPCION" || it == "AUDITOR" } && !userRoles.contains("CLIENTE")
-                val isExecutive = userRoles.any { it == "ADMIN" || it == "GERENTE" }
+                val isClient = userRoles.contains("CLIENTE")
+                val isStaff = userRoles.any { it != "CLIENTE" } && !isClient
+                val isExecutive = userRoles.any { it == "ADMIN" || it == "SUPER_ADMIN" || it == "ADMIN_EMPRESA" || it == "GERENTE" || it == "GERENTE_GENERAL" || it == "GERENTE_SEDE" }
                 val visibleTabs = when {
-                    userRoles.contains("CLIENTE") -> MainTab.entries
-                    userRoles.contains("GERENTE") || userRoles.contains("ADMIN") -> listOf(MainTab.HOME, MainTab.CATALOG, MainTab.INBOX, MainTab.PROFILE)
-                    userRoles.contains("AUDITOR") && !isExecutive -> listOf(MainTab.HOME, MainTab.PROFILE)
+                    isClient -> listOf(MainTab.HOME, MainTab.MEMBERSHIP, MainTab.TRAINING, MainTab.CATALOG, MainTab.PROFILE)
+                    userRoles.contains("AUDITOR") || userRoles.contains("AUDITOR_EMPRESA") -> listOf(MainTab.HOME, MainTab.PROFILE)
                     else -> listOf(MainTab.HOME, MainTab.CATALOG, MainTab.INBOX, MainTab.PROFILE)
+                }
+
+                LaunchedEffect(preferencesState.showGuides, authState.isAuthenticated) {
+                    if (authState.isAuthenticated) {
+                        AppContainer.enterpriseTrainingRepository.syncShowGuidesToServer(preferencesState.showGuides)
+                    }
                 }
 
                 // ViewModels para la sesión del socio
@@ -538,90 +592,136 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                     if (inboxRevision > 0) inboxViewModel.refresh()
                 }
 
-                Scaffold(
-                    topBar = {
-                        VipTopAppBar(
-                            title = when (currentTab) {
-                                MainTab.HOME -> "GYM VIP"
-                                MainTab.MEMBERSHIP -> "Membresía"
-                                MainTab.CATALOG -> "Catálogo y Planes"
-                                MainTab.INBOX -> "Avisos"
-                                MainTab.PROFILE -> "Mi Perfil"
-                            },
-                            onOpenSettings = if (currentTab == MainTab.PROFILE) {
-                                { currentDestination = NavDestination.Settings }
-                            } else null,
-                            onSyncClick = {
-                                favoritesViewModel.syncPending()
-                                membershipViewModel.refresh()
-                                homeViewModel.refreshAll()
-                                inboxViewModel.refresh()
-                            }
-                        )
-                    },
-                    bottomBar = {
-                        VipNavigationBar(
+                val drawerState = rememberDrawerState(DrawerValue.Closed)
+                ModalNavigationDrawer(
+                    drawerState = drawerState,
+                    drawerContent = {
+                        VipDrawerContent(
+                            memberName = homeViewModel.uiState.collectAsState().value.profile?.firstName
+                                ?: authState.authenticatedProfile?.email.orEmpty(),
+                            memberEmail = authState.authenticatedProfile?.email.orEmpty(),
+                            preferredBranchName = preferencesState.preferredBranchName,
+                            isClient = isClient,
+                            isStaff = isStaff,
+                            currentDestination = currentDestination,
                             currentTab = currentTab,
-                            visibleTabs = visibleTabs,
-                            onTabSelected = { tab ->
-                                if (tab in visibleTabs) {
-                                    currentTab = tab
-                                    currentDestination = NavDestination.Main(tab)
-                                    com.gymvip.mobile.telemetry.VipAnalyticsTracker.logScreenView(tab.name)
-                                }
-                            }
+                            onSelectTab = { tab ->
+                                currentTab = tab
+                                currentDestination = NavDestination.Main(tab)
+                            },
+                            onNavigate = { target -> currentDestination = target },
+                            onLogout = authViewModel::logout,
+                            onCloseDrawer = { coroutineScope.launch { drawerState.close() } }
                         )
                     }
-                ) { innerPadding ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding)
-                    ) {
-                        when (currentTab) {
-                            MainTab.HOME -> HomeScreen(
-                                viewModel = homeViewModel,
-                                isStaff = isStaff,
-                                userRoles = userRoles,
-                                onNavigateServices = { currentDestination = NavDestination.Services },
-                                onNavigateFaq = { currentDestination = NavDestination.Faq },
-                                onNavigateTab = { tab ->
-                                    currentTab = tab
-                                    currentDestination = NavDestination.Main(tab)
+                ) {
+                    Scaffold(
+                        topBar = {
+                            VipTopAppBar(
+                                title = when (currentTab) {
+                                    MainTab.HOME -> "GYM VIP"
+                                    MainTab.MEMBERSHIP -> "Membresía"
+                                    MainTab.TRAINING -> "Entrenamiento"
+                                    MainTab.CATALOG -> "Tienda y Planes"
+                                    MainTab.INBOX -> "Avisos"
+                                    MainTab.PROFILE -> "Mi Perfil"
                                 },
-                                onNavigateCheckInScanner = { currentDestination = NavDestination.MemberCheckInScanner }
-                            )
-                            MainTab.MEMBERSHIP -> if (!isStaff) MembershipScreen(
-                                viewModel = membershipViewModel,
-                                userRoles = userRoles,
-                                onNavigateToCatalog = {
-                                    currentTab = MainTab.CATALOG
-                                    currentDestination = NavDestination.Main(MainTab.CATALOG)
-                                }
-                            )
-                            MainTab.CATALOG -> CatalogScreen(
-                                catalogViewModel = catalogViewModel,
-                                favoritesViewModel = favoritesViewModel,
-                                receptionWhatsAppNumber = AppContainer.configRepository.receptionWhatsAppNumber,
-                                canPurchase = userRoles.contains("CLIENTE"),
-                                cartCount = shoppingCart.totalQuantity,
-                                cartError = cartError,
-                                onOpenCart = { currentDestination = NavDestination.Cart },
-                                onAddToCart = { product ->
+                                onOpenDrawer = { coroutineScope.launch { drawerState.open() } },
+                                onOpenInbox = if (currentTab != MainTab.INBOX) {
+                                    {
+                                        currentTab = MainTab.INBOX
+                                        currentDestination = NavDestination.Main(MainTab.INBOX)
+                                    }
+                                } else null,
+                                onOpenSettings = if (currentTab == MainTab.PROFILE) {
+                                    { currentDestination = NavDestination.Settings }
+                                } else null,
+                                onSyncClick = {
+                                    favoritesViewModel.syncPending()
+                                    membershipViewModel.refresh()
+                                    homeViewModel.refreshAll()
+                                    inboxViewModel.refresh()
                                     coroutineScope.launch {
-                                        val quantity = shoppingCart.items.firstOrNull { it.product.id == product.id }?.quantity ?: 0
-                                        orderApi.setQuantity(product.id, quantity + 1).onSuccess { shoppingCart = it; cartError = null }
-                                            .onFailure { cartError = it.message }
+                                        AppContainer.enterpriseTrainingRepository.syncPendingWorkouts(accountId)
                                     }
                                 }
                             )
-                            MainTab.INBOX -> InboxScreen(viewModel = inboxViewModel)
-                            MainTab.PROFILE -> profileViewModel?.let {
-                                ProfileScreen(
-                                    viewModel = it,
+                        },
+                        bottomBar = {
+                            VipNavigationBar(
+                                currentTab = currentTab,
+                                visibleTabs = visibleTabs,
+                                onTabSelected = { tab ->
+                                    if (tab in visibleTabs) {
+                                        currentTab = tab
+                                        currentDestination = NavDestination.Main(tab)
+                                        com.gymvip.mobile.telemetry.VipAnalyticsTracker.logScreenView(tab.name)
+                                    }
+                                }
+                            )
+                        }
+                    ) { innerPadding ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(innerPadding)
+                        ) {
+                            when (currentTab) {
+                                MainTab.HOME -> HomeScreen(
+                                    viewModel = homeViewModel,
+                                    isStaff = isStaff,
                                     userRoles = userRoles,
-                                    onNavigateAdminScanner = { currentDestination = NavDestination.AdminScanner }
+                                    preferredBranchName = preferencesState.preferredBranchName,
+                                    onNavigateServices = { currentDestination = NavDestination.Services },
+                                    onNavigateFaq = { currentDestination = NavDestination.Faq },
+                                    onNavigateTab = { tab ->
+                                        currentTab = tab
+                                        currentDestination = NavDestination.Main(tab)
+                                    },
+                                    onNavigateCheckInScanner = { currentDestination = NavDestination.MemberCheckInScanner },
+                                    onNavigateGymExplorer = { currentDestination = NavDestination.GymExplorer },
+                                    onNavigateClasses = { currentDestination = NavDestination.ClassReservations },
+                                    onNavigateProgress = { currentDestination = NavDestination.TrainingProgress }
                                 )
+                                MainTab.MEMBERSHIP -> if (!isStaff) MembershipScreen(
+                                    viewModel = membershipViewModel,
+                                    userRoles = userRoles,
+                                    onNavigateToCatalog = {
+                                        currentTab = MainTab.CATALOG
+                                        currentDestination = NavDestination.Main(MainTab.CATALOG)
+                                    }
+                                )
+                                MainTab.TRAINING -> if (!isStaff) TrainingHubScreen(
+                                    accountId = accountId,
+                                    repository = AppContainer.enterpriseTrainingRepository,
+                                    onOpenExercises = { currentDestination = NavDestination.ExerciseCatalog },
+                                    onOpenProgress = { currentDestination = NavDestination.TrainingProgress },
+                                    onOpenClasses = { currentDestination = NavDestination.ClassReservations }
+                                )
+                                MainTab.CATALOG -> CatalogScreen(
+                                    catalogViewModel = catalogViewModel,
+                                    favoritesViewModel = favoritesViewModel,
+                                    receptionWhatsAppNumber = AppContainer.configRepository.receptionWhatsAppNumber,
+                                    canPurchase = userRoles.contains("CLIENTE"),
+                                    cartCount = shoppingCart.totalQuantity,
+                                    cartError = cartError,
+                                    onOpenCart = { currentDestination = NavDestination.Cart },
+                                    onAddToCart = { product ->
+                                        coroutineScope.launch {
+                                            val quantity = shoppingCart.items.firstOrNull { it.product.id == product.id }?.quantity ?: 0
+                                            orderApi.setQuantity(product.id, quantity + 1).onSuccess { shoppingCart = it; cartError = null }
+                                                .onFailure { cartError = it.message }
+                                        }
+                                    }
+                                )
+                                MainTab.INBOX -> InboxScreen(viewModel = inboxViewModel)
+                                MainTab.PROFILE -> profileViewModel?.let {
+                                    ProfileScreen(
+                                        viewModel = it,
+                                        userRoles = userRoles,
+                                        onNavigateAdminScanner = { currentDestination = NavDestination.AdminScanner }
+                                    )
+                                }
                             }
                         }
                     }

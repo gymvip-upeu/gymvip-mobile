@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.sp
 
 internal val LocalGymVipSystemTheme = staticCompositionLocalOf { false }
 val LocalReduceMotion = staticCompositionLocalOf { false }
+val LocalShowGuides = staticCompositionLocalOf { true }
 
 // ==========================================
 // TEMA AZUL OSCURO OFICIAL (VIP CENTER FIT)
@@ -125,6 +126,7 @@ fun GymVipTheme(
     fontScale: Float = 1.0f,
     highContrast: Boolean = false,
     reduceMotion: Boolean = false,
+    showGuides: Boolean = true,
     onDarkThemeChanged: ((Boolean) -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
@@ -171,7 +173,8 @@ fun GymVipTheme(
 
     CompositionLocalProvider(
         LocalGymVipSystemTheme provides (themePreference != "DARK_GOLD"),
-        LocalReduceMotion provides reduceMotion
+        LocalReduceMotion provides reduceMotion,
+        LocalShowGuides provides showGuides
     ) {
         MaterialTheme(
             colorScheme = baseColorScheme,

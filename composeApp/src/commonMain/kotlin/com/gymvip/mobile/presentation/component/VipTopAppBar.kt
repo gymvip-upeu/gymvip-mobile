@@ -2,6 +2,8 @@ package com.gymvip.mobile.presentation.component
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.CircularProgressIndicator
@@ -22,6 +24,8 @@ import com.gymvip.mobile.presentation.theme.accentForeground
 @Composable
 fun VipTopAppBar(
     title: String,
+    onOpenDrawer: (() -> Unit)? = null,
+    onOpenInbox: (() -> Unit)? = null,
     onOpenSettings: (() -> Unit)? = null,
     onSyncClick: (() -> Unit)? = null,
     isSyncing: Boolean = false
@@ -30,10 +34,22 @@ fun VipTopAppBar(
     val containerColor = if (LocalGymVipSystemTheme.current) colors.surfaceContainerLowest else colors.surface
 
     TopAppBar(
+        navigationIcon = {
+            if (onOpenDrawer != null) {
+                IconButton(onClick = onOpenDrawer, modifier = Modifier.size(48.dp)) {
+                    Icon(Icons.Outlined.Menu, contentDescription = "Abrir menú lateral", tint = colors.onSurface)
+                }
+            }
+        },
         title = {
             Text(title, style = MaterialTheme.typography.titleLarge)
         },
         actions = {
+            if (onOpenInbox != null) {
+                IconButton(onClick = onOpenInbox, modifier = Modifier.size(48.dp)) {
+                    Icon(Icons.Outlined.Notifications, contentDescription = "Notificaciones y avisos", tint = colors.onSurface)
+                }
+            }
             if (onSyncClick != null) {
                 IconButton(onClick = onSyncClick, modifier = Modifier.size(48.dp)) {
                     if (isSyncing) {
