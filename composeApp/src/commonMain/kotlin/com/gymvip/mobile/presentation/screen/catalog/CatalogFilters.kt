@@ -9,10 +9,14 @@ internal fun List<Product>.filterCatalog(
 ): List<Product> {
     val text = query.trim()
     return filter { product ->
+        val matchesPromotionFilter = when {
+            finishedOnly -> product.finishedOffer != null
+            onlyPromotions -> product.offer != null
+            else -> true
+        }
         (category == null || product.category == category) &&
             (supplementCategory == null || product.catalogCategory == supplementCategory) &&
-            (!onlyPromotions || product.offer != null) &&
-            (!finishedOnly || product.finishedOffer != null) &&
+            matchesPromotionFilter &&
             (product.name.contains(text, ignoreCase = true) ||
                 product.brand?.contains(text, ignoreCase = true) == true ||
                 (if (finishedOnly) product.finishedOffer else product.offer)

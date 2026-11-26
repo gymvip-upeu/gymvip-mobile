@@ -120,12 +120,23 @@ fun CatalogScreen(
         ) {
             Tab(
                 selected = catalogState.selectedSubTab == 0,
-                onClick = { catalogViewModel.setSubTab(0) },
+                onClick = {
+                    catalogViewModel.setSubTab(0)
+                    catalogViewModel.togglePromotionsOnly(false)
+                },
                 text = { Text("Productos", style = MaterialTheme.typography.titleSmall) }
             )
             Tab(
                 selected = catalogState.selectedSubTab == 1,
-                onClick = { catalogViewModel.setSubTab(1) },
+                onClick = {
+                    catalogViewModel.setSubTab(1)
+                    catalogViewModel.togglePromotionsOnly(true)
+                },
+                text = { Text("Promociones", style = MaterialTheme.typography.titleSmall) }
+            )
+            Tab(
+                selected = catalogState.selectedSubTab == 2,
+                onClick = { catalogViewModel.setSubTab(2) },
                 text = {
                     val count = favoritesState.favorites.size
                     Row(
@@ -142,6 +153,7 @@ fun CatalogScreen(
         when (catalogState.selectedSubTab) {
             0 -> CatalogTab(
                 state = catalogState,
+                promotionsOnlyTab = false,
                 onFilterCategory = { catalogViewModel.setCategoryFilter(it) },
                 onFilterPromotions = catalogViewModel::togglePromotionsOnly,
                 onRefresh = catalogViewModel::refresh,
@@ -150,7 +162,18 @@ fun CatalogScreen(
                 onAddToFavorites = { favoritesViewModel.openAddDialog(it) },
                 onAddToCart = if (canPurchase) onAddToCart else null
             )
-            1 -> FavoritesTab(
+            1 -> CatalogTab(
+                state = catalogState,
+                promotionsOnlyTab = true,
+                onFilterCategory = { catalogViewModel.setCategoryFilter(it) },
+                onFilterPromotions = catalogViewModel::togglePromotionsOnly,
+                onRefresh = catalogViewModel::refresh,
+                loadThumbnail = catalogViewModel::getThumbnail,
+                receptionWhatsAppNumber = receptionWhatsAppNumber,
+                onAddToFavorites = { favoritesViewModel.openAddDialog(it) },
+                onAddToCart = if (canPurchase) onAddToCart else null
+            )
+            2 -> FavoritesTab(
                 state = favoritesState,
                 onEditNote = { favoritesViewModel.openEditNoteDialog(it) },
                 onDelete = { favoritesViewModel.deleteFavorite(it) },
@@ -273,6 +296,7 @@ fun CatalogScreen(
 @Composable
 private fun CatalogTab(
     state: com.gymvip.mobile.presentation.viewmodel.CatalogUiState,
+    promotionsOnlyTab: Boolean,
     onFilterCategory: (ProductCategory?) -> Unit,
     onFilterPromotions: (Boolean) -> Unit,
     onRefresh: () -> Unit,
@@ -293,7 +317,12 @@ private fun CatalogTab(
         ?.takeIf { it.isFinite() && it >= 0 }
     val badLimit = maxPrice.isNotBlank() && limit == null
     val visibleProducts = if (badLimit) emptyList() else state.products.filterCatalog(
-        query, state.selectedCategory, supplementCategory, state.onlyPromotions && !finishedOnly, limit, finishedOnly
+        query = query,
+        category = state.selectedCategory,
+        supplementCategory = supplementCategory,
+        onlyPromotions = !finishedOnly && (promotionsOnlyTab || state.onlyPromotions),
+        maxPrice = limit,
+        finishedOnly = finishedOnly
     )
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -310,20 +339,28 @@ private fun CatalogTab(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            FilterChip(
-                selected = !state.onlyPromotions && !finishedOnly,
-                onClick = { finishedOnly = false; onFilterPromotions(false) },
-                label = { Text("Todos") },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+            if (promotionsOnlyTab) {
+                FilterChip(
+                    selected = !finishedOnly,
+                    onClick = { finishedOnly = false; onFilterPromotions(true) },
+                    label = { Text("Vigentes") }
                 )
-            )
-            FilterChip(
-                selected = state.onlyPromotions && !finishedOnly,
-                onClick = { finishedOnly = false; onFilterPromotions(true) },
-                label = { Text("Promociones") }
-            )
+            } else {
+                FilterChip(
+                    selected = !state.onlyPromotions && !finishedOnly,
+                    onClick = { finishedOnly = false; onFilterPromotions(false) },
+                    label = { Text("Todos") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+                FilterChip(
+                    selected = state.onlyPromotions && !finishedOnly,
+                    onClick = { finishedOnly = false; onFilterPromotions(true) },
+                    label = { Text("Promociones") }
+                )
+            }
             FilterChip(
                 selected = finishedOnly,
                 onClick = { finishedOnly = true; onFilterPromotions(false) },
@@ -373,7 +410,7 @@ private fun CatalogTab(
         } else if (visibleProducts.isEmpty() && !badLimit) {
             EmptyView(
                 icon = Icons.Outlined.ShoppingBag,
-                title = if (state.onlyPromotions || finishedOnly) "Sin promociones" else "Sin productos",
+                title = if (promotionsOnlyTab || state.onlyPromotions || finishedOnly) "Sin promociones" else "Sin productos",
                 message = "No se encontraron elementos en esta categoría."
             )
         } else {

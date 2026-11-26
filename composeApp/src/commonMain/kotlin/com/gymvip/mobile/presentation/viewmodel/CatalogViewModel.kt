@@ -18,7 +18,7 @@ data class CatalogUiState(
     val products: List<Product> = emptyList(),
     val selectedCategory: ProductCategory? = null,
     val onlyPromotions: Boolean = false,
-    val selectedSubTab: Int = 0, // 0 = Catálogo de Productos y Planes, 1 = Mis Favoritos
+    val selectedSubTab: Int = 0, // 0 = productos, 1 = promociones, 2 = favoritos
     val errorMessage: String? = null
 )
 
@@ -38,7 +38,7 @@ class CatalogViewModel(
     }
 
     fun setSubTab(tab: Int) {
-        _uiState.value = _uiState.value.copy(selectedSubTab = tab)
+        _uiState.update { it.copy(selectedSubTab = tab.coerceIn(0, 2)) }
     }
 
     fun refresh() {
