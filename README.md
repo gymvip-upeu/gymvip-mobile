@@ -218,3 +218,13 @@ En `composeApp/src/commonMain/kotlin/com/gymvip/mobile/data/remote/api/ApiConsta
 - **Fecha:** 23 de Noviembre de 2026.
 - **Revisión de Ingeniería:** Consolidación Maestra Sprint 1 & 2 / Release Candidate v2.5.
 - **Autoría:** Equipo de Ingeniería GYM VIP / VIP CENTER FIT.
+
+
+---
+
+## 25. Actualización Enterprise & Evolución Mobile (25/11/2026 — Rama `develop`)
+- **Navegación Dual (`VipDrawerContent.kt`, `VipNavigationBar.kt`, `NavDestination.kt`):** `ModalNavigationDrawer` por secciones jerárquicas y barra inferior de 5 destinos (`Inicio, Membresía, Entrenamiento, Tienda, Perfil`).
+- **Módulos Nuevos (`features/`):** Explorador de Gimnasios y Sedes con sede preferida (`GymsExplorerScreen`), Hub de Entrenamiento offline-first con cronómetro y timer automático de descanso (`TrainingHubScreen`), Catálogo Técnico de Ejercicios (`ExerciseCatalogScreen`), Progreso y Récords Personales (`TrainingProgressScreen`) y Reservas de Clases Grupales (`ClassesReservationsScreen`).
+- **Preferencias Dual & Remote Config:** Switch `"Mostrar guías y consejos"` (`Modo Guiado` vs `Compacto` con `LocalShowGuides`) y botón `"Restablecer guías y tutoriales"` en `PreferencesScreen.kt`, más 7 feature flags en `FirebaseRemoteConfigProvider.android.kt`.
+- **Offline-First SQLite (`EnterpriseTrainingRepository.kt`):** Caché de sedes/rutinas/ejercicios y cola `pending_workout_sync_json` por `accountId` con sincronización idempotente (`clientSyncId`).
+- **Verificación:** `71/71` `:composeApp:testDebugUnitTest`, `71/71` `:composeApp:desktopTest` y `:composeApp:assembleDebug` aprobados.
