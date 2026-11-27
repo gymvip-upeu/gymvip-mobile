@@ -1,5 +1,8 @@
 package com.gymvip.mobile.presentation.screen.settings
 
+import com.gymvip.mobile.features.saas.NotificationPreferencesDto
+import com.gymvip.mobile.util.installedAndroidVersionCode
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -129,20 +132,32 @@ internal fun SettingsScreen(
         SettingsSection("Legal") {
             SettingsRow("Términos y privacidad", Icons.Outlined.Description, onTermsAndPrivacy)
         }
-        var pushPromoOptIn by remember { mutableStateOf(false) }
-        var emailPromoOptIn by remember { mutableStateOf(false) }
+        var channelPreferences by remember { mutableStateOf<NotificationPreferencesDto?>(null) }
+        var savingChannels by remember { mutableStateOf(false) }
+        var channelError by remember { mutableStateOf<String?>(null) }
         var releaseStatusText by remember { mutableStateOf<String?>(null) }
         LaunchedEffect(Unit) {
-            AppContainer.saasExperienceApi.getNotificationPreferences().onSuccess { p ->
-                pushPromoOptIn = p.channelPushPromotions
-                emailPromoOptIn = p.channelEmailPromotions
+            AppContainer.saasExperienceApi.getNotificationPreferences().onSuccess {
+                channelPreferences = it
             }
-            AppContainer.saasExperienceApi.getLatestAppRelease(200).onSuccess { rel ->
-                releaseStatusText = if (rel.updateAvailable) {
-                    "Actualización v${rel.versionName} disponible (${rel.downloadUrl})"
-                } else {
-                    "App v${rel.versionName} al día (SHA-256 verificado)"
-                }
+            installedAndroidVersionCode?.let { versionCode ->
+                AppContainer.saasExperienceApi.getLatestAppRelease(versionCode).onSuccess { release ->
+                    releaseStatusText = when {
+                        !release.hasVerifiedMetadata -> "Sin actualizaciones publicadas."
+                        release.updateAvailable -> "Actualización v${release.versionName} disponible."
+                        else -> "Tu versión está al día."
+                    }
+                }.onFailure { releaseStatusText = "No se pudo consultar la versión." }
+            }
+        }
+        val saveChannels: (NotificationPreferencesDto) -> Unit = { preferences ->
+            savingChannels = true
+            channelError = null
+            scope.launch {
+                AppContainer.saasExperienceApi.updateNotificationPreferences(preferences)
+                    .onSuccess { channelPreferences = it }
+                    .onFailure { channelError = "No se pudieron guardar las preferencias." }
+                savingChannels = false
             }
         }
         SettingsSection("Notificaciones Opt-in y Versión App") {
@@ -151,17 +166,13 @@ internal fun SettingsScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("Push promociones (opcional)", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                Switch(checked = pushPromoOptIn, onCheckedChange = { checked ->
-                    pushPromoOptIn = checked
-                    scope.launch {
-                        AppContainer.saasExperienceApi.updateNotificationPreferences(
-                            com.gymvip.mobile.features.saas.NotificationPreferencesDto(
-                                channelPushPromotions = checked,
-                                channelEmailPromotions = emailPromoOptIn
-                            )
-                        )
+                Switch(
+                    checked = channelPreferences?.channelPushPromotions == true,
+                    enabled = channelPreferences != null && !savingChannels,
+                    onCheckedChange = { checked ->
+                        channelPreferences?.copy(channelPushPromotions = checked)?.let(saveChannels)
                     }
-                })
+                )
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Row(
@@ -169,17 +180,16 @@ internal fun SettingsScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("Email promociones (opcional)", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                Switch(checked = emailPromoOptIn, onCheckedChange = { checked ->
-                    emailPromoOptIn = checked
-                    scope.launch {
-                        AppContainer.saasExperienceApi.updateNotificationPreferences(
-                            com.gymvip.mobile.features.saas.NotificationPreferencesDto(
-                                channelPushPromotions = pushPromoOptIn,
-                                channelEmailPromotions = checked
-                            )
-                        )
+                Switch(
+                    checked = channelPreferences?.channelEmailPromotions == true,
+                    enabled = channelPreferences != null && !savingChannels,
+                    onCheckedChange = { checked ->
+                        channelPreferences?.copy(channelEmailPromotions = checked)?.let(saveChannels)
                     }
-                })
+                )
+            }
+            channelError?.let { message ->
+                Text(message, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
             }
             releaseStatusText?.let { msg ->
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

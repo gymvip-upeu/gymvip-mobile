@@ -114,7 +114,7 @@ class SaasExperienceApi(
             }
         }
 
-    suspend fun getLatestAppRelease(currentVersionCode: Int = 200): Result<AppReleaseManifestDto> =
+    suspend fun getLatestAppRelease(currentVersionCode: Int): Result<AppReleaseManifestDto> =
         execute {
             client.get("$baseUrl/api/v1/app/releases/latest") {
                 parameter("platform", "ANDROID")

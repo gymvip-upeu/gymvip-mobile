@@ -162,15 +162,19 @@ data class NotificationPreferencesDto(
 data class AppReleaseManifestDto(
     val available: Boolean = false,
     val platform: String = "ANDROID",
-    val versionCode: Int = 200,
-    val versionName: String = "2.0.0",
+    val versionCode: Int = 0,
+    val versionName: String = "",
     val downloadUrl: String = "",
     val sha256Checksum: String = "",
     val fileSizeBytes: Long = 0,
     val releaseNotes: String = "",
     val updateAvailable: Boolean = false,
     val updateRequired: Boolean = false
-)
+) {
+    val hasVerifiedMetadata: Boolean
+        get() = available && versionCode > 0 && versionName.isNotBlank() && fileSizeBytes > 0 &&
+            downloadUrl.startsWith("https://") && sha256Checksum.matches(Regex("[0-9a-fA-F]{64}"))
+}
 
 data class EducationalBmiEvaluation(
     val bmi: Double,

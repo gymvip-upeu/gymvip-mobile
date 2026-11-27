@@ -6,3 +6,4 @@ package com.gymvip.mobile.util
  * y restringe conexiones estrictamente a endpoints oficiales HTTPS de GYM VIP.
  */
 expect val isDevelopmentBuild: Boolean
+expect val installedAndroidVersionCode: Int?
