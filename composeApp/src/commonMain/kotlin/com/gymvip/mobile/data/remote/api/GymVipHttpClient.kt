@@ -83,7 +83,12 @@ object GymVipHttpClient {
                 val session = createClientPlugin("GymVipSession") {
                     onRequest { request, _ ->
                         val target = request.url.build()
-                        if (isAuthorizedOrigin(target, baseUrl)) {
+                        val path = target.encodedPath
+                        val publicRead = request.method == io.ktor.http.HttpMethod.Get &&
+                            (path.startsWith("/api/v1/public/") ||
+                                (path == "/api/v1/group-promotions" && target.parameters["onlyActive"] != "false") ||
+                                (path.startsWith("/api/v1/gyms/") && path.endsWith("/reviews")))
+                        if (!publicRead && isAuthorizedOrigin(target, baseUrl)) {
                             tokenStore.getAccessToken()?.let { token ->
                                 if (token.isNotBlank()) {
                                     request.bearerAuth(token)
@@ -136,18 +141,21 @@ object GymVipHttpClient {
         val status = response.status
         val body = try { response.bodyAsText() } catch (_: Exception) { "" }
 
+        val problem = runCatching { kotlinx.serialization.json.Json.parseToJsonElement(body) as? kotlinx.serialization.json.JsonObject }.getOrNull()
+        val message = (problem?.get("message") as? kotlinx.serialization.json.JsonPrimitive)?.content?.take(240)
+        val code = (problem?.get("code") as? kotlinx.serialization.json.JsonPrimitive)?.content
         return when (status) {
             HttpStatusCode.Unauthorized -> AppError.Unauthorized("Credenciales inválidas o sesión expirada")
             HttpStatusCode.Forbidden -> {
                 if (body.contains("contraseña", ignoreCase = true) || body.contains("temporal", ignoreCase = true)) {
                     AppError.Forbidden("Debe cambiar su contraseña temporal antes de continuar")
                 } else {
-                    AppError.Forbidden("No cuenta con permisos de socio para esta acción")
+                    AppError.Forbidden("No tienes permiso para realizar esta acción.")
                 }
             }
             HttpStatusCode.NotFound -> AppError.NotFound("El recurso solicitado no fue encontrado en el servidor")
-            HttpStatusCode.Conflict -> AppError.Conflict("CONFLICT", "Conflicto con el estado actual del servidor: $body")
-            HttpStatusCode.BadRequest -> AppError.Validation("Datos de solicitud inválidos: $body")
+            HttpStatusCode.Conflict -> AppError.Conflict(code ?: "CONFLICT", message ?: "Los datos cambiaron. Actualiza e inténtalo nuevamente.")
+            HttpStatusCode.BadRequest -> AppError.Validation(message ?: "Datos de solicitud inválidos.")
             HttpStatusCode.GatewayTimeout, HttpStatusCode.RequestTimeout -> {
                 AppError.Server(status.value, "Tiempo de espera agotado. El servidor se está iniciando, por favor reintente.")
             }

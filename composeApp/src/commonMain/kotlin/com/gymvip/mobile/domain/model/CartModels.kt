@@ -38,7 +38,8 @@ enum class FulfillmentStatus(val label: String) {
 data class CartItem(
     val product: Product,
     val unitPrice: MoneyPen,
-    val quantity: Int
+    val quantity: Int,
+    val availableStock: Int? = null
 ) {
     val subtotal: MoneyPen get() = MoneyPen(unitPrice.cents * quantity)
 }

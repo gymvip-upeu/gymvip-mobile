@@ -131,6 +131,13 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
         var refreshingOrders by remember(profileAccountId) { mutableStateOf(false) }
         var checkoutKey by remember(profileAccountId) { mutableStateOf<String?>(null) }
         val orderApi = AppContainer.supplementOrderApi
+        suspend fun handleCheckoutError(error: Throwable) {
+            cartError = error.message
+            if (error is com.gymvip.mobile.domain.error.AppError.Conflict) {
+                checkoutKey = null
+                orderApi.cart().onSuccess { shoppingCart = it }
+            }
+        }
         suspend fun refreshOrders() {
             if (refreshingOrders) return
             refreshingOrders = true
@@ -372,13 +379,13 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                                         checkoutKey = null
                                         cartError = null
                                         refreshOrders()
-                                    }.onFailure { cartError = it.message }
+                                    }.onFailure { handleCheckoutError(it) }
                                 } else {
                                     orderApi.checkoutCash(key, notes).onSuccess {
                                         checkoutKey = null
                                         cartError = null
                                         refreshOrders()
-                                    }.onFailure { cartError = it.message }
+                                    }.onFailure { handleCheckoutError(it) }
                                 }
                             }
                         },
@@ -410,7 +417,7 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                     preferredBranchName = preferencesState.preferredBranchName,
                     repository = AppContainer.enterpriseTrainingRepository,
                     saasApi = AppContainer.saasExperienceApi,
-                    isAuthenticated = authState.isAuthenticated,
+                    canReview = authState.authenticatedProfile?.roles?.contains("CLIENTE") == true,
                     onBranchSelected = {
                         currentDestination = if (authState.isAuthenticated) NavDestination.Main(currentTab) else NavDestination.Login
                     },

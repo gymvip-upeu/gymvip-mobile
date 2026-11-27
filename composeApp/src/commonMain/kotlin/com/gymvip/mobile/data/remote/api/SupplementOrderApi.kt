@@ -17,7 +17,7 @@ import kotlinx.serialization.Serializable
 private data class CartItemResponse(
     val supplementId: String, val name: String, val brand: String? = null,
     val presentation: String? = null, val flavor: String? = null,
-    val unitPricePen: Double, val quantity: Int, val availableStock: Int = 0
+    val unitPricePen: Double, val quantity: Int, val availableStock: Int? = null
 )
 
 @Serializable
@@ -142,8 +142,8 @@ class SupplementOrderApi(private val client: HttpClient) {
         CartItem(
             Product(item.supplementId, item.name, "", ProductCategory.SUPLEMENTO, price,
                 brand = item.brand, presentation = item.presentation, flavor = item.flavor,
-                availability = if (item.availableStock > 0) "DISPONIBLE" else "AGOTADO"),
-            price, item.quantity
+                availability = when (item.availableStock) { null -> null; 0 -> "AGOTADO"; else -> "DISPONIBLE" }),
+            price, item.quantity, item.availableStock
         )
     })
 

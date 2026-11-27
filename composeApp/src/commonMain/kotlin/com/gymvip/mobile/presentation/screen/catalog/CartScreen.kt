@@ -171,6 +171,7 @@ fun CartScreen(
                     )
 
                     Button(
+                        enabled = cart.items.none { it.availableStock?.let { stock -> stock < it.quantity } == true },
                         onClick = { showCheckoutDialog = true },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary)
@@ -538,6 +539,13 @@ private fun CartItemRow(
                 )
             }
 
+            item.availableStock?.takeIf { it < item.quantity }?.let { remaining ->
+                Text(
+                    if (remaining == 0) "Agotado. Quita este producto." else "Quedan $remaining unidades. Ajusta la cantidad.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(
                     onClick = { onQuantityChange(item.product.id, item.quantity - 1) }
@@ -554,7 +562,7 @@ private fun CartItemRow(
                 )
                 IconButton(
                     onClick = { onQuantityChange(item.product.id, item.quantity + 1) },
-                    enabled = item.quantity < 20
+                    enabled = item.quantity < minOf(20, item.availableStock ?: 20)
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Aumentar unidad")
                 }

@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class PublishedBranchDto(
     val id: String,
-    val organizationId: String,
+    val organizationId: String = "",
     val code: String = "",
     val name: String,
     val city: String = "Lima",

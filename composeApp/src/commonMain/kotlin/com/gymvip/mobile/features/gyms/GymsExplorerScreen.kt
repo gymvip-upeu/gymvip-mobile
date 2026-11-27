@@ -22,7 +22,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,7 +48,6 @@ import com.gymvip.mobile.features.saas.PublicGymShowcaseDto
 import com.gymvip.mobile.features.saas.SaasExperienceApi
 import com.gymvip.mobile.features.training.EnterpriseTrainingRepository
 import com.gymvip.mobile.features.training.PublishedBranchDto
-import com.gymvip.mobile.features.training.PublishedGymDto
 import com.gymvip.mobile.presentation.component.GuideHint
 import kotlinx.coroutines.launch
 
@@ -59,16 +57,15 @@ fun GymsExplorerScreen(
     accountId: String,
     preferredBranchName: String,
     repository: EnterpriseTrainingRepository,
-    saasApi: SaasExperienceApi? = null,
-    isAuthenticated: Boolean = true,
+    saasApi: SaasExperienceApi,
+    canReview: Boolean = false,
     onBranchSelected: (PublishedBranchDto) -> Unit,
     onBack: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
     var query by remember { mutableStateOf("") }
-    var districtFilter by remember { mutableStateOf("Todos") }
-    var gyms by remember { mutableStateOf<List<PublishedGymDto>>(emptyList()) }
-    var showcaseMap by remember { mutableStateOf<Map<String, PublicGymShowcaseDto>>(emptyMap()) }
+    var districtFilter by remember { mutableStateOf("") }
+    var gyms by remember { mutableStateOf<List<PublicGymShowcaseDto>>(emptyList()) }
     var compareIds by remember { mutableStateOf<List<String>>(emptyList()) }
     var activeReviewsGymId by remember { mutableStateOf<String?>(null) }
     var reviews by remember { mutableStateOf<List<GymReviewDto>>(emptyList()) }
@@ -83,12 +80,13 @@ fun GymsExplorerScreen(
     suspend fun loadGyms() {
         loading = true
         errorMsg = null
-        val dist = if (districtFilter == "Todos") null else districtFilter
-        repository.fetchGyms(query = query.ifBlank { null }, district = dist, scopeId = accountId)
+        val dist = districtFilter.trim().ifBlank { null }
+        saasApi.listPublicGymsShowcase(query = query.ifBlank { null }, district = dist)
             .onSuccess { gyms = it }
-            .onFailure { errorMsg = it.message ?: "No se pudieron cargar los gimnasios." }
-        saasApi?.listPublicGymsShowcase(query = query.ifBlank { null }, district = dist)
-            ?.onSuccess { list -> showcaseMap = list.associateBy { it.id } }
+            .onFailure {
+                gyms = emptyList()
+                errorMsg = "No se pudo cargar el directorio. Intenta nuevamente."
+            }
         loading = false
     }
 
@@ -127,19 +125,14 @@ fun GymsExplorerScreen(
                 singleLine = true
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("Todos", "Miraflores", "San Borja").forEach { dist ->
-                    FilterChip(
-                        selected = districtFilter == dist,
-                        onClick = {
-                            districtFilter = dist
-                            scope.launch { loadGyms() }
-                        },
-                        label = { Text(dist) }
-                    )
-                }
-                Button(onClick = { scope.launch { loadGyms() } }) { Text("Buscar") }
-            }
+            OutlinedTextField(
+                value = districtFilter,
+                onValueChange = { districtFilter = it },
+                label = { Text("Distrito (opcional)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            Button(onClick = { scope.launch { loadGyms() } }, enabled = !loading) { Text("Buscar") }
 
             if (!noticeMsg.isNullOrBlank()) {
                 Text(noticeMsg ?: "", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
@@ -152,8 +145,6 @@ fun GymsExplorerScreen(
                 val left = gyms.firstOrNull { it.id == compareIds[0] }
                 val right = gyms.firstOrNull { it.id == compareIds[1] }
                 if (left != null && right != null) {
-                    val leftSc = showcaseMap[left.id]
-                    val rightSc = showcaseMap[right.id]
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text("Comparador Directo", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
@@ -162,13 +153,13 @@ fun GymsExplorerScreen(
                                     Text(left.name, fontWeight = FontWeight.Bold)
                                     Text("Desde: S/ ${left.minPricePen ?: "—"}")
                                     Text("Sedes: ${left.branches.size}")
-                                    Text("Rating: ★ ${leftSc?.avgRating ?: 0.0} (${leftSc?.reviewsCount ?: 0})")
+                                    Text("Rating: ★ ${left.avgRating} (${left.reviewsCount})")
                                 }
                                 Column(Modifier.weight(1f)) {
                                     Text(right.name, fontWeight = FontWeight.Bold)
                                     Text("Desde: S/ ${right.minPricePen ?: "—"}")
                                     Text("Sedes: ${right.branches.size}")
-                                    Text("Rating: ★ ${rightSc?.avgRating ?: 0.0} (${rightSc?.reviewsCount ?: 0})")
+                                    Text("Rating: ★ ${right.avgRating} (${right.reviewsCount})")
                                 }
                             }
                             OutlinedButton(onClick = { compareIds = emptyList() }) { Text("Limpiar comparador") }
@@ -179,12 +170,13 @@ fun GymsExplorerScreen(
 
             if (loading) {
                 CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+            } else if (errorMsg != null && gyms.isEmpty()) {
+                OutlinedButton(onClick = { scope.launch { loadGyms() } }) { Text("Reintentar") }
             } else if (gyms.isEmpty()) {
                 Text("No se encontraron gimnasios publicados con esos filtros.")
             } else {
                 gyms.forEach { gym ->
                     val isFav = gym.id in favorites
-                    val sc = showcaseMap[gym.id]
                     val isComparing = gym.id in compareIds
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -194,15 +186,13 @@ fun GymsExplorerScreen(
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(sc?.headline ?: gym.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                    val desc = sc?.tagline ?: gym.description
+                                    Text(gym.headline ?: gym.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    val desc = gym.tagline ?: gym.description
                                     if (!desc.isNullOrBlank()) {
                                         Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
-                                    if (sc != null) {
-                                        Text("★ ${sc.avgRating} (${sc.reviewsCount} reseñas verificadas) · ${sc.activeGroupPromosCount} promos grupales",
-                                            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                                    }
+                                    Text("★ ${gym.avgRating} (${gym.reviewsCount} reseñas verificadas) · ${gym.activeGroupPromosCount} promos grupales",
+                                        style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                                     if (gym.minPricePen != null && gym.maxPricePen != null) {
                                         Text(
                                             "Planes desde S/ ${gym.minPricePen} hasta S/ ${gym.maxPricePen}",
@@ -227,23 +217,23 @@ fun GymsExplorerScreen(
                                 }) {
                                     Text(if (isComparing) "En comparador" else "Comparar")
                                 }
-                                if (saasApi != null) {
-                                    OutlinedButton(onClick = {
+                                OutlinedButton(onClick = {
                                         if (activeReviewsGymId == gym.id) {
                                             activeReviewsGymId = null
                                         } else {
                                             activeReviewsGymId = gym.id
+                                            reviews = emptyList()
+                                            promos = emptyList()
                                             scope.launch {
-                                                saasApi.listGymReviews(gym.id).onSuccess { reviews = it }
-                                                saasApi.listGroupPromotions(gym.id).onSuccess { promos = it }
+                                                saasApi.listGymReviews(gym.id).onSuccess { if (activeReviewsGymId == gym.id) reviews = it }
+                                                saasApi.listGroupPromotions(gym.id).onSuccess { if (activeReviewsGymId == gym.id) promos = it }
                                             }
                                         }
                                     }) {
                                         Text(if (activeReviewsGymId == gym.id) "Ocultar detalles" else "Reseñas y Promos")
-                                    }
                                 }
                             }
-                            if (activeReviewsGymId == gym.id && saasApi != null) {
+                            if (activeReviewsGymId == gym.id) {
                                 promos.forEach { promo ->
                                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                                         Column(Modifier.fillMaxWidth().padding(10.dp)) {
@@ -267,7 +257,7 @@ fun GymsExplorerScreen(
                                         }
                                     }
                                 }
-                                if (isAuthenticated) {
+                                if (canReview) {
                                     OutlinedTextField(
                                         value = reviewComment,
                                         onValueChange = { reviewComment = it },
@@ -290,7 +280,7 @@ fun GymsExplorerScreen(
                                             ).onSuccess {
                                                 reviewComment = ""
                                                 noticeMsg = "Reseña verificada publicada correctamente."
-                                                saasApi.listGymReviews(gym.id).onSuccess { reviews = it }
+                                                saasApi.listGymReviews(gym.id).onSuccess { if (activeReviewsGymId == gym.id) reviews = it }
                                             }.onFailure { errorMsg = it.message }
                                         }
                                     }) {
