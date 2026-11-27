@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.gymvip.mobile.util.installedAndroidVersionCode
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,7 +55,9 @@ fun WellnessPlannerScreen(
             }
         }
         saasApi.listWeeklyPlans().onSuccess { savedPlans = it }
-        saasApi.getLatestAppRelease(currentVersionCode = 200).onSuccess { releaseInfo = it }
+        installedAndroidVersionCode?.let { versionCode ->
+            saasApi.getLatestAppRelease(versionCode).onSuccess { releaseInfo = it }
+        }
     }
 
     Scaffold(
@@ -77,7 +80,7 @@ fun WellnessPlannerScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            releaseInfo?.takeIf { it.updateAvailable }?.let { rel ->
+            releaseInfo?.takeIf { it.hasVerifiedMetadata && it.updateAvailable }?.let { rel ->
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Nueva versión disponible: v${rel.versionName}", fontWeight = FontWeight.Bold)

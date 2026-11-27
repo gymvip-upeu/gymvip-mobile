@@ -1,5 +1,9 @@
 package com.gymvip.mobile.features.reservations
 
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -103,7 +107,7 @@ fun ClassesReservationsScreen(
                             if (!item.branchName.isNullOrBlank()) {
                                 Text(item.branchName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            Text("Horario: ${item.startsAt.replace("T", " ").take(16)} (${item.durationMinutes} min)", style = MaterialTheme.typography.bodySmall)
+                            Text("Horario: ${formatClassTime(item.startsAt)} (${item.durationMinutes} min)", style = MaterialTheme.typography.bodySmall)
                             Text("Cupos disponibles: $available / ${item.capacity}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.height(6.dp))
                             if (item.reservedByMe) {
@@ -135,4 +139,10 @@ fun ClassesReservationsScreen(
             }
         }
     }
+}
+
+private fun formatClassTime(value: String): String {
+    val local = runCatching { Instant.parse(value).toLocalDateTime(TimeZone.of("America/Lima")).toString() }
+        .getOrDefault(value)
+    return local.replace('T', ' ').take(16)
 }
