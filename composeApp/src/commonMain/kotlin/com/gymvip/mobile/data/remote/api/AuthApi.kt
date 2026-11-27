@@ -1,6 +1,7 @@
 package com.gymvip.mobile.data.remote.api
 
 import com.gymvip.mobile.data.remote.dto.CurrentUserDto
+import com.gymvip.mobile.data.remote.dto.FirstPasswordRequestDto
 import com.gymvip.mobile.data.remote.dto.ActivationRequestDto
 import com.gymvip.mobile.data.remote.dto.LoginRequestDto
 import com.gymvip.mobile.data.remote.dto.LoginResponseDto
@@ -47,6 +48,15 @@ class AuthApi(
         } else {
             throw GymVipHttpClient.parseResponseError(response)
         }
+    }
+
+
+    suspend fun createFirstPassword(request: FirstPasswordRequestDto): Result<Unit> = runCatching {
+        val response = client.post("$baseUrl/api/v1/auth/first-password") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (response.status != HttpStatusCode.NoContent) throw GymVipHttpClient.parseResponseError(response)
     }
 
     suspend fun getCurrentUser(): Result<CurrentUserDto> = runCatching {

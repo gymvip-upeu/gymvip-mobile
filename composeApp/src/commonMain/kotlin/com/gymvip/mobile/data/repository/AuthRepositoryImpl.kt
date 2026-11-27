@@ -6,6 +6,7 @@ import com.gymvip.mobile.data.mapper.toDomain
 import com.gymvip.mobile.data.remote.api.AuthApi
 import com.gymvip.mobile.data.remote.api.MemberApi
 import com.gymvip.mobile.data.remote.dto.ActivationRequestDto
+import com.gymvip.mobile.data.remote.dto.FirstPasswordRequestDto
 import com.gymvip.mobile.data.remote.dto.LoginRequestDto
 import com.gymvip.mobile.data.remote.dto.LoginResponseDto
 import com.gymvip.mobile.data.remote.dto.MfaLoginVerifyRequestDto
@@ -39,12 +40,33 @@ class AuthRepositoryImpl(
 
         if (!token.isNullOrBlank() && !accountId.isNullOrBlank()) {
             val localProfile = database.gymVipDatabaseQueries.selectProfileByAccountId(accountId).executeAsOneOrNull()
-            val serverRoles = authApi.getCurrentUser().getOrNull()?.normalizedRoles().orEmpty()
+            val currentUser = authApi.getCurrentUser()
+            val serverProfile = currentUser.getOrNull()
+            val authError = currentUser.exceptionOrNull()
+            if (authError is AppError.Unauthorized || authError is AppError.Forbidden) {
+                secureTokenStore.clear()
+                _authState.value = AuthState.Unauthenticated
+                return false
+            }
+            if (serverProfile?.mfaEnrollmentRequired == true) {
+                secureTokenStore.clear()
+                _authState.value = AuthState.Error("Configura la autenticación de dos factores en el portal web antes de ingresar a la app.")
+                return false
+            }
+            if (serverProfile?.firstAccessPasswordRequired == true) {
+                _authState.value = AuthState.PasswordChangeRequired(accountId, serverProfile.email, sharedAuthEndpoint = true)
+                return true
+            }
+            val serverRoles = serverProfile?.normalizedRoles().orEmpty()
             val accountRoles = serverRoles.ifEmpty { secureTokenStore.getAccountRoles().normalizedAccountRoles() }
             if (serverRoles.isNotEmpty()) secureTokenStore.saveAccountRoles(serverRoles)
 
             // Si la cuenta es administrativa (GERENTE, ADMIN o RECEPCION), no requiere consulta de socio
             if (accountRoles.isNotEmpty() && !accountRoles.contains("CLIENTE")) {
+                if (serverProfile == null) {
+                    _authState.value = AuthState.Error("No pudimos comprobar tu acceso. Reintenta cuando vuelva la conexión.")
+                    return false
+                }
                 val now = Clock.System.now().toString()
                 val profile = localProfile?.toDomain()?.copy(accountId = accountId, roles = accountRoles) ?: MemberProfile(
                     accountId = accountId,
@@ -157,6 +179,11 @@ class AuthRepositoryImpl(
                 }
                 val token = dto.token?.takeIf { it.isNotBlank() }
                     ?: return@fold Result.failure(IllegalStateException("El servidor no devolvió un token de sesión válido."))
+                if (dto.mfaEnrollmentRequired) {
+                    val message = "Configura la autenticación de dos factores en el portal web antes de ingresar a la app."
+                    _authState.value = AuthState.Error(message)
+                    return@fold Result.failure(AppError.Forbidden(message))
+                }
                 val accountId = dto.resolvedAccountId
                 secureTokenStore.saveTokens(
                     accessToken = token,
@@ -167,6 +194,11 @@ class AuthRepositoryImpl(
                 secureTokenStore.saveAccountRoles(accountRoles)
 
                 val now = Clock.System.now().toString()
+
+                if (dto.firstAccessPasswordRequired) {
+                    _authState.value = AuthState.PasswordChangeRequired(accountId, dto.email, sharedAuthEndpoint = true)
+                    return@fold Result.failure(AppError.Forbidden("Crea tu nueva contraseña para continuar."))
+                }
 
                 // Si NO es socio (ej. GERENTE, ADMIN o RECEPCION):
                 if (!accountRoles.contains("CLIENTE")) {
@@ -281,7 +313,13 @@ class AuthRepositoryImpl(
     }
 
     override suspend fun createFirstPassword(newPassword: String): Result<Unit> {
-        val result = memberApi.createFirstPassword(com.gymvip.mobile.data.remote.dto.FirstPasswordRequestDto(newPassword))
+        val request = FirstPasswordRequestDto(newPassword)
+        val access = _authState.value as? AuthState.PasswordChangeRequired
+        val result = if (access?.sharedAuthEndpoint == true) {
+            authApi.createFirstPassword(request)
+        } else {
+            memberApi.createFirstPassword(request)
+        }
         if (result.isFailure) return Result.failure(result.exceptionOrNull()!!)
         com.gymvip.mobile.notification.clearPushRegistration()
         secureTokenStore.clear()

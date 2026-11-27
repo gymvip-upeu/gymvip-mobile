@@ -67,6 +67,11 @@ fun GymsExplorerScreen(
     val links = LocalUriHandler.current
     var query by remember { mutableStateOf("") }
     var districtFilter by remember { mutableStateOf("") }
+    var cityFilter by remember { mutableStateOf("") }
+    var minPrice by remember { mutableStateOf("") }
+    var maxPrice by remember { mutableStateOf("") }
+    var amenity by remember { mutableStateOf("") }
+    var filtersOpen by remember { mutableStateOf(false) }
     var gyms by remember { mutableStateOf<List<PublicGymShowcaseDto>>(emptyList()) }
     var compareIds by remember { mutableStateOf<List<String>>(emptyList()) }
     var activeReviewsGymId by remember { mutableStateOf<String?>(null) }
@@ -82,8 +87,17 @@ fun GymsExplorerScreen(
     suspend fun loadGyms() {
         loading = true
         errorMsg = null
-        val dist = districtFilter.trim().ifBlank { null }
-        saasApi.listPublicGymsShowcase(query = query.ifBlank { null }, district = dist)
+        val minimum = minPrice.trim().replace(',', '.')
+        val maximum = maxPrice.trim().replace(',', '.')
+        val pricePattern = Regex("[0-9]{1,6}(\\.[0-9]{1,2})?")
+        if (listOf(minimum, maximum).any { it.isNotEmpty() && !pricePattern.matches(it) }
+            || (minimum.toDoubleOrNull() ?: 0.0) > (maximum.toDoubleOrNull() ?: Double.MAX_VALUE)) {
+            errorMsg = "Ingresa un rango de precios válido en soles."
+            loading = false
+            return
+        }
+        saasApi.listPublicGymsShowcase(query.trim(), districtFilter.trim(),
+            cityFilter.trim(), minimum, maximum, amenity.trim())
             .onSuccess { gyms = it }
             .onFailure {
                 gyms = emptyList()
@@ -132,13 +146,23 @@ fun GymsExplorerScreen(
                 singleLine = true
             )
 
-            OutlinedTextField(
-                value = districtFilter,
-                onValueChange = { districtFilter = it },
-                label = { Text("Distrito (opcional)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
+            OutlinedButton(onClick = { filtersOpen = !filtersOpen }) {
+                Text(if (filtersOpen) "Ocultar filtros" else "Filtros de búsqueda")
+            }
+            if (filtersOpen) {
+                OutlinedTextField(cityFilter, { cityFilter = it }, label = { Text("Ciudad") },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true)
+                OutlinedTextField(districtFilter, { districtFilter = it }, label = { Text("Distrito") },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(minPrice, { minPrice = it }, label = { Text("Desde (S/)") },
+                        modifier = Modifier.weight(1f), singleLine = true)
+                    OutlinedTextField(maxPrice, { maxPrice = it }, label = { Text("Hasta (S/)") },
+                        modifier = Modifier.weight(1f), singleLine = true)
+                }
+                OutlinedTextField(amenity, { amenity = it }, label = { Text("Servicio o instalación") },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true)
+            }
             Button(onClick = { scope.launch { loadGyms() } }, enabled = !loading) { Text("Buscar") }
 
             if (!noticeMsg.isNullOrBlank()) {
