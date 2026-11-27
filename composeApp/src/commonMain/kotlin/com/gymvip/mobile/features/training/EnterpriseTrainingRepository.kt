@@ -23,6 +23,18 @@ class EnterpriseTrainingRepository(
         database.gymVipDatabaseQueries.upsertPreference(scope, key, value)
     }
 
+    internal fun readActiveWorkout(accountId: String): ActiveWorkoutDraft? =
+        readPref(accountId, "active_workout_json")?.takeIf { it.isNotBlank() }?.let {
+            runCatching { json.decodeFromString<ActiveWorkoutDraft>(it) }.getOrNull()
+        }
+
+    internal fun persistActiveWorkout(accountId: String, draft: ActiveWorkoutDraft?) {
+        writePref(accountId, "active_workout_json", draft?.let { json.encodeToString(it) }.orEmpty())
+    }
+
+    internal fun hasQueuedWorkout(accountId: String, syncId: String): Boolean =
+        loadPendingWorkouts(accountId).any { it.clientSyncId == syncId }
+
     suspend fun fetchGyms(query: String? = null, district: String? = null, scopeId: String = "__public__"): Result<List<PublishedGymDto>> {
         val remote = api.listPublishedGyms(query, district)
         return remote.onSuccess { list ->

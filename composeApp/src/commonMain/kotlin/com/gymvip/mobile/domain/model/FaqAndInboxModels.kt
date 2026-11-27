@@ -12,7 +12,8 @@ enum class InboxCategory {
     RECORDATORIO,
     VENCIMIENTO,
     COMUNICADO,
-    PROMOCION
+    PROMOCION,
+    RESERVA
 }
 
 data class InboxItem(
@@ -22,5 +23,7 @@ data class InboxItem(
     val message: String,
     val category: InboxCategory,
     val createdAt: String,
-    val isRead: Boolean
+    val isRead: Boolean,
+    val archivable: Boolean = false,
+    val archived: Boolean = false
 )

@@ -19,6 +19,10 @@ import kotlinx.coroutines.launch
 data class InboxUiState(
     val isLoading: Boolean = true,
     val items: List<InboxItem> = emptyList(),
+    val archivedItems: List<InboxItem> = emptyList(),
+    val archivedLoading: Boolean = false,
+    val archivedError: String? = null,
+    val archiving: Boolean = false,
     val loadFailed: Boolean = false,
     val loadErrorMessage: String? = null,
     val readingId: String? = null,
@@ -42,7 +46,12 @@ class InboxViewModel(
 
     init {
         getInboxUseCase.observe(accountId).onEach { list ->
-            _uiState.update { it.copy(items = list.filter { item -> item.accountId == accountId }) }
+            _uiState.update { state ->
+                val previous = state.items.associateBy { it.id }
+                state.copy(items = list.filter { it.accountId == accountId }.map { item ->
+                    item.copy(archivable = previous[item.id]?.archivable ?: item.archivable)
+                })
+            }
         }.launchIn(scope)
 
         refresh()
@@ -86,6 +95,33 @@ class InboxViewModel(
             val result = getInboxUseCase.markAsRead(accountId, itemId)
             _uiState.update { it.copy(readingId = null, readFailed = result.isFailure,
                 readErrorMessage = result.exceptionOrNull()?.let(::describeInboxError)) }
+        }
+    }
+
+    fun loadArchived() {
+        if (_uiState.value.archivedLoading) return
+        scope.launch {
+            _uiState.update { it.copy(archivedLoading = true, archivedError = null) }
+            val result = getInboxUseCase.loadArchived(accountId)
+            _uiState.update { state -> state.copy(
+                archivedItems = result.getOrNull()?.filter { it.accountId == accountId } ?: state.archivedItems,
+                archivedLoading = false,
+                archivedError = result.exceptionOrNull()?.let(::describeInboxError)
+            ) }
+        }
+    }
+
+    fun archive(itemId: String) {
+        if (_uiState.value.archiving) return
+        _uiState.update { it.copy(archiving = true, readErrorMessage = null) }
+        scope.launch {
+            val result = getInboxUseCase.archive(accountId, itemId)
+            _uiState.update { state -> state.copy(
+                items = if (result.isSuccess) state.items.filterNot { it.id == itemId } else state.items,
+                archiving = false,
+                readErrorMessage = result.exceptionOrNull()?.let(::describeInboxError)
+            ) }
+            if (result.isSuccess) refresh()
         }
     }
 

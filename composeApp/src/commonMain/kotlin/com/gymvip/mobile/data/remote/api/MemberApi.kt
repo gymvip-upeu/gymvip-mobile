@@ -211,8 +211,9 @@ class MemberApi(
     /**
      * Consulta bandeja de notificaciones y avisos del socio (GET /api/v1/member-app/inbox, HU-15, HU-34).
      */
-    suspend fun getInbox(): Result<List<InboxItemDto>> = GymVipHttpClient.safeApiCall {
-        val response = client.get("$baseUrl/api/v1/member-app/inbox")
+    suspend fun getInbox(archived: Boolean = false): Result<List<InboxItemDto>> = GymVipHttpClient.safeApiCall {
+        val query = if (archived) "?archived=true" else ""
+        val response = client.get("$baseUrl/api/v1/member-app/inbox$query")
         if (response.status == HttpStatusCode.OK) {
             response.body<List<InboxItemDto>>()
         } else {
@@ -223,6 +224,13 @@ class MemberApi(
     /**
      * Marca un aviso como leído (POST /api/v1/member-app/inbox/{id}/read, HU-34).
      */
+    suspend fun archiveInboxItem(itemId: String): Result<Unit> = GymVipHttpClient.safeApiCall {
+        val response = client.post("$baseUrl/api/v1/member-app/inbox/$itemId/archive")
+        if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.NoContent) {
+            throw GymVipHttpClient.parseResponseError(response)
+        }
+    }
+
     suspend fun markInboxAsRead(itemId: String): Result<Unit> = GymVipHttpClient.safeApiCall {
         val response = client.post("$baseUrl/api/v1/member-app/inbox/$itemId/read")
         if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.NoContent) {

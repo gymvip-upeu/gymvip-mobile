@@ -67,11 +67,12 @@ import com.gymvip.mobile.presentation.theme.accentForeground
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
+    accountId: String,
+    training: com.gymvip.mobile.features.training.EnterpriseTrainingRepository,
+    wellness: com.gymvip.mobile.features.saas.SaasExperienceApi,
     isStaff: Boolean = false,
     userRoles: List<String> = emptyList(),
     preferredBranchName: String = "VIP Center Fit — Sede Central",
-    onNavigateServices: () -> Unit,
-    onNavigateFaq: () -> Unit,
     onNavigateTab: (MainTab) -> Unit,
     onNavigateCheckInScanner: () -> Unit = {},
     onNavigateGymExplorer: () -> Unit = {},
@@ -273,109 +274,14 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Accesos directos
-            Text(
-                text = "Accesos rápidos",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onBackground
+            MemberOverview(
+                accountId = accountId,
+                training = training,
+                wellness = wellness,
+                onTraining = { onNavigateTab(MainTab.TRAINING) },
+                onClasses = onNavigateClasses,
+                onProgress = onNavigateProgress
             )
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                QuickActionCard(
-                    icon = Icons.Outlined.FitnessCenter,
-                    title = "Servicios e instalaciones",
-                    subtitle = "Conoce el gimnasio",
-                    onClick = onNavigateServices,
-                    modifier = Modifier.weight(1f).fillMaxHeight()
-                )
-                QuickActionCard(
-                    icon = Icons.AutoMirrored.Outlined.HelpOutline,
-                    title = "Ayuda y preguntas frecuentes",
-                    subtitle = "Consulta y contacta a recepción",
-                    onClick = onNavigateFaq,
-                    modifier = Modifier.weight(1f).fillMaxHeight()
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                QuickActionCard(
-                    icon = Icons.AutoMirrored.Outlined.ReceiptLong,
-                    title = "Mis pagos",
-                    subtitle = "Historial en PEN",
-                    onClick = { onNavigateTab(MainTab.MEMBERSHIP) },
-                    modifier = Modifier.weight(1f)
-                )
-                QuickActionCard(
-                    icon = MainTab.CATALOG.navigationIcon,
-                    title = "Catálogo",
-                    subtitle = "Planes y suplementos",
-                    onClick = { onNavigateTab(MainTab.CATALOG) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                QuickActionCard(
-                    icon = Icons.Outlined.FitnessCenter,
-                    title = "Entrenamiento de hoy",
-                    subtitle = "Rutinas y timer",
-                    onClick = { onNavigateTab(MainTab.TRAINING) },
-                    modifier = Modifier.weight(1f)
-                )
-                QuickActionCard(
-                    icon = Icons.Outlined.CalendarMonth,
-                    title = "Clases y reservas",
-                    subtitle = "Horarios y cupos",
-                    onClick = onNavigateClasses,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                QuickActionCard(
-                    icon = Icons.Outlined.BarChart,
-                    title = "Mi progreso",
-                    subtitle = "Cargas y récords",
-                    onClick = onNavigateProgress,
-                    modifier = Modifier.weight(1f)
-                )
-                QuickActionCard(
-                    icon = Icons.Outlined.LocationOn,
-                    title = "Gimnasios y sedes",
-                    subtitle = "Explorar ubicaciones",
-                    onClick = onNavigateGymExplorer,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                QuickActionCard(
-                    icon = MainTab.INBOX.navigationIcon,
-                    title = "Avisos",
-                    subtitle = "Comunicados del club",
-                    onClick = { onNavigateTab(MainTab.INBOX) },
-                    modifier = Modifier.weight(1f)
-                )
-                QuickActionCard(
-                    icon = MainTab.PROFILE.navigationIcon,
-                    title = "Mi perfil",
-                    subtitle = "Datos del titular",
-                    onClick = { onNavigateTab(MainTab.PROFILE) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
         }
     }
 }

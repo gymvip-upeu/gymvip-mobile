@@ -13,5 +13,9 @@ interface InboxRepository {
     fun observeInbox(accountId: String): Flow<List<InboxItem>>
     suspend fun markAsRead(accountId: String, itemId: String): Result<Unit>
     suspend fun refreshInbox(accountId: String): Result<List<InboxItem>>
+    suspend fun loadArchived(accountId: String): Result<List<InboxItem>> =
+        Result.failure(UnsupportedOperationException())
+    suspend fun archiveItem(accountId: String, itemId: String): Result<Unit> =
+        Result.failure(UnsupportedOperationException())
     suspend fun clearInbox(accountId: String)
 }

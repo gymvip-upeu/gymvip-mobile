@@ -715,11 +715,12 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                             when (currentTab) {
                                 MainTab.HOME -> HomeScreen(
                                     viewModel = homeViewModel,
+                                    accountId = accountId,
+                                    training = AppContainer.enterpriseTrainingRepository,
+                                    wellness = AppContainer.saasExperienceApi,
                                     isStaff = isStaff,
                                     userRoles = userRoles,
                                     preferredBranchName = preferencesState.preferredBranchName,
-                                    onNavigateServices = { currentDestination = NavDestination.Services },
-                                    onNavigateFaq = { currentDestination = NavDestination.Faq },
                                     onNavigateTab = { tab ->
                                         currentTab = tab
                                         currentDestination = NavDestination.Main(tab)

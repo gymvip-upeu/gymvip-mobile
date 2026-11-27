@@ -65,14 +65,21 @@ import com.gymvip.mobile.presentation.theme.accentForeground
 fun InboxScreen(viewModel: InboxViewModel) {
     val state by viewModel.uiState.collectAsState()
     val notifications = rememberNotificationPermission()
+    var archived by remember(viewModel) { mutableStateOf(false) }
     var unreadOnly by remember(viewModel) { mutableStateOf(false) }
     var selectedId by remember(viewModel) { mutableStateOf<String?>(null) }
-    LaunchedEffect(state.openedItemId) { state.openedItemId?.let { selectedId = it } }
-    val visibleItems = if (unreadOnly) state.items.filterNot { it.isRead } else state.items
+    LaunchedEffect(state.openedItemId) {
+        state.openedItemId?.let { archived = false; selectedId = it }
+    }
+    val visibleItems = when {
+        archived -> state.archivedItems
+        unreadOnly -> state.items.filterNot { it.isRead }
+        else -> state.items
+    }
 
     when {
-        state.isLoading && state.items.isEmpty() -> LoadingView("Cargando avisos…")
-        state.loadFailed && state.items.isEmpty() -> ErrorRetryView(
+        !archived && state.isLoading && state.items.isEmpty() -> LoadingView("Cargando avisos…")
+        !archived && state.loadFailed && state.items.isEmpty() -> ErrorRetryView(
             message = state.loadErrorMessage ?: "No se pudieron cargar tus avisos.",
             onRetry = viewModel::refresh,
             modifier = Modifier.fillMaxSize()
@@ -111,7 +118,7 @@ fun InboxScreen(viewModel: InboxViewModel) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = when (state.unreadCount) {
+                        text = if (archived) "Avisos archivados" else when (state.unreadCount) {
                             0 -> "Estás al día"
                             1 -> "1 aviso sin leer"
                             else -> "${state.unreadCount} avisos sin leer"
@@ -119,24 +126,30 @@ fun InboxScreen(viewModel: InboxViewModel) {
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
-                    TextButton(onClick = viewModel::refresh, enabled = !state.isLoading) {
-                        Text(if (state.isLoading) "Actualizando…" else "Actualizar avisos", color = MaterialTheme.colorScheme.accentForeground)
+                    TextButton(onClick = if (archived) viewModel::loadArchived else viewModel::refresh, enabled = !state.isLoading && !state.archivedLoading) {
+                        Text(if (state.isLoading || state.archivedLoading) "Actualizando…" else "Actualizar avisos", color = MaterialTheme.colorScheme.accentForeground)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilterChip(
-                            selected = !unreadOnly,
-                            onClick = { unreadOnly = false },
+                            selected = !unreadOnly && !archived,
+                            onClick = { unreadOnly = false; archived = false },
                             label = { Text("Todos") }
                         )
                         FilterChip(
-                            selected = unreadOnly,
-                            onClick = { unreadOnly = true },
+                            selected = unreadOnly && !archived,
+                            onClick = { unreadOnly = true; archived = false },
                             label = { Text("Sin leer") }
+                        )
+                        FilterChip(
+                            selected = archived,
+                            onClick = { archived = true; viewModel.loadArchived() },
+                            label = { Text("Archivados") }
                         )
                     }
                 }
             }
-            if (state.loadFailed) {
+            if (archived && state.archivedError != null) item { Text(state.archivedError ?: "", color = MaterialTheme.colorScheme.error) }
+            if (!archived && state.loadFailed) {
                 item {
                     Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium) {
                         Row(
@@ -159,10 +172,10 @@ fun InboxScreen(viewModel: InboxViewModel) {
                     }
                 }
             }
-            if (visibleItems.isEmpty()) {
+            if (visibleItems.isEmpty() && !state.archivedLoading && (!archived || state.archivedError == null)) {
                 item {
                     EmptyView(
-                        title = if (unreadOnly) "Sin avisos sin leer" else "Todavía no hay avisos",
+                        title = if (archived) "Todavía no hay avisos archivados" else if (unreadOnly) "Sin avisos sin leer" else "Todavía no hay avisos",
                         message = if (unreadOnly) "Puedes consultar los anteriores en Todos." else
                             "Los comunicados y recordatorios del gimnasio aparecerán aquí."
                     )
@@ -176,8 +189,13 @@ fun InboxScreen(viewModel: InboxViewModel) {
         }
     }
 
-    state.items.firstOrNull { it.id == selectedId }?.let { item ->
-        InboxDetail(item, state.readingId == item.id, state.readErrorMessage, onMarkRead = { viewModel.markAsRead(item.id) }, onClose = { selectedId = null; viewModel.dismissPush() })
+    visibleItems.firstOrNull { it.id == selectedId }?.let { item ->
+        InboxDetail(
+            item, state.readingId == item.id, state.readErrorMessage, state.archiving,
+            onMarkRead = { viewModel.markAsRead(item.id) },
+            onArchive = { viewModel.archive(item.id) },
+            onClose = { selectedId = null; viewModel.dismissPush() }
+        )
     }
 }
 
@@ -235,7 +253,10 @@ private fun InboxCard(item: InboxItem, onOpen: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun InboxDetail(item: InboxItem, reading: Boolean, readErrorMessage: String?, onMarkRead: () -> Unit, onClose: () -> Unit) {
+private fun InboxDetail(
+    item: InboxItem, reading: Boolean, readErrorMessage: String?, archiving: Boolean,
+    onMarkRead: () -> Unit, onArchive: () -> Unit, onClose: () -> Unit
+) {
     ModalBottomSheet(onDismissRequest = onClose) {
         Column(
             modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
@@ -254,11 +275,18 @@ private fun InboxDetail(item: InboxItem, reading: Boolean, readErrorMessage: Str
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyLarge
             )
-            if (readErrorMessage != null && !item.isRead) {
+            if (readErrorMessage != null) {
                 Text(readErrorMessage, color = MaterialTheme.colorScheme.error)
             }
-            if (item.isRead) {
+            if (item.archived) {
+                Text("Archivado")
+            } else if (item.isRead) {
                 Text("Leído", color = MaterialTheme.colorScheme.accentForeground)
+                if (item.archivable) {
+                    TextButton(onClick = onArchive, enabled = !archiving) {
+                        Text(if (archiving) "Archivando…" else "Archivar aviso")
+                    }
+                }
             } else {
                 Button(onClick = onMarkRead, enabled = !reading, modifier = Modifier.fillMaxWidth()) {
                     Text(if (reading) "Confirmando lectura…" else "Marcar como leído")
@@ -284,7 +312,7 @@ private fun InboxMetadata(item: InboxItem) {
 @Composable
 private fun InboxCategoryIcon(category: InboxCategory) {
     val icon = when (category) {
-        InboxCategory.RECORDATORIO -> Icons.Outlined.Event
+        InboxCategory.RESERVA, InboxCategory.RECORDATORIO -> Icons.Outlined.Event
         InboxCategory.VENCIMIENTO -> Icons.Outlined.Notifications
         InboxCategory.COMUNICADO -> Icons.Outlined.Campaign
         InboxCategory.PROMOCION -> Icons.Outlined.LocalOffer
@@ -302,6 +330,7 @@ private fun InboxCategoryIcon(category: InboxCategory) {
 
 private val InboxCategory.label: String
     get() = when (this) {
+        InboxCategory.RESERVA -> "Reserva"
         InboxCategory.RECORDATORIO -> "Recordatorio"
         InboxCategory.VENCIMIENTO -> "Vencimiento"
         InboxCategory.COMUNICADO -> "Comunicado"

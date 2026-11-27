@@ -177,6 +177,9 @@ VALUES (?, ?, ?, ?, ?, ?, ?);
 markInboxAsRead:
 UPDATE inbox_item SET isRead = 1 WHERE id = ? AND accountId = ?;
 
+deleteInboxItem:
+DELETE FROM inbox_item WHERE id = ? AND accountId = ?;
+
 deleteInboxByAccountId:
 DELETE FROM inbox_item WHERE accountId = ?;
 

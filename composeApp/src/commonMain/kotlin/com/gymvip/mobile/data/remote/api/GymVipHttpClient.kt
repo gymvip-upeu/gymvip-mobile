@@ -142,7 +142,9 @@ object GymVipHttpClient {
         val body = try { response.bodyAsText() } catch (_: Exception) { "" }
 
         val problem = runCatching { kotlinx.serialization.json.Json.parseToJsonElement(body) as? kotlinx.serialization.json.JsonObject }.getOrNull()
-        val message = (problem?.get("message") as? kotlinx.serialization.json.JsonPrimitive)?.content?.take(240)
+        val message = (problem?.get("message") as? kotlinx.serialization.json.JsonPrimitive)
+            ?.content?.takeIf { it.isNotBlank() && !it.contains("://") && !it.contains("/api/") }
+            ?.take(240)
         val code = (problem?.get("code") as? kotlinx.serialization.json.JsonPrimitive)?.content
         return when (status) {
             HttpStatusCode.Unauthorized -> AppError.Unauthorized("Credenciales inválidas o sesión expirada")
@@ -160,9 +162,9 @@ object GymVipHttpClient {
                 AppError.Server(status.value, "Tiempo de espera agotado. El servidor se está iniciando, por favor reintente.")
             }
             HttpStatusCode.InternalServerError, HttpStatusCode.BadGateway, HttpStatusCode.ServiceUnavailable -> {
-                AppError.Server(status.value, "Servidor del gimnasio no disponible temporalmente (${status.value}). Reintentando...")
+                AppError.Server(status.value, "El servicio del gimnasio no está disponible. Vuelve a intentarlo en unos minutos.")
             }
-            else -> AppError.Server(status.value, "Respuesta del servidor (${status.value}): $body")
+            else -> AppError.Server(status.value, "No se pudo completar la solicitud. Inténtalo de nuevo.")
         }
     }
 
@@ -182,19 +184,19 @@ object GymVipHttpClient {
 
         return when {
             className.contains("Timeout", ignoreCase = true) || msg.contains("timed out", ignoreCase = true) -> {
-                AppError.Network("Tiempo de espera agotado al comunicar con el servidor (Timeout). Verifique su conexión.")
+                AppError.Network("El gimnasio tardó en responder. Revisa tu conexión y vuelve a intentarlo.")
             }
             className.contains("UnknownHost", ignoreCase = true) || msg.contains("Unable to resolve host", ignoreCase = true) -> {
-                AppError.Network("Error de resolución DNS: no se pudo encontrar la dirección del servidor.")
+                AppError.Network("El gimnasio no está disponible por ahora. Vuelve a intentarlo en unos minutos.")
             }
             className.contains("SSL", ignoreCase = true) || className.contains("Cert", ignoreCase = true) -> {
-                AppError.Network("Error de seguridad TLS/SSL al negociar la conexión con el servidor.")
+                AppError.Network("No se pudo establecer una conexión segura con el gimnasio.")
             }
             className.contains("Connect", ignoreCase = true) || msg.contains("Connection refused", ignoreCase = true) -> {
-                AppError.Network("No se pudo conectar al servidor del gimnasio. Verifique su red.")
+                AppError.Network("No pudimos conectar con el gimnasio. Revisa tu conexión y vuelve a intentarlo.")
             }
             else -> {
-                AppError.Network(if (msg.isNotBlank()) msg else "Fallo de comunicación de red con el servidor")
+                AppError.Network("No pudimos conectar con el gimnasio. Revisa tu conexión y vuelve a intentarlo.")
             }
         }
     }
