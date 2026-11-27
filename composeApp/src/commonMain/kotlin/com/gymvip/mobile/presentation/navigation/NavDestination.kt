@@ -13,6 +13,7 @@ sealed class NavDestination {
     data object Splash : NavDestination()
     data object Onboarding : NavDestination()
     data object Login : NavDestination()
+    data object MemberSignup : NavDestination()
     data object PasswordRecovery : NavDestination()
     data object Activation : NavDestination()
     data object FirstPassword : NavDestination()

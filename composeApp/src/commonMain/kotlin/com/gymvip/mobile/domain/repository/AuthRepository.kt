@@ -3,7 +3,10 @@ package com.gymvip.mobile.domain.repository
 import com.gymvip.mobile.domain.model.MemberProfile
 import kotlinx.coroutines.flow.Flow
 
+class DirectorySessionStarted : IllegalStateException()
+
 sealed class AuthState {
+    data object DirectoryOnly : AuthState()
     data object Idle : AuthState()
     data object Loading : AuthState()
     data class Authenticated(val profile: MemberProfile, val isCachedOffline: Boolean = false) : AuthState()

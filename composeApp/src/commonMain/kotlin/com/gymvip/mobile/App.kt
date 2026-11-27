@@ -180,7 +180,9 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
         val parentDestination = when (val destination = currentDestination) {
             NavDestination.Settings -> NavDestination.Main(MainTab.PROFILE)
             NavDestination.Faq, NavDestination.Services, NavDestination.MemberCheckInScanner,
-            NavDestination.GymExplorer, NavDestination.ClassReservations -> NavDestination.Main(MainTab.HOME)
+            NavDestination.ClassReservations -> NavDestination.Main(MainTab.HOME)
+            NavDestination.GymExplorer -> if (authState.isAuthenticated) NavDestination.Main(MainTab.HOME) else NavDestination.Login
+            NavDestination.MemberSignup -> NavDestination.Login
             NavDestination.ExerciseCatalog, NavDestination.TrainingProgress -> NavDestination.Main(MainTab.TRAINING)
             NavDestination.EditProfile, NavDestination.Preferences, NavDestination.Permissions,
             NavDestination.AccountSecurity -> NavDestination.Settings
@@ -190,15 +192,24 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
             else -> null
         }
         AppBackHandler(enabled = parentDestination != null) {
-            parentDestination?.let { currentDestination = it }
+            if (authState.directoryOnly && currentDestination == NavDestination.GymExplorer) {
+                authViewModel.logout()
+                currentDestination = NavDestination.Login
+            } else {
+                parentDestination?.let { currentDestination = it }
+            }
         }
 
         val coroutineScope = rememberCoroutineScope()
 
         // Una sesión autenticada no entra al contenido hasta aceptar términos y privacidad.
-        LaunchedEffect(authState.isAuthenticated, authState.authenticatedProfile?.accountId, authState.mustChangePassword) {
+        LaunchedEffect(authState.isAuthenticated, authState.authenticatedProfile?.accountId, authState.mustChangePassword, authState.directoryOnly) {
             if (authState.mustChangePassword) {
                 currentDestination = NavDestination.FirstPassword
+                return@LaunchedEffect
+            }
+            if (authState.directoryOnly) {
+                currentDestination = NavDestination.GymExplorer
                 return@LaunchedEffect
             }
             if (authState.isAuthenticated) {
@@ -279,14 +290,14 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
             is NavDestination.Splash -> {
                 SplashScreen(
                     onResolved = { isActive ->
-                        if (!isActive) {
+                        if (!isActive && !authState.directoryOnly && !authState.mustChangePassword) {
                             coroutineScope.launch {
                                 val onboardingSeen = AppContainer.configRepository.getBooleanPreference("onboarding_completed", false)
                                 currentDestination = if (onboardingSeen) NavDestination.Login else NavDestination.Onboarding
                             }
                         }
                     },
-                    isSessionActive = authState.isAuthenticated
+                    isSessionActive = authState.isAuthenticated || authState.directoryOnly || authState.mustChangePassword
                 )
             }
 
@@ -329,7 +340,15 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                     viewModel = authViewModel,
                     onNavigateToActivation = { currentDestination = NavDestination.Activation },
                     onNavigateToRecovery = { currentDestination = NavDestination.PasswordRecovery },
-                    onExploreGyms = { currentDestination = NavDestination.GymExplorer }
+                    onExploreGyms = { currentDestination = NavDestination.GymExplorer },
+                    onRegister = { currentDestination = NavDestination.MemberSignup }
+                )
+            }
+
+            NavDestination.MemberSignup -> {
+                com.gymvip.mobile.presentation.screen.auth.MemberSignupScreen(
+                    api = AppContainer.signupApi,
+                    onBack = { currentDestination = NavDestination.Login }
                 )
             }
 
@@ -422,6 +441,7 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
                         currentDestination = if (authState.isAuthenticated) NavDestination.Main(currentTab) else NavDestination.Login
                     },
                     onBack = {
+                        if (authState.directoryOnly) authViewModel.logout()
                         currentDestination = if (authState.isAuthenticated) NavDestination.Main(currentTab) else NavDestination.Login
                     }
                 )
