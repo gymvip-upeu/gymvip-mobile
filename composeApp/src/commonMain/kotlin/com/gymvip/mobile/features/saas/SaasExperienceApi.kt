@@ -29,11 +29,18 @@ class SaasExperienceApi(
             response.body()
         }
 
-    suspend fun listPublicGymsShowcase(query: String? = null, district: String? = null): Result<List<PublicGymShowcaseDto>> =
+    suspend fun listPublicGymsShowcase(
+        query: String? = null, district: String? = null, city: String? = null,
+        minPricePen: String? = null, maxPricePen: String? = null, amenity: String? = null
+    ): Result<List<PublicGymShowcaseDto>> =
         execute {
             client.get("$baseUrl/api/v1/public/gyms") {
                 if (!query.isNullOrBlank()) parameter("q", query)
                 if (!district.isNullOrBlank()) parameter("district", district)
+                if (!city.isNullOrBlank()) parameter("city", city)
+                if (!minPricePen.isNullOrBlank()) parameter("minPricePen", minPricePen)
+                if (!maxPricePen.isNullOrBlank()) parameter("maxPricePen", maxPricePen)
+                if (!amenity.isNullOrBlank()) parameter("amenity", amenity)
             }
         }
 
