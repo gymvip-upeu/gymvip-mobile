@@ -27,6 +27,7 @@ fun appModules(
         single { tokenStore }
         single { GymVipHttpClient.create(engine = clientEngine ?: getPlatformHttpEngine(), tokenStore = get()) }
         single { AuthApi(get()) }
+        single { com.gymvip.mobile.data.remote.api.MemberSignupApi(get()) }
         single { MemberApi(get()) }
         single { SupplementOrderApi(get()) }
         single { CatalogApi(get()) }

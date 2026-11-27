@@ -29,6 +29,8 @@ object AppContainer : KoinComponent {
     lateinit var supplementOrderApi: com.gymvip.mobile.data.remote.api.SupplementOrderApi
         private set
 
+    val signupApi: com.gymvip.mobile.data.remote.api.MemberSignupApi get() = get()
+
     lateinit var authRepository: AuthRepository
         private set
 

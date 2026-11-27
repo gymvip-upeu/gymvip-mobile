@@ -18,6 +18,7 @@ import com.gymvip.mobile.domain.model.MemberProfile
 import com.gymvip.mobile.domain.model.normalizedAccountRoles
 import com.gymvip.mobile.domain.repository.AuthRepository
 import com.gymvip.mobile.domain.repository.AuthState
+import com.gymvip.mobile.domain.repository.DirectorySessionStarted
 import com.gymvip.mobile.domain.repository.MfaChallengePendingException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,6 +56,10 @@ class AuthRepositoryImpl(
             }
             if (serverProfile?.firstAccessPasswordRequired == true) {
                 _authState.value = AuthState.PasswordChangeRequired(accountId, serverProfile.email, sharedAuthEndpoint = true)
+                return true
+            }
+            if (serverProfile?.directoryOnly == true) {
+                _authState.value = AuthState.DirectoryOnly
                 return true
             }
             val serverRoles = serverProfile?.normalizedRoles().orEmpty()
@@ -198,6 +203,11 @@ class AuthRepositoryImpl(
                 if (dto.firstAccessPasswordRequired) {
                     _authState.value = AuthState.PasswordChangeRequired(accountId, dto.email, sharedAuthEndpoint = true)
                     return@fold Result.failure(AppError.Forbidden("Crea tu nueva contraseña para continuar."))
+                }
+
+                if (dto.directoryOnly) {
+                    _authState.value = AuthState.DirectoryOnly
+                    return@fold Result.failure(DirectorySessionStarted())
                 }
 
                 // Si NO es socio (ej. GERENTE, ADMIN o RECEPCION):

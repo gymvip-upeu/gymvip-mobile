@@ -55,7 +55,8 @@ fun LoginScreen(
     viewModel: AuthViewModel,
     onNavigateToActivation: () -> Unit,
     onNavigateToRecovery: () -> Unit,
-    onExploreGyms: () -> Unit = {}
+    onExploreGyms: () -> Unit = {},
+    onRegister: (() -> Unit)? = null
 ) {
     val state by viewModel.uiState.collectAsState()
     var email by remember { mutableStateOf("") }
@@ -276,6 +277,9 @@ fun LoginScreen(
                 }
             }
             Spacer(modifier = Modifier.height(6.dp))
+            if (onRegister != null) {
+                TextButton(onClick = onRegister) { Text("Crear cuenta") }
+            }
             TextButton(onClick = onExploreGyms) {
                 Text("Explorar gimnasios publicados (sin cuenta)", color = MaterialTheme.colorScheme.primary)
             }

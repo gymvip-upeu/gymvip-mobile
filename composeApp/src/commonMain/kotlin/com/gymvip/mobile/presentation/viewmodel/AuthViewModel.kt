@@ -3,6 +3,7 @@ package com.gymvip.mobile.presentation.viewmodel
 import com.gymvip.mobile.domain.model.MemberProfile
 import com.gymvip.mobile.domain.repository.AuthRepository
 import com.gymvip.mobile.domain.repository.AuthState
+import com.gymvip.mobile.domain.repository.DirectorySessionStarted
 import com.gymvip.mobile.domain.repository.MfaChallengePendingException
 import com.gymvip.mobile.domain.usecase.ActivateAccountUseCase
 import com.gymvip.mobile.domain.usecase.LoginUseCase
@@ -20,6 +21,7 @@ import kotlinx.coroutines.launch
 data class AuthUiState(
     val isLoading: Boolean = false,
     val isAuthenticated: Boolean = false,
+    val directoryOnly: Boolean = false,
     val mustChangePassword: Boolean = false,
     val mfaRequired: Boolean = false,
     val mfaChallengeToken: String? = null,
@@ -56,6 +58,17 @@ class AuthViewModel(
 
         authRepository.getAuthState().onEach { state ->
             when (state) {
+                AuthState.DirectoryOnly -> {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        isAuthenticated = false,
+                        directoryOnly = true,
+                        mustChangePassword = false,
+                        mfaRequired = false,
+                        authenticatedProfile = null,
+                        errorMessage = null
+                    )
+                }
                 is AuthState.Loading -> {
                     _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
                 }
@@ -63,6 +76,7 @@ class AuthViewModel(
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         isAuthenticated = true,
+                        directoryOnly = false,
                         mustChangePassword = false,
                         mfaRequired = false,
                         mfaChallengeToken = null,
@@ -97,6 +111,7 @@ class AuthViewModel(
                 }
                 is AuthState.Unauthenticated -> {
                     _uiState.value = _uiState.value.copy(
+                        directoryOnly = false,
                         isLoading = false,
                         isAuthenticated = false,
                         mustChangePassword = false,
@@ -174,7 +189,7 @@ class AuthViewModel(
                     }
                 },
                 onFailure = { error ->
-                    if (_uiState.value.mustChangePassword) return@fold
+                    if (_uiState.value.mustChangePassword || error is DirectorySessionStarted) return@fold
                     if (error !is MfaChallengePendingException) {
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
