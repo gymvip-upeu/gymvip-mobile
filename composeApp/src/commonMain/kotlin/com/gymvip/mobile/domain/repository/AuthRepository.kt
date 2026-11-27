@@ -7,7 +7,7 @@ sealed class AuthState {
     data object Idle : AuthState()
     data object Loading : AuthState()
     data class Authenticated(val profile: MemberProfile, val isCachedOffline: Boolean = false) : AuthState()
-    data class PasswordChangeRequired(val accountId: String, val email: String) : AuthState()
+    data class PasswordChangeRequired(val accountId: String, val email: String, val sharedAuthEndpoint: Boolean = false) : AuthState()
     data class MfaChallengeRequired(val challengeToken: String, val email: String, val message: String) : AuthState()
     data object Unauthenticated : AuthState()
     data class Error(val message: String) : AuthState()

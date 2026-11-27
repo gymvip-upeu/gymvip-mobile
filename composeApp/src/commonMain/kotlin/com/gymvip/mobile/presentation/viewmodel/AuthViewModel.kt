@@ -174,6 +174,7 @@ class AuthViewModel(
                     }
                 },
                 onFailure = { error ->
+                    if (_uiState.value.mustChangePassword) return@fold
                     if (error !is MfaChallengePendingException) {
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,

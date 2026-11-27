@@ -24,6 +24,8 @@ data class LoginResponseDto(
     val roles: List<String> = emptyList(),
     val expiresAt: String? = null,
     val mfaRequired: Boolean = false,
+    val firstAccessPasswordRequired: Boolean = false,
+    val mfaEnrollmentRequired: Boolean = false,
     val challengeToken: String? = null,
     val message: String? = null
 ) {
@@ -89,6 +91,8 @@ data class ErrorResponseDto(
 
 @Serializable
 data class CurrentUserDto(
+    val firstAccessPasswordRequired: Boolean = false,
+    val mfaEnrollmentRequired: Boolean = false,
     val email: String = "",
     val roles: List<JsonElement> = emptyList()
 ) {
