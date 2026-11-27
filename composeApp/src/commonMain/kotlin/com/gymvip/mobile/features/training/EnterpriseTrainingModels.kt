@@ -37,7 +37,9 @@ data class ExerciseDto(
     val equipment: String,
     val difficulty: String = "INTERMEDIO",
     val technique: String,
-    val warnings: String? = null
+    val warnings: String? = null,
+    val imageUrl: String? = null,
+    val videoUrl: String? = null
 )
 
 @Serializable
@@ -123,7 +125,8 @@ data class GymClassDto(
     val durationMinutes: Int = 50,
     val capacity: Int = 20,
     val reservedCount: Int = 0,
-    val reservedByMe: Boolean = false
+    val reservedByMe: Boolean = false,
+    val myReservationStatus: String? = null
 )
 
 @Serializable

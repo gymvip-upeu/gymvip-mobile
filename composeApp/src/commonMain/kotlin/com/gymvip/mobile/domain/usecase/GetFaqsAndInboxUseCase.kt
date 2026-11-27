@@ -14,5 +14,7 @@ class GetFaqsUseCase(private val faqRepository: FaqRepository) {
 class GetInboxUseCase(private val inboxRepository: InboxRepository) {
     fun observe(accountId: String): Flow<List<InboxItem>> = inboxRepository.observeInbox(accountId)
     suspend fun refresh(accountId: String): Result<List<InboxItem>> = inboxRepository.refreshInbox(accountId)
+    suspend fun loadArchived(accountId: String): Result<List<InboxItem>> = inboxRepository.loadArchived(accountId)
+    suspend fun archive(accountId: String, itemId: String): Result<Unit> = inboxRepository.archiveItem(accountId, itemId)
     suspend fun markAsRead(accountId: String, itemId: String): Result<Unit> = inboxRepository.markAsRead(accountId, itemId)
 }

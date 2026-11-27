@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -19,6 +20,8 @@ import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -45,17 +48,29 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.presentation.component.GuideHint
+import kotlinx.serialization.Serializable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 
-private data class SetDraft(
+@Serializable
+internal data class SetDraft(
     val reps: String,
     val weight: String,
     val done: Boolean
+)
+
+@Serializable
+internal data class ActiveWorkoutDraft(
+    val routine: WorkoutRoutineDto,
+    val sets: Map<String, SetDraft>,
+    val elapsedSeconds: Int,
+    val restSeconds: Int,
+    val paused: Boolean
 )
 
 @Composable
@@ -70,14 +85,34 @@ fun TrainingHubScreen(
 ) {
     val scope = rememberCoroutineScope()
     var routines by remember { mutableStateOf<List<WorkoutRoutineDto>>(emptyList()) }
-    var activeRoutine by remember { mutableStateOf<WorkoutRoutineDto?>(null) }
+    var activeRoutine by remember(accountId) { mutableStateOf<WorkoutRoutineDto?>(null) }
     var loading by remember { mutableStateOf(true) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
-    var elapsedSeconds by rememberSaveable { mutableStateOf(0) }
-    var restSecondsRemaining by rememberSaveable { mutableStateOf(0) }
-    var isPaused by rememberSaveable { mutableStateOf(false) }
+    var elapsedSeconds by remember(accountId) { mutableStateOf(0) }
+    var restSecondsRemaining by remember(accountId) { mutableStateOf(0) }
+    var isPaused by remember(accountId) { mutableStateOf(false) }
 
-    val setDrafts = remember { mutableStateMapOf<String, SetDraft>() }
+    val setDrafts = remember(accountId) { mutableStateMapOf<String, SetDraft>() }
+    var restored by remember(accountId) { mutableStateOf(false) }
+    var saving by remember(accountId) { mutableStateOf(false) }
+
+    LaunchedEffect(accountId) {
+        repository.readActiveWorkout(accountId)?.let { draft ->
+            setDrafts.putAll(draft.sets)
+            elapsedSeconds = draft.elapsedSeconds
+            restSecondsRemaining = draft.restSeconds
+            isPaused = true
+            activeRoutine = draft.routine
+        }
+        restored = true
+    }
+
+    val snapshot = setDrafts.toMap()
+    LaunchedEffect(restored, activeRoutine, snapshot, elapsedSeconds / 10, restSecondsRemaining == 0, isPaused) {
+        if (restored) activeRoutine?.let {
+            repository.persistActiveWorkout(accountId, ActiveWorkoutDraft(it, snapshot, elapsedSeconds, restSecondsRemaining, isPaused))
+        }
+    }
 
     LaunchedEffect(accountId) {
         loading = true
@@ -102,27 +137,20 @@ fun TrainingHubScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("Centro de Entrenamiento", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-
-        GuideHint(
-            title = "Registro offline-first con temporizador automático",
-            description = "Al marcar una serie completada inicia el descanso automático. Si pierdes señal en el gimnasio, tu sesión se guarda en SQLite y se sincroniza después."
-        )
-
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = onOpenExercises, modifier = Modifier.weight(1f)) { Text("Ejercicios") }
-            OutlinedButton(onClick = onOpenProgress, modifier = Modifier.weight(1f)) { Text("Progreso") }
-            OutlinedButton(onClick = onOpenClasses, modifier = Modifier.weight(1f)) { Text("Clases") }
-        }
-
-        if (!statusMessage.isNullOrBlank()) {
-            Text(statusMessage ?: "", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
-        }
-
-        OutlinedButton(onClick = onOpenJournal, modifier = Modifier.fillMaxWidth()) { Text("Mi Bitácora · registrar mi día") }
-        OutlinedButton(onClick = onOpenWellnessPlanner, modifier = Modifier.fillMaxWidth()) { Text("Perfil Físico (IMC OMS) y Plan Semanal") }
-
         val current = activeRoutine
+        if (current == null) {
+            Text("Tu entrenamiento", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                TextButton(onClick = onOpenExercises) { Text("Ejercicios") }
+                TextButton(onClick = onOpenProgress) { Text("Progreso") }
+                TextButton(onClick = onOpenClasses) { Text("Clases") }
+                TextButton(onClick = onOpenJournal) { Text("Bitácora") }
+                TextButton(onClick = onOpenWellnessPlanner) { Text("Plan e IMC") }
+            }
+        }
+
+        statusMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium) }
+
         if (current != null) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -132,8 +160,9 @@ fun TrainingHubScreen(
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("SESIÓN EN CURSO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                            Text(if (isPaused) "SESIÓN EN PAUSA" else "SESIÓN EN CURSO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                             Text(current.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(setDrafts.values.count { it.done }.toString() + " series completadas")
                             Text("Tiempo: ${elapsedSeconds / 60}m ${elapsedSeconds % 60}s", style = MaterialTheme.typography.bodySmall)
                         }
                         IconButton(onClick = { isPaused = !isPaused }) {
@@ -207,7 +236,8 @@ fun TrainingHubScreen(
                             restSecondsRemaining = 0
                         }, modifier = Modifier.weight(1f)) { Text("Cancelar") }
 
-                        Button(onClick = {
+                        Button(enabled = !saving && setDrafts.values.any { it.done }, onClick = {
+                            saving = true
                             scope.launch {
                                 val loggedSets = current.items.flatMap { item ->
                                     (1..item.setsCount).mapNotNull { setIdx ->
@@ -225,7 +255,7 @@ fun TrainingHubScreen(
                                 }
                                 val nowIso = Clock.System.now().toString().take(19)
                                 val syncId = "wrk_${accountId}_${Clock.System.now().toEpochMilliseconds()}"
-                                val (_, msg) = repository.saveAndSyncWorkoutSession(
+                                val (saved, msg) = repository.saveAndSyncWorkoutSession(
                                     accountId,
                                     WorkoutSessionPayload(
                                         routineId = current.id,
@@ -239,9 +269,13 @@ fun TrainingHubScreen(
                                     )
                                 )
                                 statusMessage = msg
-                                activeRoutine = null
-                                elapsedSeconds = 0
-                                restSecondsRemaining = 0
+                                if (saved || repository.hasQueuedWorkout(accountId, syncId)) {
+                                    activeRoutine = null
+                                    repository.persistActiveWorkout(accountId, null)
+                                    elapsedSeconds = 0
+                                    restSecondsRemaining = 0
+                                }
+                                saving = false
                             }
                         }, modifier = Modifier.weight(1f)) {
                             Icon(Icons.Outlined.CheckCircle, contentDescription = null)
@@ -277,7 +311,7 @@ fun TrainingHubScreen(
                                 Text("• ${ex.exerciseName}: ${ex.setsCount} x ${ex.repsTarget} (desc. ${ex.restSeconds}s)", style = MaterialTheme.typography.bodySmall)
                             }
                             Spacer(modifier = Modifier.height(6.dp))
-                            Button(onClick = {
+                            Button(enabled = restored, onClick = {
                                 activeRoutine = routine
                                 elapsedSeconds = 0
                                 restSecondsRemaining = 0
@@ -300,16 +334,47 @@ fun ExerciseCatalogScreen(
     repository: EnterpriseTrainingRepository,
     onBack: () -> Unit
 ) {
-    val scope = rememberCoroutineScope()
-    var filter by remember { mutableStateOf("Todos") }
-    var exercises by remember { mutableStateOf<List<ExerciseDto>>(emptyList()) }
-    var loading by remember { mutableStateOf(true) }
+    val links = LocalUriHandler.current
+    var filter by rememberSaveable { mutableStateOf("Todos") }
+    var exercises by remember(accountId) { mutableStateOf<List<ExerciseDto>>(emptyList()) }
+    var loading by remember(accountId) { mutableStateOf(true) }
+    var loadFailed by remember(accountId) { mutableStateOf(false) }
+    var selected by remember(accountId) { mutableStateOf<ExerciseDto?>(null) }
+    var videoFailed by remember { mutableStateOf(false) }
 
-    LaunchedEffect(filter) {
+    LaunchedEffect(accountId, filter) {
         loading = true
+        loadFailed = false
         repository.fetchExercises(accountId, if (filter == "Todos") null else filter)
             .onSuccess { exercises = it }
+            .onFailure { exercises = emptyList(); loadFailed = true }
         loading = false
+    }
+
+    selected?.let { exercise ->
+        AlertDialog(
+            onDismissRequest = { selected = null },
+            title = { Text(exercise.name) },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ExerciseImage(exercise)
+                    Text(exercise.muscleGroup + " · " + exercise.equipment + " · " + exercise.difficulty)
+                    Text("Técnica", style = MaterialTheme.typography.titleSmall)
+                    Text(exercise.technique)
+                    exercise.warnings?.takeIf { it.isNotBlank() }?.let {
+                        Text("Precauciones", style = MaterialTheme.typography.titleSmall)
+                        Text(it, color = MaterialTheme.colorScheme.error)
+                    }
+                    exercise.videoUrl?.takeIf(::isExerciseMediaUrl)?.let { url ->
+                        OutlinedButton(onClick = {
+                            videoFailed = runCatching { links.openUri(url) }.isFailure
+                        }) { Text("Ver video") }
+                    }
+                    if (videoFailed) Text("No se pudo abrir el video.")
+                }
+            },
+            confirmButton = { TextButton(onClick = { selected = null }) { Text("Cerrar") } }
+        )
     }
 
     Scaffold(
@@ -328,20 +393,21 @@ fun ExerciseCatalogScreen(
             modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf("Todos", "Piernas", "Pecho", "Espalda", "Core").forEach { group ->
                     FilterChip(selected = filter == group, onClick = { filter = group }, label = { Text(group) })
                 }
             }
-            if (loading) CircularProgressIndicator()
-            exercises.forEach { ex ->
-                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(ex.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
-                        Text("${ex.muscleGroup} • ${ex.equipment} • ${ex.difficulty}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                        Text("Técnica: ${ex.technique}", style = MaterialTheme.typography.bodySmall)
-                        if (!ex.warnings.isNullOrBlank()) {
-                            Text("Advertencia: ${ex.warnings}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            when {
+                loading -> CircularProgressIndicator()
+                loadFailed -> Text("No se pudo cargar el catálogo. Intenta nuevamente.")
+                exercises.isEmpty() -> Text("No hay ejercicios para este filtro.")
+                else -> exercises.forEach { exercise ->
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(exercise.name, style = MaterialTheme.typography.titleMedium)
+                            Text(exercise.muscleGroup + " · " + exercise.equipment)
+                            TextButton(onClick = { selected = exercise; videoFailed = false }) { Text("Ver ejercicio") }
                         }
                     }
                 }

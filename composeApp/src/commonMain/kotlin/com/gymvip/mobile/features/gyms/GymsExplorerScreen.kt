@@ -39,6 +39,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.features.saas.CreateGymReviewRequest
@@ -63,6 +64,7 @@ fun GymsExplorerScreen(
     onBack: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    val links = LocalUriHandler.current
     var query by remember { mutableStateOf("") }
     var districtFilter by remember { mutableStateOf("") }
     var gyms by remember { mutableStateOf<List<PublicGymShowcaseDto>>(emptyList()) }
@@ -112,6 +114,11 @@ fun GymsExplorerScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            OutlinedButton(onClick = {
+                runCatching { links.openUri("https://gymvip.vercel.app/unete") }
+                    .onFailure { noticeMsg = "No se pudo abrir el formulario de afiliación." }
+            }) { Text("Afiliar mi empresa") }
+
             GuideHint(
                 title = "Gimnasio favorito vs membresía",
                 description = "Marcar una sede preferida personaliza tu Inicio y horarios, pero tu permiso de ingreso depende exclusivamente de tu membresía vigente."

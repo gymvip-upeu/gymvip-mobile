@@ -318,7 +318,9 @@ data class InboxItemDto(
     val message: String,
     val category: String = "COMUNICADO",
     val createdAt: String,
-    val isRead: Boolean = false
+    val isRead: Boolean = false,
+    val archivable: Boolean = false,
+    val archived: Boolean = false
 )
 
 @Serializable

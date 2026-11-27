@@ -54,6 +54,8 @@ fun ClassesReservationsScreen(
     var loading by remember { mutableStateOf(true) }
     var feedback by remember { mutableStateOf<String?>(null) }
 
+    var changingClass by remember { mutableStateOf<String?>(null) }
+
     suspend fun loadClasses() {
         loading = true
         repository.listClasses()
@@ -111,15 +113,22 @@ fun ClassesReservationsScreen(
                             Text("Cupos disponibles: $available / ${item.capacity}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.height(6.dp))
                             if (item.reservedByMe) {
-                                OutlinedButton(onClick = {
+                                Text(
+                                    if (item.myReservationStatus == "LISTA_ESPERA") "En lista de espera" else "Reserva confirmada",
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                OutlinedButton(enabled = changingClass == null, onClick = {
+                                    changingClass = item.id
                                     scope.launch {
                                         repository.cancelClass(item.id)
                                             .onSuccess { feedback = "Reserva cancelada."; loadClasses() }
                                             .onFailure { feedback = it.message }
+                                        changingClass = null
                                     }
-                                }, modifier = Modifier.fillMaxWidth()) { Text("Cancelar reserva") }
+                                }, modifier = Modifier.fillMaxWidth()) { Text(if (item.myReservationStatus == "LISTA_ESPERA") "Salir de lista de espera" else "Cancelar reserva") }
                             } else {
-                                Button(onClick = {
+                                Button(enabled = changingClass == null, onClick = {
+                                    changingClass = item.id
                                     scope.launch {
                                         repository.reserveClass(item.id)
                                             .onSuccess { res ->
@@ -128,6 +137,7 @@ fun ClassesReservationsScreen(
                                                 loadClasses()
                                             }
                                             .onFailure { feedback = it.message ?: "No se pudo completar la reserva." }
+                                        changingClass = null
                                     }
                                 }, modifier = Modifier.fillMaxWidth()) {
                                     Text(if (available > 0) "Reservar cupo" else "Unirse a lista de espera")

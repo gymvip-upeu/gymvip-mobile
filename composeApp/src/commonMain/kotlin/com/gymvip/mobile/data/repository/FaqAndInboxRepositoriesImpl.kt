@@ -113,14 +113,24 @@ class InboxRepositoryImpl(
                     )
                 }
             }
-            Result.success(database.gymVipDatabaseQueries.selectInboxByAccountId(accountId).executeAsList().map {
-                val cat = try { InboxCategory.valueOf(it.category) } catch (_: Exception) { InboxCategory.COMUNICADO }
-                InboxItem(it.id, it.accountId, it.title, it.message, cat, it.createdAt, it.isRead == 1L)
-            })
+            Result.success(remoteList.map { it.toInboxItem(accountId) })
         } else {
             Result.failure(remoteResult.exceptionOrNull() ?: Exception("Error al cargar avisos"))
         }
     }
+
+    override suspend fun loadArchived(accountId: String): Result<List<InboxItem>> =
+        memberApi.getInbox(archived = true).map { items -> items.map { it.toInboxItem(accountId) } }
+
+    override suspend fun archiveItem(accountId: String, itemId: String): Result<Unit> =
+        memberApi.archiveInboxItem(itemId).onSuccess {
+            database.gymVipDatabaseQueries.deleteInboxItem(itemId, accountId)
+        }
+
+    private fun com.gymvip.mobile.data.remote.dto.InboxItemDto.toInboxItem(accountId: String): InboxItem =
+        InboxItem(id, accountId, title, message,
+            InboxCategory.entries.find { it.name == category } ?: InboxCategory.COMUNICADO,
+            createdAt, isRead, archivable, archived)
 
     override suspend fun clearInbox(accountId: String) {
         database.gymVipDatabaseQueries.deleteInboxByAccountId(accountId)

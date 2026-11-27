@@ -53,6 +53,9 @@ fun CartScreen(
 
     var selectedPaymentMethod by remember { mutableStateOf("EFECTIVO_MOSTRADOR") }
     val uriHandler = LocalUriHandler.current
+    val eligibleItems = cart.items.filter { item -> item.availableStock?.let { it >= item.quantity } == true }
+    val eligibleSubtotal = ShoppingCart(eligibleItems).totalPrice
+    val blockedItems = cart.items.size - eligibleItems.size
     val digitalAvailable = culqiEnabled && cart.totalPrice.cents in 600..999900
     var orderNotes by remember { mutableStateOf("") }
     var paymentReferenceInput by remember { mutableStateOf("") }
@@ -151,18 +154,25 @@ fun CartScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Total a Pagar:",
+                            text = "Subtotal disponible",
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = cart.totalPrice.amountInSoles,
+                            text = eligibleSubtotal.amountInSoles,
                             style = MaterialTheme.typography.headlineSmall,
                             color = GoldPrimary,
                             fontWeight = FontWeight.Bold
                         )
                     }
 
+                    if (blockedItems > 0) {
+                        Text(
+                            "Ajusta o retira los productos indicados antes de confirmar.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                     Text(
                         text = "Al confirmar, el stock se reserva por 30 minutos. El enlace digital vence antes de la reserva.",
                         style = MaterialTheme.typography.bodySmall,
@@ -171,7 +181,7 @@ fun CartScreen(
                     )
 
                     Button(
-                        enabled = cart.items.none { it.availableStock?.let { stock -> stock < it.quantity } == true },
+                        enabled = blockedItems == 0,
                         onClick = { showCheckoutDialog = true },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary)
@@ -512,59 +522,46 @@ private fun CartItemRow(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.product.name,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "${item.unitPrice.amountInSoles} c/u",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = item.subtotal.amountInSoles,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = GoldPrimary,
-                    fontWeight = FontWeight.SemiBold
-                )
+            Text(item.product.name, style = MaterialTheme.typography.titleSmall)
+            val warning = when (val remaining = item.availableStock) {
+                null -> "Actualiza el carrito para comprobar el stock."
+                0 -> "Agotado. Quita este producto."
+                else -> if (remaining < item.quantity) "Quedan $remaining unidades. Ajusta la cantidad." else null
             }
-
-            item.availableStock?.takeIf { it < item.quantity }?.let { remaining ->
-                Text(
-                    if (remaining == 0) "Agotado. Quita este producto." else "Quedan $remaining unidades. Ajusta la cantidad.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
+            if (warning != null) {
+                Text(warning, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(
-                    onClick = { onQuantityChange(item.product.id, item.quantity - 1) }
-                ) {
-                    Icon(
-                        imageVector = if (item.quantity == 1) Icons.Default.Delete else Icons.Default.Remove,
-                        contentDescription = "Disminuir o quitar"
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(item.unitPrice.amountInSoles + " c/u", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        item.subtotal.amountInSoles,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (warning == null) GoldPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
-                Text(
-                    text = "${item.quantity}",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 4.dp)
-                )
-                IconButton(
-                    onClick = { onQuantityChange(item.product.id, item.quantity + 1) },
-                    enabled = item.quantity < minOf(20, item.availableStock ?: 20)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Aumentar unidad")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { onQuantityChange(item.product.id, item.quantity - 1) }) {
+                        Icon(
+                            if (item.quantity == 1) Icons.Default.Delete else Icons.Default.Remove,
+                            contentDescription = if (item.quantity == 1) "Quitar producto" else "Disminuir cantidad"
+                        )
+                    }
+                    Text(item.quantity.toString(), style = MaterialTheme.typography.titleMedium)
+                    IconButton(
+                        onClick = { onQuantityChange(item.product.id, item.quantity + 1) },
+                        enabled = item.quantity < minOf(20, item.availableStock ?: 0)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Aumentar cantidad")
+                    }
                 }
             }
         }

@@ -35,6 +35,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +44,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
@@ -50,7 +52,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import com.gymvip.mobile.domain.model.Product
-import com.gymvip.mobile.presentation.component.ContextualHelpCard
 import com.gymvip.mobile.presentation.screen.faq.receptionWhatsAppUrl
 import kotlinx.coroutines.CancellationException
 import com.gymvip.mobile.domain.model.ProductCategory
@@ -76,6 +77,7 @@ fun CatalogScreen(
     onOpenCart: () -> Unit = {},
     onAddToCart: (Product) -> Unit = {}
 ) {
+    var sectionsExpanded by rememberSaveable { mutableStateOf(false) }
     val catalogState by catalogViewModel.uiState.collectAsState()
     val favoritesState by favoritesViewModel.uiState.collectAsState()
     LaunchedEffect(catalogViewModel) { catalogViewModel.refresh() }
@@ -89,16 +91,25 @@ fun CatalogScreen(
             isOffline = catalogState.errorMessage != null,
             pendingSyncCount = favoritesState.pendingCount
         )
-        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
-            Text("Suplementos", style = MaterialTheme.typography.headlineMedium)
-            Text("Explora productos y promociones disponibles en recepción.",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        if (canPurchase) {
-            OutlinedButton(onClick = onOpenCart, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                Icon(Icons.Outlined.ShoppingCart, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Mi carrito · $cartCount ${if (cartCount == 1) "producto" else "productos"} · Pedidos")
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            TextButton(onClick = { sectionsExpanded = !sectionsExpanded }, modifier = Modifier.weight(1f)) {
+                val currentSection = when (catalogState.selectedSubTab) {
+                    1 -> "Promociones"
+                    2 -> "Favoritos (" + favoritesState.favorites.size + ")"
+                    else -> "Productos"
+                }
+                Text(if (sectionsExpanded) "Ocultar secciones" else "$currentSection ▾")
+            }
+            if (canPurchase) {
+                OutlinedButton(onClick = onOpenCart) {
+                    Icon(Icons.Outlined.ShoppingCart, contentDescription = "Carrito y pedidos")
+                    Spacer(Modifier.width(6.dp))
+                    Text(cartCount.toString())
+                }
             }
         }
         if (cartError != null) {
@@ -110,53 +121,52 @@ fun CatalogScreen(
             }
         }
 
-        ContextualHelpCard(
-            screenKey = "catalog_help",
-            title = "Catálogo y Suplementos",
-            description = "Explore suplementos, promociones vigentes y planes. Puede guardar favoritos para consultarlos sin conexión o contactar a recepción por WhatsApp."
-        )
-
-        TabRow(
-            selectedTabIndex = catalogState.selectedSubTab,
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.accentForeground,
-            indicator = { tabPositions ->
-                TabRowDefaults.SecondaryIndicator(
-                    modifier = Modifier.tabIndicatorOffset(tabPositions[catalogState.selectedSubTab]),
-                    color = MaterialTheme.colorScheme.accentForeground
+        if (sectionsExpanded) {
+            TabRow(
+                selectedTabIndex = catalogState.selectedSubTab,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.accentForeground,
+                indicator = { tabPositions ->
+                    TabRowDefaults.SecondaryIndicator(
+                        modifier = Modifier.tabIndicatorOffset(tabPositions[catalogState.selectedSubTab]),
+                        color = MaterialTheme.colorScheme.accentForeground
+                    )
+                }
+            ) {
+                Tab(
+                    selected = catalogState.selectedSubTab == 0,
+                    onClick = {
+                        catalogViewModel.setSubTab(0)
+                        sectionsExpanded = false
+                        catalogViewModel.togglePromotionsOnly(false)
+                    },
+                    text = { Text("Productos", style = MaterialTheme.typography.titleSmall) }
+                )
+                Tab(
+                    selected = catalogState.selectedSubTab == 1,
+                    onClick = {
+                        catalogViewModel.setSubTab(1)
+                        sectionsExpanded = false
+                        catalogViewModel.togglePromotionsOnly(true)
+                    },
+                    text = { Text("Promociones", style = MaterialTheme.typography.titleSmall) }
+                )
+                Tab(
+                    selected = catalogState.selectedSubTab == 2,
+                    onClick = { catalogViewModel.setSubTab(2); sectionsExpanded = false },
+                    text = {
+                        val count = favoritesState.favorites.size
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(Icons.Outlined.StarBorder, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Text("Favoritos ($count)", style = MaterialTheme.typography.titleSmall)
+                        }
+                    }
                 )
             }
-        ) {
-            Tab(
-                selected = catalogState.selectedSubTab == 0,
-                onClick = {
-                    catalogViewModel.setSubTab(0)
-                    catalogViewModel.togglePromotionsOnly(false)
-                },
-                text = { Text("Productos", style = MaterialTheme.typography.titleSmall) }
-            )
-            Tab(
-                selected = catalogState.selectedSubTab == 1,
-                onClick = {
-                    catalogViewModel.setSubTab(1)
-                    catalogViewModel.togglePromotionsOnly(true)
-                },
-                text = { Text("Promociones", style = MaterialTheme.typography.titleSmall) }
-            )
-            Tab(
-                selected = catalogState.selectedSubTab == 2,
-                onClick = { catalogViewModel.setSubTab(2) },
-                text = {
-                    val count = favoritesState.favorites.size
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(Icons.Outlined.StarBorder, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Text("Favoritos ($count)", style = MaterialTheme.typography.titleSmall)
-                    }
-                }
-            )
+
         }
 
         when (catalogState.selectedSubTab) {

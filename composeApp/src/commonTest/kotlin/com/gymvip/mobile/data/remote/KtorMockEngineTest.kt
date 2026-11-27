@@ -407,24 +407,26 @@ class KtorMockEngineTest {
     }
 
     @Test
-    fun testNetworkExceptionMappingDistinguesErrorTypes() {
+    fun testNetworkExceptionMappingShowsSafeUserMessages() {
         val timeoutErr = GymVipHttpClient.mapThrowableToAppError(
             io.ktor.client.plugins.HttpRequestTimeoutException("https://gymvip-backend.onrender.com", 60_000L)
         )
         assertTrue(timeoutErr is AppError.Network)
-        assertTrue(timeoutErr.messageDetail.contains("Timeout", ignoreCase = true))
+        assertTrue(timeoutErr.messageDetail.contains("tardó en responder"))
+        assertFalse(timeoutErr.messageDetail.contains("https://"))
+        assertFalse(timeoutErr.messageDetail.contains("60000"))
 
         val dnsErr = GymVipHttpClient.mapThrowableToAppError(
             java.net.UnknownHostException("gymvip-backend.onrender.com")
         )
         assertTrue(dnsErr is AppError.Network)
-        assertTrue(dnsErr.messageDetail.contains("DNS", ignoreCase = true))
+        assertFalse(dnsErr.messageDetail.contains("onrender.com"))
 
         val sslErr = GymVipHttpClient.mapThrowableToAppError(
             javax.net.ssl.SSLException("Handshake failed")
         )
         assertTrue(sslErr is AppError.Network)
-        assertTrue(sslErr.messageDetail.contains("TLS/SSL", ignoreCase = true))
+        assertTrue(sslErr.messageDetail.contains("conexión segura"))
     }
 
     @Test
