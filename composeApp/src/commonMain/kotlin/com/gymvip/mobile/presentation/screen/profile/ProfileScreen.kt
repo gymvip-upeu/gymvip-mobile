@@ -1,5 +1,6 @@
 package com.gymvip.mobile.presentation.screen.profile
 
+import com.gymvip.mobile.domain.model.accountRoleLabel
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -115,13 +116,7 @@ fun ProfileScreen(
         val isAdminOrReception = roles.any {
             it.contains("ADMIN", ignoreCase = true) || it.contains("RECEPCION", ignoreCase = true) || it.contains("GERENTE", ignoreCase = true)
         }
-        val accountType = when {
-            roles.any { it.contains("GERENTE", ignoreCase = true) } -> "Gerente General"
-            roles.any { it.contains("ADMIN", ignoreCase = true) } -> "Administrador del Sistema"
-            roles.any { it.contains("RECEPCION", ignoreCase = true) } -> "Personal de Recepción"
-            roles.any { it.contains("AUDITOR", ignoreCase = true) } -> "Auditor"
-            else -> "Socio Titular VIP"
-        }
+        val accountType = roles.accountRoleLabel()
         val accountStatus = when (profile?.status?.name) {
             "BLOQUEADO" -> "CUENTA BLOQUEADA"
             "INACTIVO" -> "CUENTA INACTIVA"
