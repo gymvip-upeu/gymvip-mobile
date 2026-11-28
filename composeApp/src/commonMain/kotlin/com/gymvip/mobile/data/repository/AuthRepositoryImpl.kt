@@ -14,6 +14,7 @@ import com.gymvip.mobile.data.remote.dto.PasswordResetConfirmRequestDto
 import com.gymvip.mobile.data.remote.dto.PasswordResetRequestDto
 import com.gymvip.mobile.domain.error.AppError
 import com.gymvip.mobile.domain.model.AccountStatus
+import com.gymvip.mobile.domain.model.accountRoleLabel
 import com.gymvip.mobile.domain.model.MemberProfile
 import com.gymvip.mobile.domain.model.normalizedAccountRoles
 import com.gymvip.mobile.domain.repository.AuthRepository
@@ -76,11 +77,7 @@ class AuthRepositoryImpl(
                 val profile = localProfile?.toDomain()?.copy(accountId = accountId, roles = accountRoles) ?: MemberProfile(
                     accountId = accountId,
                     email = secureTokenStore.getRememberedIdentifier().orEmpty().ifBlank { "admin@gymvip.local" },
-                    firstName = when {
-                        accountRoles.contains("GERENTE") -> "Gerente"
-                        accountRoles.contains("ADMIN") -> "Administrador"
-                        else -> "Recepción"
-                    },
+                    firstName = accountRoles.accountRoleLabel(),
                     lastName = "GYM VIP",
                     documentType = "DNI",
                     documentNumber = "",
@@ -215,11 +212,7 @@ class AuthRepositoryImpl(
                     val profile = MemberProfile(
                         accountId = accountId,
                         email = dto.email,
-                        firstName = when {
-                            accountRoles.contains("GERENTE") -> "Gerente"
-                            accountRoles.contains("ADMIN") -> "Administrador"
-                            else -> "Recepción"
-                        },
+                        firstName = accountRoles.accountRoleLabel(),
                         lastName = "GYM VIP",
                         documentType = "DNI",
                         documentNumber = "",
