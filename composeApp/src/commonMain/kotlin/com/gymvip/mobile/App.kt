@@ -348,6 +348,7 @@ fun App(onDarkThemeChanged: ((Boolean) -> Unit)? = null) {
             NavDestination.MemberSignup -> {
                 com.gymvip.mobile.presentation.screen.auth.MemberSignupScreen(
                     api = AppContainer.signupApi,
+                    onExplore = { currentDestination = NavDestination.GymExplorer },
                     onBack = { currentDestination = NavDestination.Login }
                 )
             }

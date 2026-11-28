@@ -18,11 +18,13 @@ import com.gymvip.mobile.domain.error.AppError
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 
+private enum class SignupAvailability { Loading, Open, Closed, Unknown }
+
 @Composable
-fun MemberSignupScreen(api: MemberSignupApi, onBack: () -> Unit) {
+fun MemberSignupScreen(api: MemberSignupApi, onBack: () -> Unit, onExplore: () -> Unit) {
     val scope = rememberCoroutineScope()
     val links = LocalUriHandler.current
-    var available by remember { mutableStateOf<Boolean?>(null) }
+    var available by remember { mutableStateOf(SignupAvailability.Loading) }
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
     var dni by remember { mutableStateOf("") }
@@ -37,10 +39,12 @@ fun MemberSignupScreen(api: MemberSignupApi, onBack: () -> Unit) {
     var completed by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(api) {
+    var attempt by remember { mutableIntStateOf(0) }
+    LaunchedEffect(api, attempt) {
+        available = SignupAvailability.Loading
         api.isAvailable()
-            .onSuccess { available = it }
-            .onFailure { available = false; error = "No pudimos comprobar si el registro está disponible." }
+            .onSuccess { available = if (it) SignupAvailability.Open else SignupAvailability.Closed }
+            .onFailure { available = SignupAvailability.Unknown }
     }
 
     fun requestCodes() {
@@ -64,55 +68,65 @@ fun MemberSignupScreen(api: MemberSignupApi, onBack: () -> Unit) {
         }
     }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        TextButton(onClick = onBack) { Text("Volver a iniciar sesión") }
-        Text("Crea tu cuenta", style = MaterialTheme.typography.headlineSmall)
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        when {
-            available == null -> CircularProgressIndicator()
-            available == false -> Text("El registro desde la app aún no está disponible. Puedes seguir explorando gimnasios.")
-            completed -> {
-                Text("Revisa tu correo para recibir los pasos de acceso. Si ya tienes una cuenta, puedes entrar con tus datos habituales.")
-                Button(onClick = onBack) { Text("Ir a iniciar sesión") }
-            }
-            challenge != null -> {
-                val current = challenge ?: return@Column
-                Text("Ingresa los códigos que recibiste por correo y WhatsApp. Vencen en " +
-                    current.expiresInMinutes + " minutos.")
-                SignupField("Código de correo", emailCode, { emailCode = it.filter(Char::isDigit).take(6) }, KeyboardType.Number)
-                SignupField("Código de WhatsApp", whatsappCode, { whatsappCode = it.filter(Char::isDigit).take(6) }, KeyboardType.Number)
-                Button(enabled = !busy && emailCode.length == 6 && whatsappCode.length == 6, onClick = {
-                    busy = true
-                    error = null
-                    scope.launch {
-                        api.verify(current.challengeId, emailCode, whatsappCode)
-                            .onSuccess { completed = true; emailCode = ""; whatsappCode = "" }
-                            .onFailure { error = signupMessage(it) }
-                        busy = false
+    Surface(color = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onBackground) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            TextButton(onClick = onBack) { Text("Volver a iniciar sesión") }
+            Text("Crea tu cuenta", style = MaterialTheme.typography.headlineSmall)
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            when {
+                available == SignupAvailability.Loading -> CircularProgressIndicator()
+                available == SignupAvailability.Unknown -> {
+                    Text("No pudimos consultar el registro. Inténtalo de nuevo en unos momentos.")
+                    Button(onClick = { attempt++ }) { Text("Reintentar") }
+                    TextButton(onClick = onExplore) { Text("Explorar gimnasios") }
+                }
+                available == SignupAvailability.Closed -> {
+                    Text("El registro de cuentas está deshabilitado por el momento.")
+                    TextButton(onClick = onExplore) { Text("Explorar gimnasios") }
+                }
+                completed -> {
+                    Text("Revisa tu correo para recibir los pasos de acceso. Si ya tienes una cuenta, puedes entrar con tus datos habituales.")
+                    Button(onClick = onBack) { Text("Ir a iniciar sesión") }
+                }
+                challenge != null -> {
+                    val current = challenge ?: return@Column
+                    Text("Ingresa los códigos que recibiste por correo y WhatsApp. Vencen en " +
+                        current.expiresInMinutes + " minutos.")
+                    SignupField("Código de correo", emailCode, { emailCode = it.filter(Char::isDigit).take(6) }, KeyboardType.Number)
+                    SignupField("Código de WhatsApp", whatsappCode, { whatsappCode = it.filter(Char::isDigit).take(6) }, KeyboardType.Number)
+                    Button(enabled = !busy && emailCode.length == 6 && whatsappCode.length == 6, onClick = {
+                        busy = true
+                        error = null
+                        scope.launch {
+                            api.verify(current.challengeId, emailCode, whatsappCode)
+                                .onSuccess { completed = true; emailCode = ""; whatsappCode = "" }
+                                .onFailure { error = signupMessage(it) }
+                            busy = false
+                        }
+                    }) { Text(if (busy) "Verificando…" else "Confirmar códigos") }
+                    TextButton(enabled = !busy, onClick = ::requestCodes) { Text("Solicitar nuevos códigos") }
+                    TextButton(enabled = !busy, onClick = { challenge = null; error = null }) { Text("Corregir datos") }
+                }
+                else -> {
+                    Text("Verifica tu correo y WhatsApp para explorar los gimnasios con tu cuenta.")
+                    SignupField("Nombres", firstName, { firstName = it.take(100) })
+                    SignupField("Apellidos", lastName, { lastName = it.take(100) })
+                    SignupField("DNI", dni, { dni = it.filter(Char::isDigit).take(8) }, KeyboardType.Number)
+                    SignupField("Fecha de nacimiento (AAAA-MM-DD)", birthDate, { birthDate = it.take(10) })
+                    SignupField("Correo electrónico", email, { email = it.take(150) }, KeyboardType.Email)
+                    SignupField("WhatsApp (+51)", phone, { phone = it.filter(Char::isDigit).take(9) }, KeyboardType.Phone)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = accepted, onCheckedChange = { accepted = it })
+                        Text("Acepto los términos y la política de privacidad.")
                     }
-                }) { Text(if (busy) "Verificando…" else "Confirmar códigos") }
-                TextButton(enabled = !busy, onClick = ::requestCodes) { Text("Solicitar nuevos códigos") }
-                TextButton(enabled = !busy, onClick = { challenge = null; error = null }) { Text("Corregir datos") }
-            }
-            else -> {
-                Text("Verifica tu correo y WhatsApp para explorar los gimnasios con tu cuenta.")
-                SignupField("Nombres", firstName, { firstName = it.take(100) })
-                SignupField("Apellidos", lastName, { lastName = it.take(100) })
-                SignupField("DNI", dni, { dni = it.filter(Char::isDigit).take(8) }, KeyboardType.Number)
-                SignupField("Fecha de nacimiento (AAAA-MM-DD)", birthDate, { birthDate = it.take(10) })
-                SignupField("Correo electrónico", email, { email = it.take(150) }, KeyboardType.Email)
-                SignupField("WhatsApp (+51)", phone, { phone = it.filter(Char::isDigit).take(9) }, KeyboardType.Phone)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = accepted, onCheckedChange = { accepted = it })
-                    Text("Acepto los términos y la política de privacidad.")
+                    Row {
+                        TextButton(onClick = { links.openUri("https://gymvip.vercel.app/terminos/") }) { Text("Términos") }
+                        TextButton(onClick = { links.openUri("https://gymvip.vercel.app/privacidad/") }) { Text("Privacidad") }
+                    }
+                    Button(enabled = !busy && accepted && dni.length == 8 && firstName.isNotBlank() && lastName.isNotBlank(),
+                        onClick = ::requestCodes) { Text(if (busy) "Enviando…" else "Enviar códigos") }
                 }
-                Row {
-                    TextButton(onClick = { links.openUri("https://gymvip.vercel.app/terminos/") }) { Text("Términos") }
-                    TextButton(onClick = { links.openUri("https://gymvip.vercel.app/privacidad/") }) { Text("Privacidad") }
-                }
-                Button(enabled = !busy && accepted && dni.length == 8 && firstName.isNotBlank() && lastName.isNotBlank(),
-                    onClick = ::requestCodes) { Text(if (busy) "Enviando…" else "Enviar códigos") }
             }
         }
     }

@@ -200,7 +200,7 @@ fun OnboardingScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp),
+                    .padding(horizontal = 28.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
@@ -272,44 +272,7 @@ fun OnboardingScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Botones de Navegación Accesibles (Funcionan con y sin gestos)
-            if (!isLastPage) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    if (currentPage > 0) {
-                        OutlinedButton(
-                            onClick = { currentPage -= 1 },
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(48.dp)
-                        ) {
-                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Atrás")
-                        }
-                    }
-
-                    Button(
-                        onClick = { currentPage += 1 },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = accent,
-                            contentColor = Color.White
-                        ),
-                        modifier = Modifier
-                            .weight(if (currentPage > 0) 1f else 2f)
-                            .height(48.dp)
-                    ) {
-                        Text("Continuar", fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
-                    }
-                }
-            } else {
+            if (isLastPage) {
                 // Última página: Opciones directas de entrada
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Button(
@@ -342,6 +305,18 @@ fun OnboardingScreen(
                     }
                 }
             }
+        }
+        if (currentPage > 0) {
+            androidx.compose.material3.FilledIconButton(
+                onClick = { currentPage-- },
+                modifier = Modifier.align(Alignment.CenterStart).size(48.dp)
+            ) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Página anterior") }
+        }
+        if (!isLastPage) {
+            androidx.compose.material3.FilledIconButton(
+                onClick = { currentPage++ },
+                modifier = Modifier.align(Alignment.CenterEnd).size(48.dp)
+            ) { Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = "Página siguiente") }
         }
     }
 }
